@@ -28,7 +28,7 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'Dragon Lee', imageUrl: `${WWE_CDN}/2025/04/Dragon_Lee_Profile.png`, gender: 'male' },
   { name: 'Penta', imageUrl: `${WWE_CDN}/2025/02/Penta_Profile.png`, gender: 'male' },
   { name: 'CM Punk', imageUrl: `${WWE_CDN}/2025/11/CMPUNK_PROFILE.png`, gender: 'male' },
-  { name: 'Drew McIntyre', imageUrl: `${WWE_CDN}/2025/04/Drew_McIntyre_Profile.png`, gender: 'male' },
+  { name: 'Drew McIntyre', imageUrl: `${WWE_CDN}/all/2021/09/Drew_Mcintyre_Profile--aca391095fe74e721e098cadc93571d3.png`, gender: 'male' },
   { name: 'Randy Orton', imageUrl: `${WWE_CDN}/2025/04/Randy_Orton_Profile.png`, gender: 'male' },
   { name: 'Trick Williams', imageUrl: `${WWE_CDN}/2025/11/Trick_Williams_Profile.png`, gender: 'male' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'male' },
