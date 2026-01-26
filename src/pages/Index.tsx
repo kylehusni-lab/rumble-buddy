@@ -1,14 +1,138 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Users, Crown, Tv } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
+import { JoinPartyModal } from "@/components/JoinPartyModal";
+import { supabase } from "@/integrations/supabase/client";
+import { getSessionId, setPlayerSession } from "@/lib/session";
+import { DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
+import { toast } from "sonner";
 
-const Index = () => {
+export default function Index() {
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const navigate = useNavigate();
+
+  const generatePartyCode = async (): Promise<string> => {
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      
+      const { data } = await supabase
+        .from("parties")
+        .select("code")
+        .eq("code", code)
+        .maybeSingle();
+      
+      if (!data) return code;
+      attempts++;
+    }
+
+    throw new Error("Could not generate unique party code");
+  };
+
+  const handleCreateParty = async () => {
+    setIsCreating(true);
+
+    try {
+      const sessionId = getSessionId();
+      const partyCode = await generatePartyCode();
+
+      const { error } = await supabase.from("parties").insert({
+        code: partyCode,
+        host_session_id: sessionId,
+        status: "pre_event",
+        mens_rumble_entrants: DEFAULT_MENS_ENTRANTS,
+        womens_rumble_entrants: DEFAULT_WOMENS_ENTRANTS,
+      });
+
+      if (error) throw error;
+
+      setPlayerSession({
+        sessionId,
+        partyCode,
+        isHost: true,
+      });
+
+      toast.success(`Party ${partyCode} created!`);
+      navigate(`/host/setup/${partyCode}`);
+    } catch (err) {
+      console.error("Error creating party:", err);
+      toast.error("Failed to create party. Please try again.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Background effects */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-secondary/20" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+
+      <div className="relative z-10 w-full max-w-md space-y-12">
+        <Logo size="lg" showTagline />
+
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Button
+            variant="hero"
+            size="xl"
+            className="w-full"
+            onClick={handleCreateParty}
+            disabled={isCreating}
+          >
+            <Crown className="mr-2" size={24} />
+            {isCreating ? "Creating..." : "Create Party"}
+          </Button>
+
+          <Button
+            variant="purple"
+            size="xl"
+            className="w-full"
+            onClick={() => setIsJoinModalOpen(true)}
+          >
+            <Users className="mr-2" size={24} />
+            Join Party
+          </Button>
+        </motion.div>
+
+        <motion.div
+          className="text-center space-y-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <p className="text-muted-foreground text-sm">
+            Track picks, prop bets & Rumble numbers in real-time
+          </p>
+
+          <div className="flex items-center justify-center gap-6 text-muted-foreground text-xs">
+            <div className="flex items-center gap-2">
+              <Users size={16} className="text-primary" />
+              <span>No signup required</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Tv size={16} className="text-primary" />
+              <span>TV display mode</span>
+            </div>
+          </div>
+        </motion.div>
       </div>
+
+      <JoinPartyModal
+        isOpen={isJoinModalOpen}
+        onClose={() => setIsJoinModalOpen(false)}
+      />
     </div>
   );
-};
-
-export default Index;
+}
