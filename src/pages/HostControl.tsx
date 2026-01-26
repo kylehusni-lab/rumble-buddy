@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Trophy, Zap, Crown, Check, Tv, Users } from "lucide-react";
@@ -24,6 +24,7 @@ interface RumbleNumber {
 interface Player {
   id: string;
   display_name: string;
+  points: number;
 }
 
 export default function HostControl() {
@@ -38,6 +39,9 @@ export default function HostControl() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Track Final Four awarded status
+  const [finalFourAwarded, setFinalFourAwarded] = useState<{ mens: boolean; womens: boolean }>({ mens: false, womens: false });
+
   // Elimination modal state
   const [eliminateModal, setEliminateModal] = useState<{ number: RumbleNumber; type: "mens" | "womens" } | null>(null);
   const [eliminatedBy, setEliminatedBy] = useState<string>("");
@@ -45,6 +49,9 @@ export default function HostControl() {
   // Entry modal state
   const [entryModal, setEntryModal] = useState<{ type: "mens" | "womens"; nextNumber: number } | null>(null);
   const [selectedWrestler, setSelectedWrestler] = useState("");
+
+  // Winner declaration modal
+  const [winnerModal, setWinnerModal] = useState<{ type: "mens" | "womens"; winner: RumbleNumber } | null>(null);
 
   useEffect(() => {
     if (!code) {
@@ -88,6 +95,12 @@ export default function HostControl() {
           const results: Record<string, string> = {};
           resultsData.forEach(r => { results[r.match_id] = r.result; });
           setMatchResults(results);
+          
+          // Check if Final Four was already awarded (by looking for the match result)
+          setFinalFourAwarded({
+            mens: !!results["mens_final_four"],
+            womens: !!results["womens_final_four"],
+          });
         }
 
         // Fetch rumble numbers
@@ -105,7 +118,7 @@ export default function HostControl() {
         // Fetch players
         const { data: playersData } = await supabase
           .from("players")
-          .select("id, display_name")
+          .select("id, display_name, points")
           .eq("party_code", code);
 
         if (playersData) setPlayers(playersData);
@@ -136,6 +149,11 @@ export default function HostControl() {
             data.forEach(r => { results[r.match_id] = r.result; });
             setMatchResults(results);
           }
+        });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, () => {
+        supabase.from("players").select("id, display_name, points").eq("party_code", code).then(({ data }) => {
+          if (data) setPlayers(data);
         });
       })
       .subscribe();
@@ -172,12 +190,7 @@ export default function HostControl() {
 
         // Update player scores
         for (const pick of correctPicks) {
-          const { data: player } = await supabase
-            .from("players")
-            .select("points")
-            .eq("id", pick.player_id)
-            .single();
-
+          const player = players.find(p => p.id === pick.player_id);
           if (player) {
             await supabase
               .from("players")
@@ -220,6 +233,44 @@ export default function HostControl() {
     }
   };
 
+  const checkFinalFour = async (type: "mens" | "womens", numbersAfterElimination: RumbleNumber[]) => {
+    const isAwarded = type === "mens" ? finalFourAwarded.mens : finalFourAwarded.womens;
+    if (isAwarded) return;
+
+    const active = numbersAfterElimination.filter(n => n.entry_timestamp && !n.elimination_timestamp);
+    
+    if (active.length === 4) {
+      // Award Final Four bonus to each owner
+      const awardedPlayers: string[] = [];
+      
+      for (const num of active) {
+        if (num.assigned_to_player_id) {
+          const player = players.find(p => p.id === num.assigned_to_player_id);
+          if (player) {
+            await supabase
+              .from("players")
+              .update({ points: player.points + SCORING.FINAL_FOUR })
+              .eq("id", player.id);
+            awardedPlayers.push(player.display_name);
+          }
+        }
+      }
+
+      // Record the Final Four event
+      await supabase.from("match_results").upsert({
+        party_code: code!,
+        match_id: `${type}_final_four`,
+        result: active.map(n => `#${n.number}`).join(","),
+      }, { onConflict: "party_code,match_id" });
+
+      setFinalFourAwarded(prev => ({ ...prev, [type]: true }));
+      
+      if (awardedPlayers.length > 0) {
+        toast.success(`🏆 Final Four! +${SCORING.FINAL_FOUR} pts to ${awardedPlayers.join(", ")}`);
+      }
+    }
+  };
+
   const handleConfirmElimination = async () => {
     if (!eliminateModal || !eliminatedBy) return;
 
@@ -234,21 +285,16 @@ export default function HostControl() {
         .eq("id", eliminateModal.number.id);
 
       // Award points to eliminator's owner
-      const eliminatorNum = (eliminateModal.type === "mens" ? mensNumbers : womensNumbers)
-        .find(n => n.number === parseInt(eliminatedBy));
+      const numbers = eliminateModal.type === "mens" ? mensNumbers : womensNumbers;
+      const eliminatorNum = numbers.find(n => n.number === parseInt(eliminatedBy));
 
       if (eliminatorNum?.assigned_to_player_id) {
-        const { data: player } = await supabase
-          .from("players")
-          .select("points")
-          .eq("id", eliminatorNum.assigned_to_player_id)
-          .single();
-
+        const player = players.find(p => p.id === eliminatorNum.assigned_to_player_id);
         if (player) {
           await supabase
             .from("players")
             .update({ points: player.points + SCORING.ELIMINATION })
-            .eq("id", eliminatorNum.assigned_to_player_id);
+            .eq("id", player.id);
         }
       }
 
@@ -259,12 +305,7 @@ export default function HostControl() {
         const durationSecs = (now - entryTime) / 1000;
 
         if (durationSecs < 60) {
-          const { data: player } = await supabase
-            .from("players")
-            .select("points")
-            .eq("id", eliminateModal.number.assigned_to_player_id)
-            .single();
-
+          const player = players.find(p => p.id === eliminateModal.number.assigned_to_player_id);
           if (player) {
             await supabase
               .from("players")
@@ -277,11 +318,148 @@ export default function HostControl() {
       }
 
       toast.success(`#${eliminateModal.number.number} eliminated by #${eliminatedBy}!`);
+      
+      // Simulate updated numbers for Final Four check
+      const updatedNumbers = numbers.map(n => 
+        n.id === eliminateModal.number.id 
+          ? { ...n, elimination_timestamp: new Date().toISOString() }
+          : n
+      );
+      
+      await checkFinalFour(eliminateModal.type, updatedNumbers);
+      
       setEliminateModal(null);
       setEliminatedBy("");
     } catch (err) {
       console.error("Error confirming elimination:", err);
       toast.error("Failed to confirm elimination");
+    }
+  };
+
+  const formatDuration = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const handleDeclareWinner = async () => {
+    if (!winnerModal) return;
+
+    const { type, winner } = winnerModal;
+    const numbers = type === "mens" ? mensNumbers : womensNumbers;
+
+    try {
+      // Calculate Iron Man/Woman - longest time in the ring
+      const now = Date.now();
+      let ironManNumber: RumbleNumber | null = null;
+      let maxDuration = 0;
+
+      for (const num of numbers) {
+        if (num.entry_timestamp) {
+          const entryTime = new Date(num.entry_timestamp).getTime();
+          const endTime = num.elimination_timestamp 
+            ? new Date(num.elimination_timestamp).getTime() 
+            : now;
+          const duration = endTime - entryTime;
+
+          if (duration > maxDuration) {
+            maxDuration = duration;
+            ironManNumber = num;
+          }
+        }
+      }
+
+      // Award Iron Man/Woman bonus
+      if (ironManNumber?.assigned_to_player_id) {
+        const ironPlayer = players.find(p => p.id === ironManNumber!.assigned_to_player_id);
+        if (ironPlayer) {
+          await supabase
+            .from("players")
+            .update({ points: ironPlayer.points + SCORING.IRON_MAN })
+            .eq("id", ironPlayer.id);
+          
+          toast.success(`⏱️ Iron ${type === "mens" ? "Man" : "Woman"}: ${ironManNumber.wrestler_name} (${formatDuration(maxDuration)}) - +${SCORING.IRON_MAN} pts to ${ironPlayer.display_name}!`);
+        }
+      }
+
+      // Award winner's number owner
+      if (winner.assigned_to_player_id) {
+        const winnerOwner = players.find(p => p.id === winner.assigned_to_player_id);
+        if (winnerOwner) {
+          // Add to current points (need fresh fetch to avoid race condition)
+          const { data: freshPlayer } = await supabase
+            .from("players")
+            .select("points")
+            .eq("id", winner.assigned_to_player_id)
+            .single();
+          
+          if (freshPlayer) {
+            await supabase
+              .from("players")
+              .update({ points: freshPlayer.points + SCORING.RUMBLE_WINNER_NUMBER })
+              .eq("id", winner.assigned_to_player_id);
+          }
+        }
+      }
+
+      // Award players who picked this winner
+      const matchId = `${type}_rumble_winner`;
+      const { data: correctPicks } = await supabase
+        .from("picks")
+        .select("id, player_id")
+        .eq("match_id", matchId)
+        .eq("prediction", winner.wrestler_name!);
+
+      if (correctPicks && correctPicks.length > 0) {
+        for (const pick of correctPicks) {
+          const { data: freshPlayer } = await supabase
+            .from("players")
+            .select("points")
+            .eq("id", pick.player_id)
+            .single();
+          
+          if (freshPlayer) {
+            await supabase
+              .from("players")
+              .update({ points: freshPlayer.points + SCORING.RUMBLE_WINNER_PICK })
+              .eq("id", pick.player_id);
+            
+            await supabase
+              .from("picks")
+              .update({ points_awarded: SCORING.RUMBLE_WINNER_PICK })
+              .eq("id", pick.id);
+          }
+        }
+      }
+
+      // Record winner result
+      await supabase.from("match_results").upsert({
+        party_code: code!,
+        match_id: matchId,
+        result: winner.wrestler_name!,
+      }, { onConflict: "party_code,match_id" });
+
+      // Record Iron Man result
+      if (ironManNumber) {
+        await supabase.from("match_results").upsert({
+          party_code: code!,
+          match_id: `${type}_iron_${type === "mens" ? "man" : "woman"}`,
+          result: JSON.stringify({
+            number: ironManNumber.number,
+            wrestler: ironManNumber.wrestler_name,
+            duration: formatDuration(maxDuration),
+            owner: ironManNumber.assigned_to_player_id,
+          }),
+        }, { onConflict: "party_code,match_id" });
+      }
+
+      toast.success(`🏆 ${winner.wrestler_name} wins the ${type === "mens" ? "Men's" : "Women's"} Rumble!`);
+      setMatchResults(prev => ({ ...prev, [matchId]: winner.wrestler_name! }));
+      setWinnerModal(null);
+    } catch (err) {
+      console.error("Error declaring winner:", err);
+      toast.error("Failed to declare winner");
     }
   };
 
@@ -303,6 +481,18 @@ export default function HostControl() {
     return numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
   };
 
+  const checkForWinnerState = (numbers: RumbleNumber[], type: "mens" | "womens") => {
+    const active = getActiveWrestlers(numbers);
+    const allEntered = numbers.every(n => n.entry_timestamp);
+    const matchId = `${type}_rumble_winner`;
+    
+    // Show winner button if exactly 1 active, all have entered, and winner not declared yet
+    if (active.length === 1 && allEntered && !matchResults[matchId]) {
+      return active[0];
+    }
+    return null;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -310,6 +500,9 @@ export default function HostControl() {
       </div>
     );
   }
+
+  const mensWinnerCandidate = checkForWinnerState(mensNumbers, "mens");
+  const womensWinnerCandidate = checkForWinnerState(womensNumbers, "womens");
 
   return (
     <div className="min-h-screen pb-8">
@@ -413,6 +606,31 @@ export default function HostControl() {
               🧔 Men's Rumble Control
             </h2>
 
+            {/* Winner Declaration */}
+            {mensWinnerCandidate && (
+              <motion.div 
+                className="bg-primary/20 border-2 border-primary rounded-xl p-4 space-y-3"
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+              >
+                <div className="flex items-center gap-2">
+                  <Crown className="text-primary" size={24} />
+                  <h3 className="font-bold text-lg">Declare Winner!</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  #{mensWinnerCandidate.number} {mensWinnerCandidate.wrestler_name} is the last one standing!
+                </p>
+                <Button
+                  variant="gold"
+                  className="w-full"
+                  onClick={() => setWinnerModal({ type: "mens", winner: mensWinnerCandidate })}
+                >
+                  <Trophy size={18} className="mr-2" />
+                  Declare Winner
+                </Button>
+              </motion.div>
+            )}
+
             {/* Next Entry */}
             {getNextEntryNumber(mensNumbers) && (
               <div className="bg-primary/20 border border-primary rounded-xl p-4 space-y-3">
@@ -457,6 +675,31 @@ export default function HostControl() {
             <h2 className="font-bold flex items-center gap-2">
               👩 Women's Rumble Control
             </h2>
+
+            {/* Winner Declaration */}
+            {womensWinnerCandidate && (
+              <motion.div 
+                className="bg-primary/20 border-2 border-primary rounded-xl p-4 space-y-3"
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+              >
+                <div className="flex items-center gap-2">
+                  <Crown className="text-primary" size={24} />
+                  <h3 className="font-bold text-lg">Declare Winner!</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  #{womensWinnerCandidate.number} {womensWinnerCandidate.wrestler_name} is the last one standing!
+                </p>
+                <Button
+                  variant="gold"
+                  className="w-full"
+                  onClick={() => setWinnerModal({ type: "womens", winner: womensWinnerCandidate })}
+                >
+                  <Trophy size={18} className="mr-2" />
+                  Declare Winner
+                </Button>
+              </motion.div>
+            )}
 
             {/* Next Entry */}
             {getNextEntryNumber(womensNumbers) && (
@@ -551,6 +794,34 @@ export default function HostControl() {
             <Button variant="outline" onClick={() => setEliminateModal(null)}>Cancel</Button>
             <Button variant="destructive" onClick={handleConfirmElimination} disabled={!eliminatedBy}>
               Confirm Elimination
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Winner Confirmation Modal */}
+      <Dialog open={!!winnerModal} onOpenChange={() => setWinnerModal(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="text-primary" size={24} />
+              Confirm Winner
+            </DialogTitle>
+          </DialogHeader>
+          <div className="text-center py-4">
+            <div className="text-4xl font-black text-primary mb-2">
+              #{winnerModal?.winner.number}
+            </div>
+            <div className="text-2xl font-bold mb-4">{winnerModal?.winner.wrestler_name}</div>
+            <p className="text-muted-foreground text-sm">
+              This will award points for Winner (+50), Iron {winnerModal?.type === "mens" ? "Man" : "Woman"} (+20), and correct predictions (+50).
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWinnerModal(null)}>Cancel</Button>
+            <Button variant="gold" onClick={handleDeclareWinner}>
+              <Trophy size={18} className="mr-2" />
+              Confirm Winner
             </Button>
           </DialogFooter>
         </DialogContent>

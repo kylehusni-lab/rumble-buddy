@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Crown, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
+import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
 
 interface Player {
   id: string;
@@ -25,6 +26,11 @@ interface PlayerWithNumbers {
   womensNumbers: number[];
 }
 
+interface CelebrationData {
+  type: CelebrationType;
+  data: any;
+}
+
 export default function TvDisplay() {
   const { code } = useParams<{ code: string }>();
 
@@ -35,6 +41,10 @@ export default function TvDisplay() {
   const [showOverlay, setShowOverlay] = useState<{ type: "entry" | "result"; data: any } | null>(null);
   const [showNumberReveal, setShowNumberReveal] = useState(false);
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
+  const [celebration, setCelebration] = useState<CelebrationData | null>(null);
+  
+  // Track shown celebrations to avoid duplicates
+  const shownCelebrations = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!code) return;
@@ -126,6 +136,33 @@ export default function TvDisplay() {
 
     checkInitialReveal();
 
+    const getPlayerName = (playerId: string | null) => {
+      if (!playerId) return "Vacant";
+      const player = players.find(p => p.id === playerId);
+      return player?.display_name || "Unknown";
+    };
+
+    const checkForFinalFour = (numbers: RumbleNumber[], type: "mens" | "womens") => {
+      const celebrationKey = `${type}_final_four`;
+      if (shownCelebrations.current.has(celebrationKey)) return;
+
+      const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
+      if (active.length === 4) {
+        shownCelebrations.current.add(celebrationKey);
+        setCelebration({
+          type: "final-four",
+          data: {
+            rumbleType: type,
+            wrestlers: active.map(n => ({
+              number: n.number,
+              wrestlerName: n.wrestler_name || "Unknown",
+              ownerName: getPlayerName(n.assigned_to_player_id),
+            })),
+          },
+        });
+      }
+    };
+
     const channel = supabase
       .channel(`tv-display-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "parties", filter: `code=eq.${code}` }, async (payload) => {
@@ -160,20 +197,86 @@ export default function TvDisplay() {
           setTimeout(() => setShowOverlay(null), 5000);
         }
 
-        // Refresh numbers
+        // Refresh numbers and check for Final Four
         supabase.from("rumble_numbers").select("number, wrestler_name, assigned_to_player_id, entry_timestamp, elimination_timestamp, rumble_type").eq("party_code", code).order("number").then(({ data }) => {
           if (data) {
-            setMensNumbers(data.filter((n: any) => n.rumble_type === "mens"));
-            setWomensNumbers(data.filter((n: any) => n.rumble_type === "womens"));
+            const mens = data.filter((n: any) => n.rumble_type === "mens");
+            const womens = data.filter((n: any) => n.rumble_type === "womens");
+            setMensNumbers(mens);
+            setWomensNumbers(womens);
+            
+            // Check for Final Four after elimination
+            if (updated.elimination_timestamp) {
+              if (updated.rumble_type === "mens") {
+                checkForFinalFour(mens, "mens");
+              } else {
+                checkForFinalFour(womens, "womens");
+              }
+            }
           }
         });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, async (payload) => {
+        const matchResult = payload.new as any;
+        if (!matchResult?.match_id) return;
+
+        // Check for winner celebration
+        if (matchResult.match_id === "mens_rumble_winner" || matchResult.match_id === "womens_rumble_winner") {
+          const celebrationKey = matchResult.match_id;
+          if (shownCelebrations.current.has(celebrationKey)) return;
+          shownCelebrations.current.add(celebrationKey);
+
+          const type = matchResult.match_id === "mens_rumble_winner" ? "mens" : "womens";
+          const numbers = type === "mens" ? mensNumbers : womensNumbers;
+          const winnerNumber = numbers.find(n => n.wrestler_name === matchResult.result);
+
+          if (winnerNumber) {
+            setCelebration({
+              type: "winner",
+              data: {
+                rumbleType: type,
+                number: winnerNumber.number,
+                wrestlerName: winnerNumber.wrestler_name || "Unknown",
+                ownerName: getPlayerName(winnerNumber.assigned_to_player_id),
+              },
+            });
+          }
+        }
+
+        // Check for Iron Man/Woman celebration
+        if (matchResult.match_id === "mens_iron_man" || matchResult.match_id === "womens_iron_woman") {
+          const celebrationKey = matchResult.match_id;
+          if (shownCelebrations.current.has(celebrationKey)) return;
+          shownCelebrations.current.add(celebrationKey);
+
+          try {
+            const ironData = JSON.parse(matchResult.result);
+            const type = matchResult.match_id === "mens_iron_man" ? "mens" : "womens";
+            
+            // Wait a bit to show after winner
+            setTimeout(() => {
+              setCelebration({
+                type: "iron-man",
+                data: {
+                  rumbleType: type,
+                  number: ironData.number,
+                  wrestlerName: ironData.wrestler,
+                  duration: ironData.duration,
+                  ownerName: getPlayerName(ironData.owner),
+                },
+              });
+            }, 7000);
+          } catch (e) {
+            console.error("Error parsing iron man data:", e);
+          }
+        }
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [code, players]);
+  }, [code, players, partyStatus, mensNumbers, womensNumbers]);
 
   const getPlayerInitial = (playerId: string | null) => {
     if (!playerId) return "V";
@@ -239,6 +342,10 @@ export default function TvDisplay() {
     sessionStorage.setItem(`tv-reveal-seen-${code}`, "true");
   };
 
+  const handleCelebrationComplete = () => {
+    setCelebration(null);
+  };
+
   return (
     <>
       {/* Number Reveal Animation */}
@@ -247,6 +354,17 @@ export default function TvDisplay() {
           <NumberRevealAnimation
             players={revealPlayers}
             onComplete={handleRevealComplete}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Celebration Overlay */}
+      <AnimatePresence>
+        {celebration && (
+          <CelebrationOverlay
+            type={celebration.type}
+            data={celebration.data}
+            onComplete={handleCelebrationComplete}
           />
         )}
       </AnimatePresence>
