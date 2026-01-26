@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Trophy, Hash, Check, X, Clock, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlayerSession } from "@/lib/session";
 import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING } from "@/lib/constants";
+import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 
 interface Pick {
   match_id: string;
@@ -26,12 +27,19 @@ interface MatchResult {
   result: string;
 }
 
+interface PlayerWithNumbers {
+  playerName: string;
+  mensNumbers: number[];
+  womensNumbers: number[];
+}
+
 export default function PlayerDashboard() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const session = getPlayerSession();
 
   const [partyStatus, setPartyStatus] = useState<string>("pre_event");
+  const [previousStatus, setPreviousStatus] = useState<string>("pre_event");
   const [playerPoints, setPlayerPoints] = useState(0);
   const [playerRank, setPlayerRank] = useState<number | null>(null);
   const [totalPlayers, setTotalPlayers] = useState(0);
@@ -39,6 +47,8 @@ export default function PlayerDashboard() {
   const [numbers, setNumbers] = useState<RumbleNumber[]>([]);
   const [results, setResults] = useState<MatchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showNumberReveal, setShowNumberReveal] = useState(false);
+  const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
 
   useEffect(() => {
     if (!code || !session?.playerId) {
@@ -116,12 +126,76 @@ export default function PlayerDashboard() {
     // Set up realtime subscriptions
     const channel = supabase
       .channel(`player-dashboard-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "parties", filter: `code=eq.${code}` }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "parties", filter: `code=eq.${code}` }, async (payload) => {
+        const newStatus = (payload.new as any)?.status;
+        if (newStatus === "live" && partyStatus === "pre_event") {
+          // Event just started - trigger number reveal animation
+          await loadRevealData();
+        }
+        fetchData();
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `id=eq.${session.playerId}` }, () => fetchData())
       .on("postgres_changes", { event: "*", schema: "public", table: "picks", filter: `player_id=eq.${session.playerId}` }, () => fetchData())
       .on("postgres_changes", { event: "*", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, () => fetchData())
       .on("postgres_changes", { event: "*", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, () => fetchData())
       .subscribe();
+
+    // Function to load reveal data
+    const loadRevealData = async () => {
+      // Fetch all players with their numbers for the reveal
+      const { data: allPlayers } = await supabase
+        .from("players")
+        .select("id, display_name")
+        .eq("party_code", code)
+        .order("joined_at");
+
+      const { data: allNumbers } = await supabase
+        .from("rumble_numbers")
+        .select("number, assigned_to_player_id, rumble_type")
+        .eq("party_code", code);
+
+      if (allPlayers && allNumbers) {
+        const playerData: PlayerWithNumbers[] = allPlayers.map(p => ({
+          playerName: p.display_name,
+          mensNumbers: allNumbers
+            .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
+            .map(n => n.number)
+            .sort((a, b) => a - b),
+          womensNumbers: allNumbers
+            .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
+            .map(n => n.number)
+            .sort((a, b) => a - b),
+        }));
+        
+        setRevealPlayers(playerData);
+        setShowNumberReveal(true);
+      }
+    };
+
+    // Check if we should show reveal on initial load (party just went live)
+    const checkInitialReveal = async () => {
+      const hasSeenReveal = sessionStorage.getItem(`reveal-seen-${code}`);
+      if (!hasSeenReveal) {
+        const { data: partyData } = await supabase
+          .from("parties")
+          .select("status, event_started_at")
+          .eq("code", code)
+          .single();
+        
+        if (partyData?.status === "live" && partyData.event_started_at) {
+          const startedAt = new Date(partyData.event_started_at);
+          const now = new Date();
+          const timeSinceStart = (now.getTime() - startedAt.getTime()) / 1000;
+          
+          // Show reveal if event started within the last 2 minutes
+          if (timeSinceStart < 120) {
+            await loadRevealData();
+          }
+        }
+      }
+    };
+
+    checkInitialReveal();
 
     return () => {
       supabase.removeChannel(channel);
@@ -149,10 +223,26 @@ export default function PlayerDashboard() {
     );
   }
 
+  const handleRevealComplete = () => {
+    setShowNumberReveal(false);
+    sessionStorage.setItem(`reveal-seen-${code}`, "true");
+  };
+
   const mensNumbers = numbers.filter(n => n.rumble_type === "mens");
   const womensNumbers = numbers.filter(n => n.rumble_type === "womens");
 
   return (
+    <>
+      {/* Number Reveal Animation */}
+      <AnimatePresence>
+        {showNumberReveal && revealPlayers.length > 0 && (
+          <NumberRevealAnimation
+            players={revealPlayers}
+            onComplete={handleRevealComplete}
+          />
+        )}
+      </AnimatePresence>
+
     <div className="min-h-screen pb-8">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
@@ -365,5 +455,6 @@ export default function PlayerDashboard() {
         </motion.section>
       </div>
     </div>
+    </>
   );
 }
