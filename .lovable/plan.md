@@ -1,138 +1,141 @@
 
 
-# Plan: Update wrestler-data.ts with Verified WWE.com Profile Images
+# Plan: Add Verified WWE Profile Images and Official Royal Rumble Logo
 
 ## Overview
-Replace the estimated/guessed WWE.com profile image URLs in `wrestler-data.ts` with actual verified URLs scraped directly from WWE.com's superstars pages.
+Update the wrestler image URLs with verified paths scraped from WWE.com and replace the current Crown icon with the official Royal Rumble 2026 logo.
 
 ---
 
-## Key Discovery
+## Part 1: Verified WWE.com Profile Image URLs
 
-The WWE.com CDN uses **two different URL patterns** for profile images:
+From scraping WWE.com superstars pages, I found verified working URLs for many wrestlers. The WWE CDN uses two patterns:
+1. Simple: `/YYYY/MM/Name_Profile.png`
+2. Hashed: `/all/YYYY/MM/Name_Profile--{hash}.png`
 
-1. **Simple pattern**: `/YYYY/MM/Name_Profile.png`
-2. **Hashed pattern**: `/all/YYYY/MM/Name_Profile--{hash}.png`
-
-Many of the current URLs in the file were guesses that don't match actual files. I've scraped the WWE.com superstars page and found the actual working image URLs.
-
----
-
-## Verified Working URLs Found
-
-### From WWE.com Superstars Page Scrape
+### Verified URLs Found
 
 | Wrestler | Verified URL Path |
 |----------|-------------------|
 | Drew McIntyre | `/all/2021/09/Drew_Mcintyre_Profile--aca391095fe74e721e098cadc93571d3.png` |
 | CM Punk | `/2025/11/CMPUNK_PROFILE.png` |
+| Becky Lynch | `/2026/01/BECKY_LYNCH_06232025sb_0131_0048_Profile.png` |
+| Giulia | `/2026/01/guilia_PROFILE.png` |
+| The Usos (Jey Uso) | `/2025/12/20251229_usos_worldtag.png` |
 | Stephanie Vaquer | `/2025/09/stephanie_Vaquer_Profile.png` |
 | Jade Cargill | `/2025/11/jade%20cargill_11072025ak_2229_Profile.png` |
 | Dominik Mysterio | `/all/2025/04/Dominik_Mysterio_Profile--8c0d141d953c25bfa39c4372e36f6183.png` |
 | Carmelo Hayes | `/all/2025/03/Carmelloa_Hayes_PROFILE--2c2e9e70fa9d98012fd6f4b976dfc347.png` |
-| Becky Lynch | `/2026/01/BECKY_LYNCH_06232025sb_0131_0048_Profile.png` |
-| Giulia | `/2026/01/guilia_PROFILE.png` |
-| Jey Uso (The Usos) | `/2025/12/20251229_usos_worldtag.png` |
-| Rhea Ripley + IYO SKY (RHIYO) | `/2026/01/20260105_RheaIyo.png` |
 | Jacy Jayne | `/2025/11/Jacy_Jane_Profile.png` |
 | Ethan Page | `/2025/08/ethan_PROFILE.png` |
+| RHIYO (Rhea + IYO) | `/2026/01/20260105_RheaIyo.png` |
 
 ---
 
-## Implementation
+## Part 2: Add Official Royal Rumble Logo
 
-### File to Modify
-**`src/lib/wrestler-data.ts`**
+The user uploaded the official Royal Rumble Riyadh 2026 logo image. This will replace the current Crown icon in the Logo component.
 
-### Changes Required
+### Current Logo Component
+Currently uses a `<Crown>` Lucide icon with text "ROYAL RUMBLE" below it.
 
-1. **Update male wrestler URLs** with verified paths where available
-2. **Update female wrestler URLs** with verified paths where available
-3. **Add Roman Reigns** - Need to search for verified URL (currently estimated)
-4. **Keep fallback mechanism** - The `onError` handler in `WrestlerPickerModal.tsx` is already in place
-
-### Updated DEFAULT_MALE_WRESTLERS
-
-```typescript
-export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
-  { name: 'Roman Reigns', imageUrl: `${WWE_CDN}/2025/12/Roman_Reigns_Profile.png`, gender: 'male' },
-  { name: 'Cody Rhodes', imageUrl: `${WWE_CDN}/2025/04/Cody_Rhodes_Profile.png`, gender: 'male' },
-  { name: 'Gunther', imageUrl: `${WWE_CDN}/2025/08/GUNTHER_Profile.png`, gender: 'male' },
-  { name: 'Jey Uso', imageUrl: `${WWE_CDN}/2025/12/20251229_usos_worldtag.png`, gender: 'male' },
-  { name: 'Solo Sikoa', imageUrl: `${WWE_CDN}/2025/11/Solo_Sikoa_Profile.png`, gender: 'male' },
-  { name: 'Jacob Fatu', imageUrl: `${WWE_CDN}/2025/11/Jacob_Fatu_Profile.png`, gender: 'male' },
-  { name: 'Rey Mysterio', imageUrl: `${WWE_CDN}/2025/04/Rey_Mysterio_Profile.png`, gender: 'male' },
-  { name: 'Dragon Lee', imageUrl: `${WWE_CDN}/2025/04/Dragon_Lee_Profile.png`, gender: 'male' },
-  { name: 'Penta', imageUrl: `${WWE_CDN}/2025/02/Penta_Profile.png`, gender: 'male' },
-  { name: 'CM Punk', imageUrl: `${WWE_CDN}/2025/11/CMPUNK_PROFILE.png`, gender: 'male' },
-  { name: 'Drew McIntyre', imageUrl: `${WWE_CDN}/all/2021/09/Drew_Mcintyre_Profile--aca391095fe74e721e098cadc93571d3.png`, gender: 'male' },
-  { name: 'Randy Orton', imageUrl: `${WWE_CDN}/2025/04/Randy_Orton_Profile.png`, gender: 'male' },
-  { name: 'Trick Williams', imageUrl: `${WWE_CDN}/2025/11/Trick_Williams_Profile.png`, gender: 'male' },
-  { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'male' },
-];
-```
-
-### Updated DEFAULT_FEMALE_WRESTLERS
-
-```typescript
-export const DEFAULT_FEMALE_WRESTLERS: WrestlerData[] = [
-  { name: 'Liv Morgan', imageUrl: `${WWE_CDN}/2025/11/Liv_Morgan_Profile.png`, gender: 'female' },
-  { name: 'Rhea Ripley', imageUrl: `${WWE_CDN}/2025/11/Rhea_Ripley_Profile.png`, gender: 'female' },
-  { name: 'IYO SKY', imageUrl: `${WWE_CDN}/2025/11/IYO_SKY_Profile.png`, gender: 'female' },
-  { name: 'Charlotte Flair', imageUrl: `${WWE_CDN}/2025/11/Charlotte_Flair_Profile.png`, gender: 'female' },
-  { name: 'Bayley', imageUrl: `${WWE_CDN}/2025/11/Bayley_Profile.png`, gender: 'female' },
-  { name: 'Asuka', imageUrl: `${WWE_CDN}/2025/04/Asuka_Profile.png`, gender: 'female' },
-  { name: 'Giulia', imageUrl: `${WWE_CDN}/2026/01/guilia_PROFILE.png`, gender: 'female' },
-  { name: 'Jordynne Grace', imageUrl: getPlaceholderImageUrl('Jordynne Grace'), gender: 'female' },
-  { name: 'Alexa Bliss', imageUrl: `${WWE_CDN}/2025/11/Alexa_Bliss_Profile.png`, gender: 'female' },
-  { name: 'Nia Jax', imageUrl: `${WWE_CDN}/2025/11/Nia_Jax_Profile.png`, gender: 'female' },
-  { name: 'Roxanne Perez', imageUrl: `${WWE_CDN}/2025/11/Roxanne_Perez_Profile.png`, gender: 'female' },
-  { name: 'Raquel Rodriguez', imageUrl: `${WWE_CDN}/2025/11/Raquel_Rodriguez_Profile.png`, gender: 'female' },
-  { name: 'Lyra Valkyria', imageUrl: `${WWE_CDN}/2025/11/Lyra_Valkyria_Profile.png`, gender: 'female' },
-  { name: 'Lash Legend', imageUrl: `${WWE_CDN}/2025/11/Lash_Legend_Profile.png`, gender: 'female' },
-  { name: 'Chelsea Green', imageUrl: `${WWE_CDN}/2025/11/Chelsea_Green_Profile.png`, gender: 'female' },
-  { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'female' },
-];
-```
+### Updated Logo Component
+Will display the official WWE Royal Rumble event logo image.
 
 ---
 
-## Important Notes
+## Files to Modify
 
-### URLs Already Verified Working
-These URLs were directly scraped from WWE.com and are confirmed to work:
-- CM Punk: `/2025/11/CMPUNK_PROFILE.png`
-- Giulia: `/2026/01/guilia_PROFILE.png`
-- Jey Uso: `/2025/12/20251229_usos_worldtag.png`
-- Drew McIntyre: `/all/2021/09/Drew_Mcintyre_Profile--aca391095fe74e721e098cadc93571d3.png`
+### 1. `src/lib/wrestler-data.ts`
+Add more verified WWE.com profile URLs for wrestlers. Keep the existing fallback mechanism.
 
-### URLs That Need Verification
-The remaining URLs follow the expected pattern but weren't explicitly found in the scrape. The fallback mechanism will handle these gracefully.
+### 2. Copy Royal Rumble logo to project
+Copy the uploaded image to `src/assets/royal-rumble-logo.jpeg`
 
-### Safety Net
-The `onError` fallback handler in `WrestlerPickerModal.tsx` ensures that any broken images will gracefully fall back to the UI Avatars placeholder.
+### 3. `src/components/Logo.tsx`
+Update to use the official Royal Rumble logo image instead of the Crown icon.
 
 ---
 
 ## Technical Details
 
-### File Changes Summary
-| File | Change |
-|------|--------|
-| `src/lib/wrestler-data.ts` | Update Drew McIntyre URL with verified hashed path |
+### Updated wrestler-data.ts
 
-### No Other Files Changed
-The fallback mechanism in `WrestlerPickerModal.tsx` is already in place from the previous implementation.
+The file already has some working URLs. I'll update the estimates with verified paths where available. The `onError` fallback handler in `WrestlerPickerModal.tsx` will continue to handle any images that fail to load.
+
+Note: Many wrestlers in the current list (Roman Reigns, Cody Rhodes, etc.) don't have verified individual profile URLs from the champions section - they only appear on their individual superstar pages which don't expose the profile image URL directly. The fallback mechanism handles these gracefully.
+
+### Updated Logo.tsx
+
+```tsx
+import { motion } from "framer-motion";
+import royalRumbleLogo from "@/assets/royal-rumble-logo.jpeg";
+
+interface LogoProps {
+  size?: "sm" | "md" | "lg";
+  showTagline?: boolean;
+}
+
+export function Logo({ size = "md", showTagline = false }: LogoProps) {
+  const sizes = {
+    sm: { width: 120, title: "text-sm" },
+    md: { width: 180, title: "text-sm" },
+    lg: { width: 280, title: "text-lg" },
+  };
+
+  return (
+    <motion.div 
+      className="flex flex-col items-center gap-2"
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.img
+        src={royalRumbleLogo}
+        alt="Royal Rumble 2026"
+        style={{ width: sizes[size].width }}
+        className="object-contain"
+        animate={{ 
+          scale: [1, 1.02, 1]
+        }}
+        transition={{ 
+          duration: 3, 
+          repeat: Infinity, 
+          repeatDelay: 2 
+        }}
+      />
+
+      {showTagline && (
+        <motion.p 
+          className={`text-muted-foreground ${sizes[size].title} mt-2`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          Party Tracker
+        </motion.p>
+      )}
+    </motion.div>
+  );
+}
+```
 
 ---
 
-## Risk Assessment
+## Summary of Changes
 
-**Low Risk**: 
-- The fallback mechanism ensures images always display
-- WWE.com URLs are subject to change over time
-- The current structure supports easy URL updates
+| File | Change |
+|------|--------|
+| `src/assets/royal-rumble-logo.jpeg` | Copy uploaded logo image |
+| `src/components/Logo.tsx` | Replace Crown icon with official logo image |
+| `src/lib/wrestler-data.ts` | No immediate changes needed - existing verified URLs are already in place |
 
-**Recommendation**: 
-Since many wrestler profile image URLs couldn't be verified from the superstars page (only champions are featured there), I recommend keeping the estimated URLs and relying on the fallback mechanism. The Drew McIntyre URL should be updated since we have the verified path.
+---
+
+## Notes
+
+- The Drew McIntyre URL was already updated in the previous change with the verified hashed path
+- CM Punk, Giulia, and Jey Uso URLs are already correct in the current file
+- The `onError` fallback mechanism ensures graceful degradation for any broken images
+- The Royal Rumble logo will be imported as an ES6 module for proper bundling
 
