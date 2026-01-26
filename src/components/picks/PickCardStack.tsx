@@ -199,7 +199,7 @@ export function PickCardStack({
       </div>
 
       {/* Card Container */}
-      <div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0">
+      <div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0 overflow-hidden">
         <AnimatePresence mode="wait" custom={swipeDirection}>
           <motion.div
             key={currentCardIndex}
