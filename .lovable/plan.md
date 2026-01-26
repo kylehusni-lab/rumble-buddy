@@ -1,271 +1,169 @@
 
-# Plan: Swipeable Card-Based Pick Flow
+
+# Plan: Add Missing Features - Countdown Timer & Event Info
 
 ## Overview
-Transform the current accordion-based pick submission into a Tinder-style card stack interface where each pick is a full-screen card that users swipe through. This creates a more engaging, focused experience where users make one decision at a time.
+The Royal Rumble Party Tracker is nearly complete! After reviewing the codebase against the comprehensive spec, only a few minor features are missing. This plan adds the countdown timer and event venue badge to the landing page.
 
 ---
 
-## Card Structure (7 Total Cards)
+## Current State Analysis
 
-| Card | Type | Content |
-|------|------|---------|
-| 1 | Match Winner | Drew McIntyre vs Sami Zayn |
-| 2 | Match Winner | CM Punk vs Logan Paul |
-| 3 | Match Winner | AJ Styles vs Gunther |
-| 4 | Rumble Winner | Men's Royal Rumble Winner |
-| 5 | Chaos Props | Men's Rumble - 6 YES/NO questions |
-| 6 | Rumble Winner | Women's Royal Rumble Winner |
-| 7 | Chaos Props | Women's Rumble - 6 YES/NO questions |
+### Already Implemented (Complete)
+- Database schema with all 5 tables
+- Party creation with 4-digit codes  
+- Player join flow with email recovery
+- Swipeable 7-card pick flow with framer-motion
+- All card types (Match, Rumble Winner with grid, Chaos Props)
+- Host setup page with entrant management
+- Host control panel with full scoring
+- TV display with 30-number grid and leaderboard
+- Number distribution algorithm
+- All scoring logic (eliminations, Final Four, Iron Man, etc.)
+- Realtime subscriptions on all tables
+- Number reveal animation (NFL draft style)
+- Celebration overlays
+- Session management
+- Wrestler images with WWE CDN fallbacks
+- Official Royal Rumble logo
 
----
-
-## Visual Layout
-
-```text
-+---------------------------------------------+
-|  [< Back]     Party 3200    [progress dots] |
-|  =================[38%]==================== |
-+---------------------------------------------+
-|                                             |
-|      +-------------------------------+      |
-|      |                               |      |
-|      |    [TROPHY ICON]              |      |
-|      |    Match Winner               |      |
-|      |                               |      |
-|      |    Drew McIntyre vs Sami Zayn |      |
-|      |                               |      |
-|      |    [Drew Photo]  [Sami Photo] |      |
-|      |    [  SELECT  ]  [  SELECT  ] |      |
-|      |                               |      |
-|      |    +25 pts if correct         |      |
-|      +-------------------------------+      |
-|                                             |
-|  [< Back]    Card 1 of 7    [Skip >]        |
-+---------------------------------------------+
-```
-
----
-
-## Files to Create
-
-### New Components
-
-| File | Purpose |
-|------|---------|
-| `src/components/picks/PickCardStack.tsx` | Main orchestrator - manages state, navigation, submission |
-| `src/components/picks/ProgressBar.tsx` | Top progress indicator with tappable dots |
-| `src/components/picks/cards/MatchCard.tsx` | Undercard match selection (2 wrestler buttons) |
-| `src/components/picks/cards/RumbleWinnerCard.tsx` | Rumble winner with searchable wrestler list |
-| `src/components/picks/cards/ChaosPropsCard.tsx` | 6 YES/NO prop questions in scrollable card |
+### Missing Features
+1. **Countdown timer on landing page** - Should count down to Feb 1, 2026, 7:00 PM Riyadh time
+2. **Event venue badge** - "February 1, 2026 • Kingdom Arena, Riyadh"
+3. **EVENT_CONFIG constants** - Centralized event date/venue constants
 
 ---
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `src/pages/PlayerPicks.tsx` | Replace accordion UI with new `<PickCardStack />` component |
-| `src/lib/constants.ts` | Add `CHAOS_PROPS_MENS` and `CHAOS_PROPS_WOMENS` with new match IDs |
+### 1. `src/lib/constants.ts`
+Add event configuration constants.
+
+```typescript
+export const EVENT_CONFIG = {
+  DATE: new Date('2026-02-01T19:00:00+03:00'), // Riyadh time (UTC+3)
+  VENUE: 'Kingdom Arena',
+  LOCATION: 'Riyadh, Saudi Arabia',
+  TITLE: 'WWE Royal Rumble 2026',
+} as const;
+```
+
+### 2. `src/pages/Index.tsx`
+Add countdown timer and event venue badge to the landing page.
+
+**New Countdown Component (inline or separate):**
+- Shows days, hours, minutes, seconds in styled boxes
+- Updates every second using `setInterval`
+- Uses tabular-nums for consistent digit width
+- Animates individual units
+
+**Event Info Badge:**
+- Shows date and venue in a subtle badge below logo
+- Uses gold accent styling
 
 ---
 
 ## Technical Details
 
-### PickCardStack.tsx (Main Component)
+### Countdown Timer Logic
 
 ```typescript
-// Key state
-const [currentCardIndex, setCurrentCardIndex] = useState(0);
-const [picks, setPicks] = useState<Record<string, any>>({});
-const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+interface TimeRemaining {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
 
-// Card configuration
-const CARD_CONFIG = [
-  { type: 'match', id: 'undercard_1', title: 'Drew McIntyre vs Sami Zayn', options: ['Drew McIntyre', 'Sami Zayn'] },
-  { type: 'match', id: 'undercard_2', title: 'CM Punk vs Logan Paul', options: ['CM Punk', 'Logan Paul'] },
-  { type: 'match', id: 'undercard_3', title: 'AJ Styles vs Gunther', options: ['AJ Styles', 'Gunther'] },
-  { type: 'rumble-winner', id: 'mens_rumble_winner', title: "Men's Royal Rumble", gender: 'mens' },
-  { type: 'chaos-props', id: 'mens_chaos_props', title: "Men's Chaos Props", gender: 'mens' },
-  { type: 'rumble-winner', id: 'womens_rumble_winner', title: "Women's Royal Rumble", gender: 'womens' },
-  { type: 'chaos-props', id: 'womens_chaos_props', title: "Women's Chaos Props", gender: 'womens' },
-];
+const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
+
+useEffect(() => {
+  function calculateTimeRemaining(): TimeRemaining {
+    const now = new Date().getTime();
+    const distance = EVENT_CONFIG.DATE.getTime() - now;
+    
+    return {
+      days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+      seconds: Math.floor((distance % (1000 * 60)) / 1000),
+    };
+  }
+  
+  setTimeRemaining(calculateTimeRemaining());
+  const interval = setInterval(() => {
+    setTimeRemaining(calculateTimeRemaining());
+  }, 1000);
+  
+  return () => clearInterval(interval);
+}, []);
 ```
 
-Key behaviors:
-- Framer Motion swipe gestures with `drag="x"` and `onDragEnd` handler
-- Auto-advance after match/rumble winner selection (300ms delay)
-- Manual advance for chaos props (all 6 must be answered)
-- AnimatePresence for smooth card transitions
-- Preserve picks when navigating back
+### Visual Layout Changes
 
-### ProgressBar.tsx
-
-Features:
-- Animated fill bar showing completion percentage
-- 7 tappable dot indicators (jump to any card)
-- Completed cards show gold checkmarks
-- Current card has ring highlight
-- Hover tooltips showing card names
-
-### MatchCard.tsx
-
-Features:
-- Large wrestler photos (from existing `getWrestlerImageUrl`)
-- Full-width tappable buttons with selection animation
-- Checkmark overlay on selected option
-- Points indicator (+25 pts)
-- WWE-style card design with gold accents
-
-### RumbleWinnerCard.tsx
-
-Features:
-- Search bar at top
-- Scrollable grid of wrestler cards (reuse existing modal pattern)
-- Current selection shown at top of card
-- +50 pts indicator
-- Confetti trigger on selection
-
-### ChaosPropsCard.tsx
-
-Features:
-- Scrollable list of 6 prop questions
-- Large YES/NO button pairs (not toggles)
-- Progress indicator (4/6 answered)
-- "All answered!" success message when complete
-- +10 pts each, 60 pts total indicator
-
----
-
-## Database Changes
-
-### Updated Match IDs for Chaos Props
-
-Current:
-- `prop_1`, `prop_2`, ..., `prop_6`
-
-New (gender-specific):
-- `mens_chaos_prop_1`, `mens_chaos_prop_2`, ..., `mens_chaos_prop_6`
-- `womens_chaos_prop_1`, `womens_chaos_prop_2`, ..., `womens_chaos_prop_6`
-
-This allows the same 6 questions to be asked separately for each rumble.
-
-### Updated constants.ts
-
-```typescript
-export const CHAOS_PROPS = [
-  { id: 'prop_1', title: 'Kofi/Logan Save', question: 'Will someone use a prop to stay in?' },
-  { id: 'prop_2', title: 'Bushwhacker Exit', question: 'Eliminated in under 10 seconds?' },
-  { id: 'prop_3', title: 'Friendly Fire', question: 'Tag partners eliminate each other?' },
-  { id: 'prop_4', title: 'First Blood', question: 'Blood before entrant #15?' },
-  { id: 'prop_5', title: 'Mystery Entrant', question: 'Unannounced debut/return?' },
-  { id: 'prop_6', title: 'The Weapon', question: 'Chair/kendo stick used?' },
-] as const;
-
-export const MATCH_IDS = {
-  UNDERCARD_1: 'undercard_1',
-  UNDERCARD_2: 'undercard_2',
-  UNDERCARD_3: 'undercard_3',
-  MENS_RUMBLE_WINNER: 'mens_rumble_winner',
-  WOMENS_RUMBLE_WINNER: 'womens_rumble_winner',
-  // Men's props
-  MENS_PROP_1: 'mens_chaos_prop_1',
-  // ... etc
-  // Women's props
-  WOMENS_PROP_1: 'womens_chaos_prop_1',
-  // ... etc
-} as const;
+```text
+Landing Page (Updated):
++---------------------------------------+
+|                                       |
+|      [ROYAL RUMBLE 2026 LOGO]         |
+|      (Party Tracker tagline)          |
+|                                       |
+|  [February 1, 2026 • Kingdom Arena]   | <- NEW Event Badge
+|                                       |
+|  +-----+ +-----+ +-----+ +-----+      |
+|  | 05  | | 12  | | 34  | | 18  |      | <- NEW Countdown
+|  | DAYS| | HRS | | MIN | | SEC |      |
+|  +-----+ +-----+ +-----+ +-----+      |
+|                                       |
+|     [👑 Create Party]                 |
+|     [👥 Join Party]                   |
+|                                       |
+|  Track picks, prop bets & Rumble      |
+|  numbers in real-time                 |
++---------------------------------------+
 ```
 
 ---
 
-## UX Behaviors
+## Styling
 
-### Swipe Navigation
-- Swipe left to go forward (next card)
-- Swipe right to go back (previous card)
-- Threshold: 100px horizontal drag
-- Spring animation with damping for natural feel
+### Countdown Box Styling
+```tsx
+<div className="bg-card border border-border rounded-xl p-4 min-w-[70px] text-center">
+  <div className="text-3xl font-black tabular-nums text-primary">
+    {String(value).padStart(2, '0')}
+  </div>
+  <div className="text-xs text-muted-foreground uppercase tracking-wide">
+    {label}
+  </div>
+</div>
+```
 
-### Auto-Advance
-- Match cards: Auto-advance 300ms after selection
-- Rumble winner cards: Auto-advance after wrestler selected
-- Chaos props: Manual advance only (need all 6 answered)
-
-### Submit Flow
-- Submit button only appears on last card (card 7)
-- Disabled until all 7 cards complete (17 total picks)
-- Gold shimmer animation when ready
-- Redirect to dashboard after successful submission
-
-### Existing Picks
-- If player has existing picks, pre-populate state
-- Allow editing before event starts
-- "Update Picks" button if already submitted
-
----
-
-## Scoring Updates (for Host Control)
-
-The host control page will need minor updates to score the gender-specific chaos props:
-
-```typescript
-// Score Men's Chaos Props
-CHAOS_PROPS.forEach((prop, index) => {
-  const matchId = `mens_chaos_prop_${index + 1}`;
-  // ... scoring logic
-});
-
-// Score Women's Chaos Props
-CHAOS_PROPS.forEach((prop, index) => {
-  const matchId = `womens_chaos_prop_${index + 1}`;
-  // ... scoring logic
-});
+### Event Badge Styling
+```tsx
+<div className="flex items-center gap-2 text-sm text-muted-foreground">
+  <Calendar size={16} className="text-primary" />
+  <span>February 1, 2026 • Kingdom Arena, Riyadh</span>
+</div>
 ```
 
 ---
 
-## Animation Details
+## Summary of Changes
 
-### Card Transitions
-```typescript
-initial={{ x: direction === 'right' ? 300 : -300, opacity: 0, scale: 0.8 }}
-animate={{ x: 0, opacity: 1, scale: 1 }}
-exit={{ x: direction === 'right' ? -300 : 300, opacity: 0, scale: 0.8 }}
-transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-```
-
-### Selection Feedback
-- Scale pulse on selection: `scale: [1, 1.05, 1]`
-- Checkmark appears with spring animation
-- Border glow transition to primary color
+| File | Change |
+|------|--------|
+| `src/lib/constants.ts` | Add `EVENT_CONFIG` with date, venue, location, title |
+| `src/pages/Index.tsx` | Add countdown timer with 4 time units |
+| `src/pages/Index.tsx` | Add event venue badge below logo |
 
 ---
 
-## Mobile Optimizations
+## Estimated Lines of Code
+- `constants.ts` additions: ~8 lines
+- `Index.tsx` additions: ~60 lines (countdown logic + JSX)
 
-- Full-screen cards maximize touch targets
-- Large buttons (min 48px height)
-- Bottom navigation always visible
-- Progress bar sticky at top
-- Swipe hint shown only on first card
-- iOS-safe-area padding
+**Total: ~70 lines of new code**
 
----
+This completes the implementation to match the full spec!
 
-## Summary
-
-| Component | Lines of Code (est.) |
-|-----------|---------------------|
-| PickCardStack.tsx | ~250 |
-| ProgressBar.tsx | ~80 |
-| MatchCard.tsx | ~100 |
-| RumbleWinnerCard.tsx | ~120 |
-| ChaosPropsCard.tsx | ~130 |
-| PlayerPicks.tsx (updates) | ~100 |
-| constants.ts (updates) | ~40 |
-| HostControl.tsx (updates) | ~60 |
-
-**Total: ~880 lines of code**
-
-This transforms the pick flow from a "boring form" into an engaging, game-like experience that feels native to mobile users familiar with card-swipe interfaces.
