@@ -1,196 +1,339 @@
 
-
-# Implementation Plan: Final Four, Iron Man/Woman Bonuses & UI Fixes
+# PlayerPicks UI/UX Enhancement Plan
 
 ## Overview
-This plan implements automatic bonus calculations with visual celebrations during the Rumble, and fixes the Join Party modal being cut off on mobile screens.
+Transform the player picks page from a basic form layout into a polished, visually engaging experience with wrestler photos, collapsible sections, progress tracking, and celebratory animations.
 
 ---
 
-## Part 1: Fix Join Party Modal Position
+## Part 1: Install Dependencies
 
-### Problem
-The modal uses `fixed top-1/2` positioning which can cause the input fields to be cut off on smaller screens or when the keyboard is open.
-
-### Solution
-Adjust the modal positioning to use a safer position that accounts for the viewport and adds proper scrolling.
-
-### File Changes
-- **src/components/JoinPartyModal.tsx**
-  - Change positioning from `top-1/2 -translate-y-1/2` to `top-20` with max-height and overflow handling
-  - Add safe area padding for mobile devices
+### New Package Required
+- **canvas-confetti**: For confetti burst animation when selecting Rumble winners
 
 ---
 
-## Part 2: Final Four Automatic Bonus Calculation
+## Part 2: Create Wrestler Data with Photos
 
-### How It Works
-When the number of active wrestlers in a Rumble drops to exactly 4, automatically award +10 points to each owner of those 4 numbers.
+### New File: `src/lib/wrestler-data.ts`
+Create a data structure mapping wrestler names to their headshot images.
 
-### Technical Approach
-1. After each elimination in `HostControl.tsx`, check the count of active wrestlers
-2. When count equals 4:
-   - Get the 4 remaining numbers and their owners
-   - Award +10 points to each owner (skip Vacant numbers)
-   - Show a toast notification: "Final Four bonus awarded!"
-   - Broadcast a celebration event to TV display
+Since we don't have actual WWE wrestler photos, we'll use placeholder avatar URLs that can be easily replaced. Each wrestler will have:
+- `name`: string
+- `imageUrl`: string (placeholder or actual URL)
+- `gender`: 'male' | 'female'
 
-### File Changes
-- **src/pages/HostControl.tsx**
-  - Add `checkFinalFour()` function after elimination confirmation
-  - Track which Rumbles have already awarded Final Four (prevent double-awarding)
-  - Award points and show toast
-
-- **src/pages/TvDisplay.tsx**
-  - Add new overlay type for "Final Four" celebration
-  - Display dramatic animation showing the 4 remaining wrestlers and their owners
-  - Add gold confetti/glow effect
-
-- **src/pages/PlayerDashboard.tsx**
-  - Listen for Final Four events and show celebration if player's number is in the Final Four
+For now, use generated avatar placeholders (e.g., UI Avatars service or placeholder images). The host can later configure custom images.
 
 ---
 
-## Part 3: Iron Man/Woman Automatic Bonus Calculation
+## Part 3: Progress Header Component
 
-### How It Works
-When a Rumble ends (1 wrestler remaining), calculate which wrestler lasted the longest from their entry time to elimination (or current time for the winner). Award +20 points to that number's owner.
+### Enhancement: Sticky Progress Bar
+Add a progress bar to the existing sticky header showing pick completion:
 
-### Technical Approach
-1. Add a "Declare Winner" flow in Host Control when only 1 active wrestler remains
-2. On winner declaration:
-   - Calculate duration for all wrestlers: `elimination_timestamp - entry_timestamp`
-   - For the winner, use current time instead of elimination
-   - Find the wrestler with the longest duration
-   - Award +20 pts to the Iron Man/Woman number's owner
-   - Award +50 pts to the winner's number owner
-   - Award +50 pts to all players who picked the winner
-
-### File Changes
-- **src/pages/HostControl.tsx**
-  - Detect when only 1 wrestler remains
-  - Show "Declare Winner" button/modal
-  - `calculateIronMan()` function to find longest duration
-  - Award all Rumble-end bonuses (Iron Man +20, Winner +50, Picker +50)
-
-- **src/pages/TvDisplay.tsx**
-  - Add "Winner" overlay with dramatic reveal
-  - Add "Iron Man/Woman" celebration overlay showing longest survivor
-
-- **src/pages/PlayerDashboard.tsx**
-  - Show celebration if player owns the winner or Iron Man number
-
----
-
-## Part 4: Celebration Overlay Component
-
-### Create Reusable Celebration Component
-A shared component for displaying bonus/achievement celebrations across all views.
-
-### File to Create
-- **src/components/CelebrationOverlay.tsx**
-  - Props: `type` (final-four | iron-man | winner), `data` (relevant info), `onComplete`
-  - Animated overlay with gold shimmer effects
-  - Auto-dismiss after 5 seconds
-  - Different layouts for each celebration type
-
----
-
-## Detailed Technical Implementation
-
-### 1. JoinPartyModal.tsx Changes
+**Visual Design:**
 ```text
-- Change modal container positioning:
-  - From: "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-  - To: "fixed inset-x-0 top-0 flex items-start justify-center pt-20 overflow-y-auto max-h-screen"
-- Add padding-bottom for safe area on mobile
++------------------------------------------+
+| <- Party 1294 - Hey Kyle!                |
+| [============================---] 8/11   |
++------------------------------------------+
 ```
 
-### 2. HostControl.tsx - Final Four Logic
-```text
-Add state:
-- finalFourAwarded: { mens: boolean, womens: boolean }
+**Implementation:**
+- Calculate completed picks count vs required (11 total)
+- Use the existing `Progress` component with gold styling
+- Show "X/11 complete" text
+- Animate progress bar on changes with Framer Motion
 
-Add function checkFinalFour(type: 'mens' | 'womens'):
-- Get active wrestlers count
-- If count === 4 and not already awarded for this type:
-  - Get the 4 active numbers
-  - For each number with an owner:
-    - Fetch player's current points
-    - Add SCORING.FINAL_FOUR (+10)
-    - Update player
-  - Set finalFourAwarded[type] = true
-  - Show toast with player names
-  - Trigger celebration overlay broadcast
+---
+
+## Part 4: Collapsible Section Cards
+
+### Redesign: Progressive Disclosure Layout
+
+Replace flat sections with 3 collapsible accordion-style cards:
+
+**Section 1: Match Winners (75 pts possible)**
+- Header shows: Icon + Title + Points + Summary ("2/3 selected")
+- Collapsed: Shows mini summary of picks
+- Expanded: Full match cards with wrestler selectors
+
+**Section 2: Rumble Winners (100 pts possible)**
+- Header shows: Crown icon + "Rumble Winners" + "100 pts possible"
+- Collapsed: Shows "Roman Reigns" and "Rhea Ripley" or "Not selected"
+- Expanded: Full-screen wrestler picker modal (see Part 5)
+
+**Section 3: Chaos Props (60 pts possible)**
+- Header shows: Zap icon + "Chaos Props" + "4/6 complete"
+- Collapsed: Summary chips
+- Expanded: Toggle switches for each prop
+
+**Card Styling:**
+- Background: `bg-card` with subtle shadow (`shadow-[0_4px_6px_rgba(0,0,0,0.3)]`)
+- Border: `border border-border`
+- Border radius: `rounded-xl`
+- Gold border-left accent for completed sections
+
+---
+
+## Part 5: Wrestler Picker Full-Screen Modal
+
+### New Component: `src/components/WrestlerPickerModal.tsx`
+
+**Layout Structure:**
+```text
++------------------------------------------+
+| [X Close]    Men's Rumble Winner         |
+| +--------------------------------------+ |
+| | [Search wrestlers...]                | |
+| +--------------------------------------+ |
+|                                          |
+| +----+ +----+ +----+ +----+             |
+| |    | |    | |    | |    |  <- 4 cols  |
+| | RR | | CR | | GU | | JU |     mobile  |
+| |    | |    | |    | |    |             |
+| +----+ +----+ +----+ +----+             |
+| Roman  Cody   Gunther Jey               |
+|                                          |
+| +----+ +----+ +----+ +----+             |
+| | SS | | JF | | RM | | DL |             |
+| +----+ +----+ +----+ +----+             |
+| Solo   Jacob  Rey     Dragon            |
+|                                          |
+| ... more wrestlers                       |
++------------------------------------------+
 ```
 
-### 3. HostControl.tsx - Winner Declaration
+**Wrestler Card Design:**
+- Size: 100px x 100px container
+- Photo: Circular crop (70px diameter) with placeholder/image
+- Border: 3px solid transparent (default), 3px solid gold (selected)
+- Name: 12px font, centered below image
+- Tap animation: `scale: [1, 1.05, 1]` with 200ms duration
+
+**Features:**
+- Search bar with instant filtering
+- Responsive grid: 4 columns mobile, 6 columns tablet+
+- Selected wrestler shows gold border + checkmark overlay
+- Auto-close on selection
+- Confetti burst animation when picking Rumble winner
+
+---
+
+## Part 6: iOS-Style Toggle Switches for Props
+
+### Enhancement: Replace Radio Buttons
+
+**Current Design:**
 ```text
-Add function handleDeclareWinner(type: 'mens' | 'womens'):
-- Get the single remaining active wrestler
-- Calculate Iron Man:
-  - For all numbers that entered (entry_timestamp exists):
-    - Duration = (elimination_timestamp || now) - entry_timestamp
-  - Find max duration
-  - Award +20 to that number's owner
-- Award +50 to winner's number owner
-- Award +50 to all players who picked this wrestler
-- Record match result (mens_rumble_winner or womens_rumble_winner)
-- Mark Rumble as complete
-- Trigger winner celebration overlay
+The "Kofi/Logan Save"
+○ YES   ○ NO
 ```
 
-### 4. CelebrationOverlay.tsx
+**New Design:**
 ```text
-Component displays:
-- Final Four: "FINAL FOUR!" with 4 wrestler cards showing name + owner
-- Iron Man: "IRON MAN/WOMAN!" with wrestler name, duration, owner
-- Winner: "WINNER!" with wrestler name, number, owner
-- All include gold shimmer animation and auto-dismiss
++------------------------------------------+
+| The "Kofi/Logan Save"                    |
+| Will someone use a prop to stay in?      |
+|                                          |
+|    NO  [====O] YES         +10 pts       |
++------------------------------------------+
 ```
 
-### 5. TvDisplay.tsx Updates
+**Implementation:**
+- Use existing `Switch` component
+- Style: Gold background when checked (YES)
+- Labels: "NO" on left, "YES" on right
+- Points badge: "+10 pts" in muted text
+- Animation: Smooth slide transition (already in Switch component)
+
+---
+
+## Part 7: Submit Button States
+
+### Enhancement: Dynamic Button Styling
+
+**State 1: Incomplete (< 11 picks)**
 ```text
-Add state:
-- showCelebration: { type: string, data: any } | null
++------------------------------------------+
+|  [Submit Picks] (disabled, gray)         |
+|  7/11 picks complete                     |
++------------------------------------------+
+```
 
-Listen for Rumble changes:
-- On elimination, check if active count === 4 -> show Final Four
-- On winner recorded -> show Winner + Iron Man celebrations
+**State 2: Complete (11/11 picks)**
+```text
++------------------------------------------+
+|  [LOCK IN YOUR PREDICTIONS] (gold shimmer)|
+|  All picks complete!                      |
++------------------------------------------+
+```
 
-Render CelebrationOverlay when showCelebration is set
+**State 3: Submitting**
+```text
++------------------------------------------+
+|  [Submitting...] (spinner icon)          |
++------------------------------------------+
 ```
 
 ---
 
-## Scoring Summary
+## Part 8: Framer Motion Animations
 
-| Event | Points | When Triggered |
-|-------|--------|----------------|
-| Final Four | +10 per number | Active wrestlers = 4 |
-| Iron Man/Woman | +20 | Rumble winner declared |
-| Winner Number | +50 | Rumble winner declared |
-| Winner Pick | +50 | Rumble winner declared |
+### Animation Specifications
+
+**1. Selection Bounce (wrestler cards):**
+```javascript
+animate={{ scale: [1, 1.05, 1] }}
+transition={{ duration: 0.2 }}
+```
+
+**2. Fade In (sections):**
+```javascript
+initial={{ opacity: 0 }}
+animate={{ opacity: 1 }}
+transition={{ duration: 0.2 }}
+```
+
+**3. Card Expand/Collapse:**
+```javascript
+// Using AnimatePresence + motion.div
+initial={{ height: 0, opacity: 0 }}
+animate={{ height: "auto", opacity: 1 }}
+exit={{ height: 0, opacity: 0 }}
+```
+
+**4. Confetti Burst (Rumble winner selection):**
+```javascript
+import confetti from 'canvas-confetti';
+
+confetti({
+  particleCount: 100,
+  spread: 70,
+  origin: { y: 0.6 },
+  colors: ['#D4AF37', '#4B0082', '#FFFFFF']
+});
+```
+
+**5. Progress Bar Animation:**
+```javascript
+// Animate value change smoothly
+transition={{ type: "spring", stiffness: 100 }}
+```
 
 ---
 
-## Files Modified
+## Part 9: New CSS Utilities
 
-1. **src/components/JoinPartyModal.tsx** - Fix positioning
-2. **src/components/CelebrationOverlay.tsx** - New component
-3. **src/pages/HostControl.tsx** - Add Final Four, Iron Man, Winner logic
-4. **src/pages/TvDisplay.tsx** - Add celebration overlays
-5. **src/pages/PlayerDashboard.tsx** - Add celebration displays
+### Add to `src/index.css`
+
+```css
+/* Wrestler card styles */
+.wrestler-card {
+  @apply relative flex flex-col items-center p-2 rounded-xl transition-all duration-200;
+}
+
+.wrestler-card-selected {
+  @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+}
+
+/* Prop toggle container */
+.prop-toggle-container {
+  @apply flex items-center justify-between gap-3;
+}
+```
 
 ---
 
-## User Experience Flow
+## Files to Create
 
-1. **Final Four**: As eliminations happen and 4 remain, all screens show a brief "FINAL FOUR!" celebration with the 4 wrestlers highlighted. Owners get +10 points each.
+1. **src/components/WrestlerPickerModal.tsx** - Full-screen wrestler grid modal
+2. **src/lib/wrestler-data.ts** - Wrestler name/photo mapping
 
-2. **Winner Declaration**: When 1 wrestler remains, host sees a "Declare Winner" prompt. Upon confirmation:
-   - TV shows dramatic winner reveal animation
-   - Iron Man/Woman celebration follows (longest survivor)
-   - Points are distributed automatically
-   - All player dashboards update with celebrations if they won bonuses
+## Files to Modify
 
+1. **src/pages/PlayerPicks.tsx** - Major redesign with collapsible sections
+2. **src/index.css** - Add new utility classes
+3. **package.json** - Add canvas-confetti dependency
+
+---
+
+## Technical Implementation Details
+
+### PlayerPicks.tsx Restructure
+
+**State Additions:**
+```typescript
+const [expandedSection, setExpandedSection] = useState<string | null>('matches');
+const [showWrestlerPicker, setShowWrestlerPicker] = useState<{
+  type: 'mens' | 'womens';
+  isOpen: boolean;
+} | null>(null);
+```
+
+**Helper Functions:**
+```typescript
+const getCompletedCount = () => {
+  const required = [...UNDERCARD_MATCHES.map(m => m.id), ...CHAOS_PROPS.map(p => p.id), 'mens_rumble_winner', 'womens_rumble_winner'];
+  return required.filter(id => picks[id]).length;
+};
+
+const getSectionSummary = (section: 'matches' | 'rumble' | 'props') => {
+  // Return summary text for collapsed state
+};
+```
+
+**Section Structure:**
+```tsx
+<Accordion type="single" collapsible value={expandedSection} onValueChange={setExpandedSection}>
+  <AccordionItem value="matches">
+    <AccordionTrigger>
+      <MatchesSectionHeader completed={...} total={3} />
+    </AccordionTrigger>
+    <AccordionContent>
+      {/* Match cards with wrestler photos */}
+    </AccordionContent>
+  </AccordionItem>
+  
+  <AccordionItem value="rumble">
+    <AccordionTrigger>
+      <RumbleSectionHeader mensPick={...} womensPick={...} />
+    </AccordionTrigger>
+    <AccordionContent>
+      {/* Wrestler picker triggers */}
+    </AccordionContent>
+  </AccordionItem>
+  
+  <AccordionItem value="props">
+    <AccordionTrigger>
+      <PropsSectionHeader completed={...} total={6} />
+    </AccordionTrigger>
+    <AccordionContent>
+      {/* Toggle switches */}
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+```
+
+---
+
+## Wrestler Photo Strategy
+
+Since we don't have actual WWE wrestler photos, the implementation will:
+
+1. Use UI Avatars API for initial placeholders: `https://ui-avatars.com/api/?name=Roman+Reigns&background=D4AF37&color=0A0A0A&size=100`
+2. Create a `wrestler-data.ts` file that can easily be updated with real image URLs later
+3. Support the host's custom entrant lists by generating placeholder avatars dynamically
+
+---
+
+## Summary of Changes
+
+| Component | Change Type | Description |
+|-----------|-------------|-------------|
+| PlayerPicks.tsx | Major Rewrite | Collapsible sections, progress bar, new layout |
+| WrestlerPickerModal.tsx | New File | Full-screen wrestler selection grid |
+| wrestler-data.ts | New File | Wrestler photo/data mapping |
+| index.css | Minor Addition | New utility classes |
+| package.json | Dependency | Add canvas-confetti |
