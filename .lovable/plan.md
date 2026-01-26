@@ -1,144 +1,99 @@
 
+# Plan: Fix Card Content Scrolling Issue
 
-# Plan: Fix Card Scrolling & Improve Swipe Behavior
+## Problem Analysis
 
-## Overview
-Two issues need to be fixed:
-1. **Card content cutoff** - Rumble participants and Chaos Props are getting cut off at the bottom on mobile devices
-2. **Swipe behavior** - The current drag behavior moves the card during swiping, which conflicts with vertical scrolling and feels imprecise
+The `ScrollArea` component (from Radix UI) requires an **explicit height** to enable scrolling. Currently, the cards use `flex-1` inside a `max-h-[calc(100vh-220px)]` container, but this doesn't give `ScrollArea` the computed height it needs to know when to scroll.
 
----
+**The layout breakdown:**
+- Progress Bar: ~120px (text + bar + dots)
+- Party Code Header: ~50px
+- Card Padding: 24px (p-6)
+- Navigation Footer: ~60px
+- Back to Dashboard: ~40px
 
-## Issue Analysis
+**Total fixed height: ~300px**
 
-### Issue 1: Content Cutoff
-
-**Problem**: The `max-h-[70vh]` constraint is too restrictive on mobile devices, especially when there are many wrestlers or all 6 chaos props to display.
-
-**Root Cause**: 
-- Cards have fixed `max-h-[70vh]` which doesn't account for varying screen sizes
-- The ScrollArea needs explicit height to know how much to scroll
-
-**Solution**: Remove the percentage-based max-height and instead use a more flexible approach with `flex-1` and proper overflow handling in the parent container.
-
-### Issue 2: Swipe Behavior
-
-**Problem**: The current implementation uses Framer Motion's `drag="x"` which:
-- Visually moves the card as you drag (looks like scrolling)
-- Conflicts with vertical scrolling inside the card
-- Doesn't feel like an intentional "swipe to navigate" action
-
-**Solution**: Replace the drag-based swipe with touch event handlers that:
-- Detect horizontal swipe gestures without moving the card
-- Only trigger navigation after a complete swipe gesture
-- Don't interfere with vertical scrolling inside the card
+The 220px calculation was too small, leaving the card container without proper constraints.
 
 ---
 
-## Technical Approach
+## Solution
 
-### Card Height Fix
+### Approach: Use a dedicated scroll container with explicit height
 
-**Files to modify:**
-- `src/components/picks/PickCardStack.tsx`
-- `src/components/picks/cards/RumbleWinnerCard.tsx`
-- `src/components/picks/cards/ChaosPropsCard.tsx`
-
-**Changes:**
-
-1. **PickCardStack.tsx** - Update card container to use calc-based height that accounts for header, progress bar, and footer:
-```tsx
-// Card container - explicit height calculation
-<div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0">
-```
-
-2. **RumbleWinnerCard.tsx & ChaosPropsCard.tsx** - Remove rigid max-height, use parent-constrained height:
-```tsx
-// Change from:
-max-h-[70vh]
-
-// Change to:
-h-full max-h-[calc(100vh-220px)]
-```
-
-This ensures the card takes available space while leaving room for progress bar, header, navigation controls.
-
-### Swipe Gesture Fix
-
-**File to modify:**
-- `src/components/picks/PickCardStack.tsx`
-
-**Changes:**
-
-1. **Remove `drag="x"`** from the motion.div - the card should not visually move during swipes
-
-2. **Add touch event handlers** to detect swipes without visual dragging:
-```tsx
-const [touchStart, setTouchStart] = useState<number | null>(null);
-const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-const minSwipeDistance = 50; // Minimum swipe distance in pixels
-
-const onTouchStart = (e: React.TouchEvent) => {
-  setTouchEnd(null);
-  setTouchStart(e.targetTouches[0].clientX);
-};
-
-const onTouchMove = (e: React.TouchEvent) => {
-  setTouchEnd(e.targetTouches[0].clientX);
-};
-
-const onTouchEnd = () => {
-  if (!touchStart || !touchEnd) return;
-  
-  const distance = touchStart - touchEnd;
-  const isLeftSwipe = distance > minSwipeDistance;
-  const isRightSwipe = distance < -minSwipeDistance;
-  
-  if (isLeftSwipe && currentCardIndex < TOTAL_CARDS - 1) {
-    handleSwipe("right"); // Swipe left = go forward
-  } else if (isRightSwipe && currentCardIndex > 0) {
-    handleSwipe("left"); // Swipe right = go back
-  }
-};
-```
-
-3. **Keep card animations** for transitions between cards (the enter/exit animations still work)
-
-4. **Remove dragConstraints, dragElastic, onDragEnd** - no longer needed
-
----
-
-## Visual Comparison
-
-### Before (Current Swipe)
-```text
-User touches card → Card follows finger → Card snaps back → Navigation triggered
-Problem: Card movement during drag conflicts with scrolling
-```
-
-### After (New Swipe)
-```text
-User swipes horizontally → Card stays in place → Swipe completes → Card animates out/in
-Benefit: Clean gesture detection, no conflict with vertical scrolling
-```
+Instead of relying on `flex-1` cascading to `ScrollArea`, we'll:
+1. Give the card container an explicit calculated height
+2. Use CSS `overflow-y-auto` as a fallback alongside `ScrollArea`
+3. Ensure the cards have proper internal structure for scrolling
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `PickCardStack.tsx` | Replace drag with touch handlers, adjust container height |
-| `RumbleWinnerCard.tsx` | Change `max-h-[70vh]` to `h-full max-h-[calc(100vh-220px)]` |
-| `ChaosPropsCard.tsx` | Change `max-h-[70vh]` to `h-full max-h-[calc(100vh-220px)]` |
+### 1. `src/components/picks/PickCardStack.tsx`
+
+**Changes:**
+- Update the card container to have explicit height constraints that work on mobile
+
+```tsx
+// Line 202 - Change from:
+<div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0">
+
+// Change to:
+<div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0 overflow-hidden">
+```
+
+- Ensure motion.div allows children to scroll properly
+
+### 2. `src/components/picks/cards/RumbleWinnerCard.tsx`
+
+**Changes:**
+- Give ScrollArea explicit height using `h-[calc(100%-HeaderHeight)]` approach
+- Add `overflow-y-auto` as a fallback
+
+```tsx
+// Line 51 - Update main container:
+<div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col h-full max-h-[calc(100vh-220px)]">
+
+// Line 90 - Update ScrollArea wrapper to have explicit flex-1 with overflow:
+<ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
+```
+
+### 3. `src/components/picks/cards/ChaosPropsCard.tsx`
+
+**Same changes as RumbleWinnerCard:**
+- Ensure ScrollArea has proper overflow fallback
 
 ---
 
-## Summary
+## Root Cause & Real Fix
 
-1. **Better card heights**: Use `calc(100vh - 220px)` to ensure cards fit the viewport while leaving room for UI chrome
-2. **Clean swipe detection**: Use touch events instead of drag behavior so the card doesn't move during swipes
-3. **Preserve scrolling**: Internal ScrollArea continues to work for long content without gesture conflicts
-4. **Keep animations**: Card enter/exit animations remain smooth and intentional
+The real issue is that `ScrollArea` from Radix needs a **bounded parent**. With `flex-1`, the height is dynamic and `ScrollArea` can't compute when to show scrollbars.
+
+**The fix:**
+1. Keep `h-full max-h-[calc(100vh-220px)]` on the card (this is correct)
+2. Add `overflow-hidden` to the parent container in PickCardStack (prevents content bleed)
+3. Add `overflow-y-auto` as a CSS fallback to the ScrollArea wrapper
+
+This ensures even if `ScrollArea` JS-based scrolling doesn't work, native CSS overflow will kick in.
+
+---
+
+## Summary of Changes
+
+| File | Line | Change |
+|------|------|--------|
+| `PickCardStack.tsx` | 202 | Add `overflow-hidden` to card container |
+| `RumbleWinnerCard.tsx` | 90 | Add `overflow-y-auto` fallback to ScrollArea |
+| `ChaosPropsCard.tsx` | 44 | Add `overflow-y-auto` fallback to ScrollArea |
+
+---
+
+## Expected Behavior After Fix
+
+1. **Rumble Winner Card**: Wrestler grid scrolls smoothly, all participants visible via scrolling
+2. **Chaos Props Card**: All 6 props accessible via scrolling
+3. **Swipe gestures**: Continue to work without interfering with vertical scroll
+4. **Bottom content**: `pb-8` padding ensures last items aren't cut off
 
