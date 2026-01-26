@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Crown, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 
 interface Player {
   id: string;
@@ -18,6 +19,12 @@ interface RumbleNumber {
   elimination_timestamp: string | null;
 }
 
+interface PlayerWithNumbers {
+  playerName: string;
+  mensNumbers: number[];
+  womensNumbers: number[];
+}
+
 export default function TvDisplay() {
   const { code } = useParams<{ code: string }>();
 
@@ -26,6 +33,8 @@ export default function TvDisplay() {
   const [mensNumbers, setMensNumbers] = useState<RumbleNumber[]>([]);
   const [womensNumbers, setWomensNumbers] = useState<RumbleNumber[]>([]);
   const [showOverlay, setShowOverlay] = useState<{ type: "entry" | "result"; data: any } | null>(null);
+  const [showNumberReveal, setShowNumberReveal] = useState(false);
+  const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
 
   useEffect(() => {
     if (!code) return;
@@ -61,11 +70,72 @@ export default function TvDisplay() {
 
     fetchData();
 
+    const loadRevealData = async () => {
+      // Fetch all players with their numbers for the reveal
+      const { data: allPlayers } = await supabase
+        .from("players")
+        .select("id, display_name")
+        .eq("party_code", code)
+        .order("joined_at");
+
+      const { data: allNumbers } = await supabase
+        .from("rumble_numbers")
+        .select("number, assigned_to_player_id, rumble_type")
+        .eq("party_code", code);
+
+      if (allPlayers && allNumbers) {
+        const playerData: PlayerWithNumbers[] = allPlayers.map(p => ({
+          playerName: p.display_name,
+          mensNumbers: allNumbers
+            .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
+            .map(n => n.number)
+            .sort((a, b) => a - b),
+          womensNumbers: allNumbers
+            .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
+            .map(n => n.number)
+            .sort((a, b) => a - b),
+        }));
+        
+        setRevealPlayers(playerData);
+        setShowNumberReveal(true);
+      }
+    };
+
+    // Check if we should show reveal on initial load
+    const checkInitialReveal = async () => {
+      const hasSeenReveal = sessionStorage.getItem(`tv-reveal-seen-${code}`);
+      if (!hasSeenReveal) {
+        const { data: partyData } = await supabase
+          .from("parties")
+          .select("status, event_started_at")
+          .eq("code", code)
+          .single();
+        
+        if (partyData?.status === "live" && partyData.event_started_at) {
+          const startedAt = new Date(partyData.event_started_at);
+          const now = new Date();
+          const timeSinceStart = (now.getTime() - startedAt.getTime()) / 1000;
+          
+          // Show reveal if event started within the last 2 minutes
+          if (timeSinceStart < 120) {
+            await loadRevealData();
+          }
+        }
+      }
+    };
+
+    checkInitialReveal();
+
     const channel = supabase
       .channel(`tv-display-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "parties", filter: `code=eq.${code}` }, (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "parties", filter: `code=eq.${code}` }, async (payload) => {
         if (payload.new && typeof payload.new === "object" && "status" in payload.new) {
-          setPartyStatus(payload.new.status as string);
+          const newStatus = payload.new.status as string;
+          if (newStatus === "live" && partyStatus === "pre_event") {
+            // Event just started - trigger number reveal animation
+            await loadRevealData();
+          }
+          setPartyStatus(newStatus);
         }
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, () => {
@@ -164,7 +234,23 @@ export default function TvDisplay() {
     );
   };
 
+  const handleRevealComplete = () => {
+    setShowNumberReveal(false);
+    sessionStorage.setItem(`tv-reveal-seen-${code}`, "true");
+  };
+
   return (
+    <>
+      {/* Number Reveal Animation */}
+      <AnimatePresence>
+        {showNumberReveal && revealPlayers.length > 0 && (
+          <NumberRevealAnimation
+            players={revealPlayers}
+            onComplete={handleRevealComplete}
+          />
+        )}
+      </AnimatePresence>
+
     <div className="min-h-screen bg-background text-foreground tv-mode p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
@@ -281,5 +367,6 @@ export default function TvDisplay() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }
