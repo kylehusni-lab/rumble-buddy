@@ -1,339 +1,134 @@
 
-# PlayerPicks UI/UX Enhancement Plan
+
+# Plan: Add Real WWE Wrestler Photos
 
 ## Overview
-Transform the player picks page from a basic form layout into a polished, visually engaging experience with wrestler photos, collapsible sections, progress tracking, and celebratory animations.
+Update `wrestler-data.ts` to use official WWE.com profile image URLs instead of placeholder avatars. These images are hosted on WWE's CDN and provide high-quality wrestler headshots.
 
 ---
 
-## Part 1: Install Dependencies
-
-### New Package Required
-- **canvas-confetti**: For confetti burst animation when selecting Rumble winners
+## Important Caveat
+WWE.com image URLs can change when WWE updates their website or wrestler profiles. If images stop loading in the future, you may need to update the URLs or switch back to placeholder avatars as a fallback.
 
 ---
 
-## Part 2: Create Wrestler Data with Photos
+## Implementation
 
-### New File: `src/lib/wrestler-data.ts`
-Create a data structure mapping wrestler names to their headshot images.
+### File to Modify
+**`src/lib/wrestler-data.ts`**
 
-Since we don't have actual WWE wrestler photos, we'll use placeholder avatar URLs that can be easily replaced. Each wrestler will have:
-- `name`: string
-- `imageUrl`: string (placeholder or actual URL)
-- `gender`: 'male' | 'female'
+Replace the current placeholder avatar URLs with actual WWE.com profile image URLs.
 
-For now, use generated avatar placeholders (e.g., UI Avatars service or placeholder images). The host can later configure custom images.
+### WWE Image URL Pattern
+WWE hosts wrestler profile images at URLs like:
+```
+https://www.wwe.com/f/styles/wwe_1_1_540/public/{year}/{month}/{filename}_Profile.png
+```
+
+### Wrestler Image Mapping
+
+**Male Wrestlers:**
+| Wrestler | Image URL |
+|----------|-----------|
+| Roman Reigns | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/12/Roman_Reigns_Profile.png` |
+| Cody Rhodes | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/04/Cody_Rhodes_Profile.png` |
+| Gunther | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/08/GUNTHER_Profile.png` |
+| Jey Uso | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/12/20251229_usos_worldtag.png` |
+| Solo Sikoa | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Solo_Sikoa_Profile.png` |
+| Jacob Fatu | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Jacob_Fatu_Profile.png` |
+| Rey Mysterio | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/04/Rey_Mysterio_Profile.png` |
+| Dragon Lee | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/04/Dragon_Lee_Profile.png` |
+| Penta | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/02/Penta_Profile.png` |
+| CM Punk | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/CMPUNK_PROFILE.png` |
+| Drew McIntyre | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/04/Drew_McIntyre_Profile.png` |
+| Randy Orton | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/04/Randy_Orton_Profile.png` |
+| Trick Williams | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Trick_Williams_Profile.png` |
+| Surprise/Other Entrant | Keep placeholder avatar |
+
+**Female Wrestlers:**
+| Wrestler | Image URL |
+|----------|-----------|
+| Liv Morgan | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Liv_Morgan_Profile.png` |
+| Rhea Ripley | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Rhea_Ripley_Profile.png` |
+| IYO SKY | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/IYO_SKY_Profile.png` |
+| Charlotte Flair | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Charlotte_Flair_Profile.png` |
+| Bayley | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Bayley_Profile.png` |
+| Asuka | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/04/Asuka_Profile.png` |
+| Giulia | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2026/01/guilia_PROFILE.png` |
+| Jordynne Grace | Keep placeholder avatar (not WWE roster) |
+| Alexa Bliss | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Alexa_Bliss_Profile.png` |
+| Nia Jax | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Nia_Jax_Profile.png` |
+| Roxanne Perez | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Roxanne_Perez_Profile.png` |
+| Raquel Rodriguez | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Raquel_Rodriguez_Profile.png` |
+| Lyra Valkyria | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Lyra_Valkyria_Profile.png` |
+| Lash Legend | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Lash_Legend_Profile.png` |
+| Chelsea Green | `https://www.wwe.com/f/styles/wwe_1_1_540/public/2025/11/Chelsea_Green_Profile.png` |
+| Surprise/Other Entrant | Keep placeholder avatar |
 
 ---
 
-## Part 3: Progress Header Component
+## Technical Details
 
-### Enhancement: Sticky Progress Bar
-Add a progress bar to the existing sticky header showing pick completion:
+### Updated Code Structure
 
-**Visual Design:**
-```text
-+------------------------------------------+
-| <- Party 1294 - Hey Kyle!                |
-| [============================---] 8/11   |
-+------------------------------------------+
-```
+```typescript
+// Wrestler data with WWE.com official images
+// Note: URLs may change if WWE updates their website
 
-**Implementation:**
-- Calculate completed picks count vs required (11 total)
-- Use the existing `Progress` component with gold styling
-- Show "X/11 complete" text
-- Animate progress bar on changes with Framer Motion
-
----
-
-## Part 4: Collapsible Section Cards
-
-### Redesign: Progressive Disclosure Layout
-
-Replace flat sections with 3 collapsible accordion-style cards:
-
-**Section 1: Match Winners (75 pts possible)**
-- Header shows: Icon + Title + Points + Summary ("2/3 selected")
-- Collapsed: Shows mini summary of picks
-- Expanded: Full match cards with wrestler selectors
-
-**Section 2: Rumble Winners (100 pts possible)**
-- Header shows: Crown icon + "Rumble Winners" + "100 pts possible"
-- Collapsed: Shows "Roman Reigns" and "Rhea Ripley" or "Not selected"
-- Expanded: Full-screen wrestler picker modal (see Part 5)
-
-**Section 3: Chaos Props (60 pts possible)**
-- Header shows: Zap icon + "Chaos Props" + "4/6 complete"
-- Collapsed: Summary chips
-- Expanded: Toggle switches for each prop
-
-**Card Styling:**
-- Background: `bg-card` with subtle shadow (`shadow-[0_4px_6px_rgba(0,0,0,0.3)]`)
-- Border: `border border-border`
-- Border radius: `rounded-xl`
-- Gold border-left accent for completed sections
-
----
-
-## Part 5: Wrestler Picker Full-Screen Modal
-
-### New Component: `src/components/WrestlerPickerModal.tsx`
-
-**Layout Structure:**
-```text
-+------------------------------------------+
-| [X Close]    Men's Rumble Winner         |
-| +--------------------------------------+ |
-| | [Search wrestlers...]                | |
-| +--------------------------------------+ |
-|                                          |
-| +----+ +----+ +----+ +----+             |
-| |    | |    | |    | |    |  <- 4 cols  |
-| | RR | | CR | | GU | | JU |     mobile  |
-| |    | |    | |    | |    |             |
-| +----+ +----+ +----+ +----+             |
-| Roman  Cody   Gunther Jey               |
-|                                          |
-| +----+ +----+ +----+ +----+             |
-| | SS | | JF | | RM | | DL |             |
-| +----+ +----+ +----+ +----+             |
-| Solo   Jacob  Rey     Dragon            |
-|                                          |
-| ... more wrestlers                       |
-+------------------------------------------+
-```
-
-**Wrestler Card Design:**
-- Size: 100px x 100px container
-- Photo: Circular crop (70px diameter) with placeholder/image
-- Border: 3px solid transparent (default), 3px solid gold (selected)
-- Name: 12px font, centered below image
-- Tap animation: `scale: [1, 1.05, 1]` with 200ms duration
-
-**Features:**
-- Search bar with instant filtering
-- Responsive grid: 4 columns mobile, 6 columns tablet+
-- Selected wrestler shows gold border + checkmark overlay
-- Auto-close on selection
-- Confetti burst animation when picking Rumble winner
-
----
-
-## Part 6: iOS-Style Toggle Switches for Props
-
-### Enhancement: Replace Radio Buttons
-
-**Current Design:**
-```text
-The "Kofi/Logan Save"
-○ YES   ○ NO
-```
-
-**New Design:**
-```text
-+------------------------------------------+
-| The "Kofi/Logan Save"                    |
-| Will someone use a prop to stay in?      |
-|                                          |
-|    NO  [====O] YES         +10 pts       |
-+------------------------------------------+
-```
-
-**Implementation:**
-- Use existing `Switch` component
-- Style: Gold background when checked (YES)
-- Labels: "NO" on left, "YES" on right
-- Points badge: "+10 pts" in muted text
-- Animation: Smooth slide transition (already in Switch component)
-
----
-
-## Part 7: Submit Button States
-
-### Enhancement: Dynamic Button Styling
-
-**State 1: Incomplete (< 11 picks)**
-```text
-+------------------------------------------+
-|  [Submit Picks] (disabled, gray)         |
-|  7/11 picks complete                     |
-+------------------------------------------+
-```
-
-**State 2: Complete (11/11 picks)**
-```text
-+------------------------------------------+
-|  [LOCK IN YOUR PREDICTIONS] (gold shimmer)|
-|  All picks complete!                      |
-+------------------------------------------+
-```
-
-**State 3: Submitting**
-```text
-+------------------------------------------+
-|  [Submitting...] (spinner icon)          |
-+------------------------------------------+
-```
-
----
-
-## Part 8: Framer Motion Animations
-
-### Animation Specifications
-
-**1. Selection Bounce (wrestler cards):**
-```javascript
-animate={{ scale: [1, 1.05, 1] }}
-transition={{ duration: 0.2 }}
-```
-
-**2. Fade In (sections):**
-```javascript
-initial={{ opacity: 0 }}
-animate={{ opacity: 1 }}
-transition={{ duration: 0.2 }}
-```
-
-**3. Card Expand/Collapse:**
-```javascript
-// Using AnimatePresence + motion.div
-initial={{ height: 0, opacity: 0 }}
-animate={{ height: "auto", opacity: 1 }}
-exit={{ height: 0, opacity: 0 }}
-```
-
-**4. Confetti Burst (Rumble winner selection):**
-```javascript
-import confetti from 'canvas-confetti';
-
-confetti({
-  particleCount: 100,
-  spread: 70,
-  origin: { y: 0.6 },
-  colors: ['#D4AF37', '#4B0082', '#FFFFFF']
-});
-```
-
-**5. Progress Bar Animation:**
-```javascript
-// Animate value change smoothly
-transition={{ type: "spring", stiffness: 100 }}
-```
-
----
-
-## Part 9: New CSS Utilities
-
-### Add to `src/index.css`
-
-```css
-/* Wrestler card styles */
-.wrestler-card {
-  @apply relative flex flex-col items-center p-2 rounded-xl transition-all duration-200;
+export interface WrestlerData {
+  name: string;
+  imageUrl: string;
+  gender: 'male' | 'female';
 }
 
-.wrestler-card-selected {
-  @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+// Fallback to placeholder if WWE image fails
+export function getWrestlerImageUrl(name: string): string {
+  const encodedName = encodeURIComponent(name);
+  return `https://ui-avatars.com/api/?name=${encodedName}&background=D4AF37&color=0A0A0A&size=100&bold=true`;
 }
 
-/* Prop toggle container */
-.prop-toggle-container {
-  @apply flex items-center justify-between gap-3;
-}
+// WWE CDN base URL
+const WWE_CDN = 'https://www.wwe.com/f/styles/wwe_1_1_540/public';
+
+// Male wrestlers with WWE profile images
+export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
+  { name: 'Roman Reigns', imageUrl: `${WWE_CDN}/2025/12/Roman_Reigns_Profile.png`, gender: 'male' },
+  { name: 'Cody Rhodes', imageUrl: `${WWE_CDN}/2025/04/Cody_Rhodes_Profile.png`, gender: 'male' },
+  // ... etc
+];
+```
+
+### Add Image Error Fallback
+Update `WrestlerPickerModal.tsx` to handle image loading errors by falling back to the placeholder avatar:
+
+```tsx
+<img
+  src={getWrestlerImageUrl(wrestler)}
+  alt={wrestler}
+  className="w-full h-full object-cover"
+  loading="lazy"
+  onError={(e) => {
+    // Fallback to placeholder avatar if WWE image fails
+    const target = e.target as HTMLImageElement;
+    const encodedName = encodeURIComponent(wrestler);
+    target.src = `https://ui-avatars.com/api/?name=${encodedName}&background=D4AF37&color=0A0A0A&size=100&bold=true`;
+  }}
+/>
 ```
 
 ---
-
-## Files to Create
-
-1. **src/components/WrestlerPickerModal.tsx** - Full-screen wrestler grid modal
-2. **src/lib/wrestler-data.ts** - Wrestler name/photo mapping
 
 ## Files to Modify
 
-1. **src/pages/PlayerPicks.tsx** - Major redesign with collapsible sections
-2. **src/index.css** - Add new utility classes
-3. **package.json** - Add canvas-confetti dependency
+1. **`src/lib/wrestler-data.ts`** - Replace placeholder URLs with WWE.com CDN URLs
+2. **`src/components/WrestlerPickerModal.tsx`** - Add `onError` fallback handler for images
 
 ---
 
-## Technical Implementation Details
+## Risk Mitigation
 
-### PlayerPicks.tsx Restructure
+Since WWE.com image URLs can change:
+1. The fallback `onError` handler ensures graceful degradation to placeholder avatars
+2. The `getWrestlerImageUrl()` function is kept as a fallback generator
+3. URLs are constructed using a base constant for easy updates if WWE changes their CDN structure
 
-**State Additions:**
-```typescript
-const [expandedSection, setExpandedSection] = useState<string | null>('matches');
-const [showWrestlerPicker, setShowWrestlerPicker] = useState<{
-  type: 'mens' | 'womens';
-  isOpen: boolean;
-} | null>(null);
-```
-
-**Helper Functions:**
-```typescript
-const getCompletedCount = () => {
-  const required = [...UNDERCARD_MATCHES.map(m => m.id), ...CHAOS_PROPS.map(p => p.id), 'mens_rumble_winner', 'womens_rumble_winner'];
-  return required.filter(id => picks[id]).length;
-};
-
-const getSectionSummary = (section: 'matches' | 'rumble' | 'props') => {
-  // Return summary text for collapsed state
-};
-```
-
-**Section Structure:**
-```tsx
-<Accordion type="single" collapsible value={expandedSection} onValueChange={setExpandedSection}>
-  <AccordionItem value="matches">
-    <AccordionTrigger>
-      <MatchesSectionHeader completed={...} total={3} />
-    </AccordionTrigger>
-    <AccordionContent>
-      {/* Match cards with wrestler photos */}
-    </AccordionContent>
-  </AccordionItem>
-  
-  <AccordionItem value="rumble">
-    <AccordionTrigger>
-      <RumbleSectionHeader mensPick={...} womensPick={...} />
-    </AccordionTrigger>
-    <AccordionContent>
-      {/* Wrestler picker triggers */}
-    </AccordionContent>
-  </AccordionItem>
-  
-  <AccordionItem value="props">
-    <AccordionTrigger>
-      <PropsSectionHeader completed={...} total={6} />
-    </AccordionTrigger>
-    <AccordionContent>
-      {/* Toggle switches */}
-    </AccordionContent>
-  </AccordionItem>
-</Accordion>
-```
-
----
-
-## Wrestler Photo Strategy
-
-Since we don't have actual WWE wrestler photos, the implementation will:
-
-1. Use UI Avatars API for initial placeholders: `https://ui-avatars.com/api/?name=Roman+Reigns&background=D4AF37&color=0A0A0A&size=100`
-2. Create a `wrestler-data.ts` file that can easily be updated with real image URLs later
-3. Support the host's custom entrant lists by generating placeholder avatars dynamically
-
----
-
-## Summary of Changes
-
-| Component | Change Type | Description |
-|-----------|-------------|-------------|
-| PlayerPicks.tsx | Major Rewrite | Collapsible sections, progress bar, new layout |
-| WrestlerPickerModal.tsx | New File | Full-screen wrestler selection grid |
-| wrestler-data.ts | New File | Wrestler photo/data mapping |
-| index.css | Minor Addition | New utility classes |
-| package.json | Dependency | Add canvas-confetti |
