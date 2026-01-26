@@ -112,7 +112,7 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md p-6"
+            className="fixed inset-x-0 top-0 z-50 flex items-start justify-center pt-16 px-4 pb-8 overflow-y-auto max-h-screen"
           >
             <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl">
               <div className="flex justify-between items-center mb-6">

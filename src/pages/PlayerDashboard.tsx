@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Trophy, Hash, Check, X, Clock, Edit } from "lucide-react";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getPlayerSession } from "@/lib/session";
 import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING } from "@/lib/constants";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
+import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
 
 interface Pick {
   match_id: string;
@@ -18,6 +19,7 @@ interface RumbleNumber {
   rumble_type: string;
   number: number;
   wrestler_name: string | null;
+  assigned_to_player_id?: string | null;
   entry_timestamp: string | null;
   elimination_timestamp: string | null;
 }
@@ -33,22 +35,32 @@ interface PlayerWithNumbers {
   womensNumbers: number[];
 }
 
+interface CelebrationData {
+  type: CelebrationType;
+  data: any;
+}
+
 export default function PlayerDashboard() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const session = getPlayerSession();
 
   const [partyStatus, setPartyStatus] = useState<string>("pre_event");
-  const [previousStatus, setPreviousStatus] = useState<string>("pre_event");
   const [playerPoints, setPlayerPoints] = useState(0);
   const [playerRank, setPlayerRank] = useState<number | null>(null);
   const [totalPlayers, setTotalPlayers] = useState(0);
   const [picks, setPicks] = useState<Pick[]>([]);
   const [numbers, setNumbers] = useState<RumbleNumber[]>([]);
+  const [allNumbers, setAllNumbers] = useState<RumbleNumber[]>([]);
   const [results, setResults] = useState<MatchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNumberReveal, setShowNumberReveal] = useState(false);
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
+  const [celebration, setCelebration] = useState<CelebrationData | null>(null);
+  const [players, setPlayers] = useState<Array<{ id: string; display_name: string }>>([]);
+
+  // Track shown celebrations to avoid duplicates
+  const shownCelebrations = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!code || !session?.playerId) {
@@ -77,15 +89,16 @@ export default function PlayerDashboard() {
         if (playerData) setPlayerPoints(playerData.points);
 
         // Fetch all players for ranking
-        const { data: allPlayers } = await supabase
+        const { data: allPlayersData } = await supabase
           .from("players")
-          .select("id, points")
+          .select("id, display_name, points")
           .eq("party_code", code)
           .order("points", { ascending: false });
 
-        if (allPlayers) {
-          setTotalPlayers(allPlayers.length);
-          const rank = allPlayers.findIndex(p => p.id === session.playerId) + 1;
+        if (allPlayersData) {
+          setTotalPlayers(allPlayersData.length);
+          setPlayers(allPlayersData);
+          const rank = allPlayersData.findIndex(p => p.id === session.playerId) + 1;
           setPlayerRank(rank > 0 ? rank : null);
         }
 
@@ -107,6 +120,15 @@ export default function PlayerDashboard() {
 
         if (numbersData) setNumbers(numbersData);
 
+        // Fetch all numbers for celebration checks
+        const { data: allNumbersData } = await supabase
+          .from("rumble_numbers")
+          .select("rumble_type, number, wrestler_name, assigned_to_player_id, entry_timestamp, elimination_timestamp")
+          .eq("party_code", code)
+          .order("number");
+
+        if (allNumbersData) setAllNumbers(allNumbersData);
+
         // Fetch match results
         const { data: resultsData } = await supabase
           .from("match_results")
@@ -123,45 +145,28 @@ export default function PlayerDashboard() {
 
     fetchData();
 
-    // Set up realtime subscriptions
-    const channel = supabase
-      .channel(`player-dashboard-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "parties", filter: `code=eq.${code}` }, async (payload) => {
-        const newStatus = (payload.new as any)?.status;
-        if (newStatus === "live" && partyStatus === "pre_event") {
-          // Event just started - trigger number reveal animation
-          await loadRevealData();
-        }
-        fetchData();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `id=eq.${session.playerId}` }, () => fetchData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "picks", filter: `player_id=eq.${session.playerId}` }, () => fetchData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, () => fetchData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, () => fetchData())
-      .subscribe();
-
     // Function to load reveal data
     const loadRevealData = async () => {
       // Fetch all players with their numbers for the reveal
-      const { data: allPlayers } = await supabase
+      const { data: allPlayersData } = await supabase
         .from("players")
         .select("id, display_name")
         .eq("party_code", code)
         .order("joined_at");
 
-      const { data: allNumbers } = await supabase
+      const { data: allNumbersData } = await supabase
         .from("rumble_numbers")
         .select("number, assigned_to_player_id, rumble_type")
         .eq("party_code", code);
 
-      if (allPlayers && allNumbers) {
-        const playerData: PlayerWithNumbers[] = allPlayers.map(p => ({
+      if (allPlayersData && allNumbersData) {
+        const playerData: PlayerWithNumbers[] = allPlayersData.map(p => ({
           playerName: p.display_name,
-          mensNumbers: allNumbers
+          mensNumbers: allNumbersData
             .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
             .map(n => n.number)
             .sort((a, b) => a - b),
-          womensNumbers: allNumbers
+          womensNumbers: allNumbersData
             .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
             .map(n => n.number)
             .sort((a, b) => a - b),
@@ -197,10 +202,135 @@ export default function PlayerDashboard() {
 
     checkInitialReveal();
 
+    const getPlayerName = (playerId: string | null) => {
+      if (!playerId) return "Vacant";
+      const player = players.find(p => p.id === playerId);
+      return player?.display_name || "Unknown";
+    };
+
+    const checkForPlayerCelebration = (matchId: string, result: string, numbersToCheck: RumbleNumber[]) => {
+      // Check Final Four - if player's number is in the final four
+      if (matchId === "mens_final_four" || matchId === "womens_final_four") {
+        const celebrationKey = `player_${matchId}`;
+        if (shownCelebrations.current.has(celebrationKey)) return;
+
+        const type = matchId === "mens_final_four" ? "mens" : "womens";
+        const finalFourNumbers = result.split(",").map(s => parseInt(s.replace("#", "")));
+        const playerNumbers = numbersToCheck
+          .filter(n => n.rumble_type === type && n.assigned_to_player_id === session.playerId)
+          .map(n => n.number);
+
+        const playerInFinalFour = playerNumbers.some(n => finalFourNumbers.includes(n));
+        
+        if (playerInFinalFour) {
+          shownCelebrations.current.add(celebrationKey);
+          
+          const activeNumbers = numbersToCheck.filter(n => 
+            n.rumble_type === type && 
+            n.entry_timestamp && 
+            !n.elimination_timestamp
+          );
+
+          setCelebration({
+            type: "final-four",
+            data: {
+              rumbleType: type,
+              wrestlers: activeNumbers.slice(0, 4).map(n => ({
+                number: n.number,
+                wrestlerName: n.wrestler_name || "Unknown",
+                ownerName: getPlayerName(n.assigned_to_player_id || null),
+              })),
+            },
+          });
+        }
+      }
+
+      // Check Winner - if player owns the winning number or picked the winner
+      if (matchId === "mens_rumble_winner" || matchId === "womens_rumble_winner") {
+        const celebrationKey = `player_${matchId}`;
+        if (shownCelebrations.current.has(celebrationKey)) return;
+
+        const type = matchId === "mens_rumble_winner" ? "mens" : "womens";
+        const winnerNumber = numbersToCheck.find(n => n.wrestler_name === result && n.rumble_type === type);
+        
+        if (winnerNumber) {
+          const isOwner = winnerNumber.assigned_to_player_id === session.playerId;
+          const pick = picks.find(p => p.match_id === matchId);
+          const isPicker = pick?.prediction === result;
+
+          if (isOwner || isPicker) {
+            shownCelebrations.current.add(celebrationKey);
+            setCelebration({
+              type: "winner",
+              data: {
+                rumbleType: type,
+                number: winnerNumber.number,
+                wrestlerName: winnerNumber.wrestler_name || "Unknown",
+                ownerName: getPlayerName(winnerNumber.assigned_to_player_id || null),
+              },
+            });
+          }
+        }
+      }
+
+      // Check Iron Man/Woman - if player owns the Iron Man number
+      if (matchId === "mens_iron_man" || matchId === "womens_iron_woman") {
+        const celebrationKey = `player_${matchId}`;
+        if (shownCelebrations.current.has(celebrationKey)) return;
+
+        try {
+          const ironData = JSON.parse(result);
+          if (ironData.owner === session.playerId) {
+            shownCelebrations.current.add(celebrationKey);
+            const type = matchId === "mens_iron_man" ? "mens" : "womens";
+            
+            // Delay to show after winner if winner was also shown
+            setTimeout(() => {
+              setCelebration({
+                type: "iron-man",
+                data: {
+                  rumbleType: type,
+                  number: ironData.number,
+                  wrestlerName: ironData.wrestler,
+                  duration: ironData.duration,
+                  ownerName: getPlayerName(ironData.owner),
+                },
+              });
+            }, shownCelebrations.current.has(`player_${type}_rumble_winner`) ? 7000 : 0);
+          }
+        } catch (e) {
+          console.error("Error parsing iron man data:", e);
+        }
+      }
+    };
+
+    // Set up realtime subscriptions
+    const channel = supabase
+      .channel(`player-dashboard-${code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "parties", filter: `code=eq.${code}` }, async (payload) => {
+        const newStatus = (payload.new as any)?.status;
+        if (newStatus === "live" && partyStatus === "pre_event") {
+          // Event just started - trigger number reveal animation
+          await loadRevealData();
+        }
+        fetchData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `id=eq.${session.playerId}` }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "picks", filter: `player_id=eq.${session.playerId}` }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, (payload) => {
+        const matchResult = payload.new as any;
+        if (matchResult?.match_id && matchResult?.result) {
+          checkForPlayerCelebration(matchResult.match_id, matchResult.result, allNumbers);
+        }
+        fetchData();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [code, session?.playerId, navigate]);
+  }, [code, session?.playerId, navigate, partyStatus, players, allNumbers, picks]);
 
   const getPickResult = (matchId: string) => {
     const result = results.find(r => r.match_id === matchId);
@@ -228,6 +358,10 @@ export default function PlayerDashboard() {
     sessionStorage.setItem(`reveal-seen-${code}`, "true");
   };
 
+  const handleCelebrationComplete = () => {
+    setCelebration(null);
+  };
+
   const mensNumbers = numbers.filter(n => n.rumble_type === "mens");
   const womensNumbers = numbers.filter(n => n.rumble_type === "womens");
 
@@ -239,6 +373,17 @@ export default function PlayerDashboard() {
           <NumberRevealAnimation
             players={revealPlayers}
             onComplete={handleRevealComplete}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Celebration Overlay */}
+      <AnimatePresence>
+        {celebration && (
+          <CelebrationOverlay
+            type={celebration.type}
+            data={celebration.data}
+            onComplete={handleCelebrationComplete}
           />
         )}
       </AnimatePresence>
