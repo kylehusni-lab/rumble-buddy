@@ -1,5 +1,12 @@
 // Royal Rumble 2026 Constants
 
+export const EVENT_CONFIG = {
+  DATE: new Date('2026-02-01T19:00:00+03:00'), // Riyadh time (UTC+3)
+  VENUE: 'Kingdom Arena',
+  LOCATION: 'Riyadh, Saudi Arabia',
+  TITLE: 'WWE Royal Rumble 2026',
+} as const;
+
 export const UNDERCARD_MATCHES = [
   { id: 'undercard_1', title: 'Drew McIntyre vs Sami Zayn', options: ['Drew McIntyre', 'Sami Zayn'] },
   { id: 'undercard_2', title: 'CM Punk vs Logan Paul', options: ['CM Punk', 'Logan Paul'] },
