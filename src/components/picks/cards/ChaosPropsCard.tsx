@@ -23,7 +23,7 @@ export function ChaosPropsCard({ title, gender, values, onChange, disabled }: Ch
   const allAnswered = answeredCount === 6;
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-card border border-border min-h-[500px] max-h-[650px] flex flex-col">
+    <div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden max-h-[70vh]">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Zap className="w-6 h-6 text-primary" />
@@ -42,7 +42,7 @@ export function ChaosPropsCard({ title, gender, values, onChange, disabled }: Ch
 
       {/* Props List (Scrollable) */}
       <ScrollArea className="flex-1 -mx-2 px-2">
-        <div className="space-y-4">
+        <div className="space-y-4 pb-4">
           {CHAOS_PROPS.map((prop) => {
             const matchId = `${gender}_chaos_${prop.id}`;
             const value = values[matchId];

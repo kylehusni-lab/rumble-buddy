@@ -20,20 +20,31 @@ export function Logo({ size = "md", showTagline = false }: LogoProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <motion.img
-        src={royalRumbleLogo}
-        alt="Royal Rumble 2026"
-        style={{ width: sizes[size].width }}
-        className="object-contain"
-        animate={{ 
-          scale: [1, 1.02, 1]
-        }}
-        transition={{ 
-          duration: 3, 
-          repeat: Infinity, 
-          repeatDelay: 2 
-        }}
-      />
+      {/* Logo with glow effect */}
+      <div className="relative">
+        {/* Background glow */}
+        <div 
+          className="absolute inset-0 blur-3xl scale-150 opacity-40"
+          style={{
+            background: 'radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, hsl(var(--primary) / 0.1) 40%, transparent 70%)'
+          }}
+        />
+        
+        <motion.img
+          src={royalRumbleLogo}
+          alt="Royal Rumble 2026"
+          style={{ width: sizes[size].width }}
+          className="object-contain relative z-10 drop-shadow-[0_0_25px_rgba(212,175,55,0.4)]"
+          animate={{ 
+            scale: [1, 1.02, 1]
+          }}
+          transition={{ 
+            duration: 3, 
+            repeat: Infinity, 
+            repeatDelay: 2 
+          }}
+        />
+      </div>
 
       {showTagline && (
         <motion.p 

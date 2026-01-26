@@ -48,7 +48,7 @@ export function RumbleWinnerCard({
   };
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col h-full max-h-[calc(100vh-200px)]">
+    <div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden max-h-[70vh]">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Crown className="w-6 h-6 text-primary" />
@@ -88,7 +88,7 @@ export function RumbleWinnerCard({
 
       {/* Wrestler Grid (Scrollable) */}
       <ScrollArea className="flex-1 -mx-2 px-2">
-        <div className="grid grid-cols-4 md:grid-cols-6 gap-3 pb-4">
+        <div className="grid grid-cols-4 md:grid-cols-6 gap-3 pb-8">
           {filteredEntrants.map((wrestler) => {
             const isSelected = value === wrestler;
             return (
