@@ -48,7 +48,7 @@ export function RumbleWinnerCard({
   };
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-card border border-border min-h-[500px] max-h-[600px] flex flex-col">
+    <div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col h-full max-h-[calc(100vh-200px)]">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Crown className="w-6 h-6 text-primary" />
@@ -88,44 +88,60 @@ export function RumbleWinnerCard({
 
       {/* Wrestler Grid (Scrollable) */}
       <ScrollArea className="flex-1 -mx-2 px-2">
-        <div className="space-y-2">
-          {filteredEntrants.map((wrestler) => (
-            <motion.button
-              key={wrestler}
-              onClick={() => handleSelect(wrestler)}
-              disabled={disabled}
-              className={cn(
-                "w-full p-3 rounded-lg border-2 transition-all",
-                "flex items-center gap-3",
-                value === wrestler
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:border-muted-foreground",
-                disabled && "opacity-60 cursor-not-allowed"
-              )}
-              whileTap={!disabled ? { scale: 0.98 } : undefined}
-            >
-              {/* Wrestler Photo */}
-              <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0 border-2 border-border">
-                <img
-                  src={getWrestlerImageUrl(wrestler)}
-                  alt={wrestler}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    img.src = getPlaceholderImageUrl(wrestler);
-                  }}
-                />
-              </div>
+        <div className="grid grid-cols-4 md:grid-cols-6 gap-3 pb-4">
+          {filteredEntrants.map((wrestler) => {
+            const isSelected = value === wrestler;
+            return (
+              <motion.button
+                key={wrestler}
+                onClick={() => handleSelect(wrestler)}
+                disabled={disabled}
+                className="flex flex-col items-center"
+                whileTap={!disabled ? { scale: 0.95 } : undefined}
+              >
+                {/* Photo Container */}
+                <div
+                  className={cn(
+                    "relative w-[70px] h-[70px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
+                    isSelected
+                      ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
+                      : "border-transparent"
+                  )}
+                >
+                  <img
+                    src={getWrestlerImageUrl(wrestler)}
+                    alt={wrestler}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = getPlaceholderImageUrl(wrestler);
+                    }}
+                  />
+                  
+                  {/* Selected Checkmark Overlay */}
+                  {isSelected && (
+                    <motion.div
+                      className="absolute inset-0 bg-primary/30 flex items-center justify-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                    >
+                      <Check className="text-primary-foreground" size={28} strokeWidth={3} />
+                    </motion.div>
+                  )}
+                </div>
 
-              {/* Wrestler Name */}
-              <div className="flex-1 text-left font-semibold text-foreground">{wrestler}</div>
-
-              {/* Check if selected */}
-              {value === wrestler && (
-                <Check className="w-5 h-5 text-primary" strokeWidth={3} />
-              )}
-            </motion.button>
-          ))}
+                {/* Name */}
+                <span
+                  className={cn(
+                    "mt-2 text-xs text-center leading-tight line-clamp-2 w-[70px]",
+                    isSelected ? "text-primary font-semibold" : "text-foreground"
+                  )}
+                >
+                  {wrestler}
+                </span>
+              </motion.button>
+            );
+          })}
         </div>
       </ScrollArea>
     </div>
