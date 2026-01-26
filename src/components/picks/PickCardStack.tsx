@@ -1,0 +1,315 @@
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { ChevronLeft, ChevronRight, Loader2, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MatchCard } from "./cards/MatchCard";
+import { RumbleWinnerCard } from "./cards/RumbleWinnerCard";
+import { ChaosPropsCard } from "./cards/ChaosPropsCard";
+import { ProgressBar } from "./ProgressBar";
+import { CARD_CONFIG, TOTAL_CARDS, CHAOS_PROPS } from "@/lib/constants";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+interface PickCardStackProps {
+  partyCode: string;
+  playerId: string;
+  displayName: string;
+  isLocked: boolean;
+  existingPicks: Record<string, string>;
+  mensEntrants: string[];
+  womensEntrants: string[];
+}
+
+export function PickCardStack({
+  partyCode,
+  playerId,
+  displayName,
+  isLocked,
+  existingPicks,
+  mensEntrants,
+  womensEntrants,
+}: PickCardStackProps) {
+  const navigate = useNavigate();
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [picks, setPicks] = useState<Record<string, any>>(existingPicks);
+  const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(Object.keys(existingPicks).length > 0);
+
+  const currentCard = CARD_CONFIG[currentCardIndex];
+  const isLastCard = currentCardIndex === TOTAL_CARDS - 1;
+
+  // Calculate completion status for each card
+  const cardCompletionStatus = useMemo(() => {
+    return CARD_CONFIG.map((card) => {
+      if (card.type === "chaos-props") {
+        // Check if all 6 props are answered for this gender
+        const gender = card.gender;
+        const propCount = CHAOS_PROPS.filter((_, index) => {
+          const matchId = `${gender}_chaos_prop_${index + 1}`;
+          return picks[matchId] !== null && picks[matchId] !== undefined;
+        }).length;
+        return propCount === 6;
+      }
+      const pick = picks[card.id];
+      return pick !== null && pick !== undefined;
+    });
+  }, [picks]);
+
+  const completedCount = cardCompletionStatus.filter(Boolean).length;
+  const allPicksComplete = completedCount === TOTAL_CARDS;
+
+  const handleSwipe = (direction: "left" | "right") => {
+    setSwipeDirection(direction);
+    
+    setTimeout(() => {
+      if (direction === "right" && currentCardIndex < TOTAL_CARDS - 1) {
+        setCurrentCardIndex(prev => prev + 1);
+      } else if (direction === "left" && currentCardIndex > 0) {
+        setCurrentCardIndex(prev => prev - 1);
+      }
+      setSwipeDirection(null);
+    }, 200);
+  };
+
+  const handlePickUpdate = (cardId: string, value: any) => {
+    if (isLocked) return;
+    
+    setPicks(prev => ({ ...prev, [cardId]: value }));
+    
+    // Auto-advance after selection (except for chaos props which need all 6)
+    const card = CARD_CONFIG.find(c => c.id === cardId);
+    if (card?.type !== "chaos-props" && currentCardIndex < TOTAL_CARDS - 1) {
+      setTimeout(() => handleSwipe("right"), 300);
+    }
+  };
+
+  const handleChaosPropsUpdate = (values: Record<string, "YES" | "NO" | null>) => {
+    if (isLocked) return;
+    setPicks(prev => ({ ...prev, ...values }));
+  };
+
+  const handleDragEnd = (event: any, info: PanInfo) => {
+    const threshold = 100;
+    
+    if (info.offset.x > threshold && currentCardIndex > 0) {
+      handleSwipe("left"); // Swipe right = go back
+    } else if (info.offset.x < -threshold && currentCardIndex < TOTAL_CARDS - 1) {
+      handleSwipe("right"); // Swipe left = go forward
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!playerId || !allPicksComplete || isLocked) return;
+
+    setIsSubmitting(true);
+
+    try {
+      // Convert picks to database format
+      const pickRecords: { player_id: string; match_id: string; prediction: string }[] = [];
+
+      // Add match winners and rumble winners
+      CARD_CONFIG.forEach((card) => {
+        if (card.type === "match" || card.type === "rumble-winner") {
+          if (picks[card.id]) {
+            pickRecords.push({
+              player_id: playerId,
+              match_id: card.id,
+              prediction: picks[card.id],
+            });
+          }
+        } else if (card.type === "chaos-props") {
+          // Add chaos props
+          CHAOS_PROPS.forEach((prop, index) => {
+            const matchId = `${card.gender}_chaos_prop_${index + 1}`;
+            if (picks[matchId]) {
+              pickRecords.push({
+                player_id: playerId,
+                match_id: matchId,
+                prediction: picks[matchId],
+              });
+            }
+          });
+        }
+      });
+
+      const { error } = await supabase
+        .from("picks")
+        .upsert(pickRecords, { onConflict: "player_id,match_id" });
+
+      if (error) throw error;
+
+      setHasSubmitted(true);
+      toast.success("Picks saved! Good luck! 🎉");
+      navigate(`/player/dashboard/${partyCode}`);
+    } catch (err) {
+      console.error("Error submitting picks:", err);
+      toast.error("Failed to save picks. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Get chaos props values for the current card
+  const getChaosPropsValues = (gender: "mens" | "womens") => {
+    const values: Record<string, "YES" | "NO" | null> = {};
+    CHAOS_PROPS.forEach((prop, index) => {
+      const matchId = `${gender}_chaos_prop_${index + 1}`;
+      values[matchId] = picks[matchId] || null;
+    });
+    return values;
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      {/* Progress Bar */}
+      <ProgressBar
+        currentIndex={currentCardIndex}
+        completionStatus={cardCompletionStatus}
+        onJumpToCard={setCurrentCardIndex}
+      />
+
+      {/* Party Code & Name */}
+      <div className="text-center py-2 border-b border-border">
+        <div className="text-sm text-muted-foreground">Party {partyCode}</div>
+        <div className="font-bold text-primary">Hey {displayName}!</div>
+      </div>
+
+      {/* Card Container */}
+      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+        <AnimatePresence mode="wait" custom={swipeDirection}>
+          <motion.div
+            key={currentCardIndex}
+            custom={swipeDirection}
+            initial={{ 
+              x: swipeDirection === "left" ? -300 : 300,
+              opacity: 0,
+              scale: 0.8
+            }}
+            animate={{ 
+              x: 0,
+              opacity: 1,
+              scale: 1
+            }}
+            exit={{ 
+              x: swipeDirection === "left" ? 300 : -300,
+              opacity: 0,
+              scale: 0.8
+            }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.7}
+            onDragEnd={handleDragEnd}
+            className="w-full max-w-md cursor-grab active:cursor-grabbing"
+          >
+            {currentCard.type === "match" && (
+              <MatchCard
+                title={currentCard.title}
+                options={currentCard.options as readonly [string, string]}
+                value={picks[currentCard.id] || null}
+                onChange={(value) => handlePickUpdate(currentCard.id, value)}
+                disabled={isLocked}
+              />
+            )}
+            
+            {currentCard.type === "rumble-winner" && (
+              <RumbleWinnerCard
+                title={currentCard.title}
+                gender={currentCard.gender as "mens" | "womens"}
+                value={picks[currentCard.id] || null}
+                onChange={(value) => handlePickUpdate(currentCard.id, value)}
+                disabled={isLocked}
+                customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
+              />
+            )}
+            
+            {currentCard.type === "chaos-props" && (
+              <ChaosPropsCard
+                title={currentCard.title}
+                gender={currentCard.gender as "mens" | "womens"}
+                values={getChaosPropsValues(currentCard.gender as "mens" | "womens")}
+                onChange={handleChaosPropsUpdate}
+                disabled={isLocked}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Swipe Hint (only show on first card) */}
+      {currentCardIndex === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="text-center text-sm text-muted-foreground pb-2"
+        >
+          ← Swipe to navigate →
+        </motion.div>
+      )}
+
+      {/* Navigation Controls */}
+      <div className="p-4 border-t border-border flex items-center justify-between bg-card">
+        <Button
+          variant="ghost"
+          onClick={() => handleSwipe("left")}
+          disabled={currentCardIndex === 0}
+          className="flex items-center gap-2"
+        >
+          <ChevronLeft className="w-5 h-5" />
+          Back
+        </Button>
+
+        <div className="text-sm text-muted-foreground">
+          {currentCardIndex + 1} / {TOTAL_CARDS}
+        </div>
+
+        {!isLastCard ? (
+          <Button
+            variant="ghost"
+            onClick={() => handleSwipe("right")}
+            className="flex items-center gap-2"
+          >
+            Skip
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+        ) : (
+          <Button
+            onClick={handleSubmit}
+            disabled={!allPicksComplete || isSubmitting || isLocked}
+            className={allPicksComplete && !isLocked ? "gold-shimmer" : ""}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : isLocked ? (
+              "Locked 🔒"
+            ) : hasSubmitted ? (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                Update
+              </>
+            ) : (
+              "Submit All"
+            )}
+          </Button>
+        )}
+      </div>
+
+      {/* Back to Dashboard */}
+      <div className="p-2 text-center border-t border-border">
+        <Button 
+          variant="link" 
+          onClick={() => navigate(`/player/dashboard/${partyCode}`)}
+          className="text-muted-foreground"
+        >
+          ← Back to Dashboard
+        </Button>
+      </div>
+    </div>
+  );
+}
