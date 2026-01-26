@@ -14,7 +14,192 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      match_results: {
+        Row: {
+          id: string
+          match_id: string
+          party_code: string
+          result: string
+          scored_at: string
+        }
+        Insert: {
+          id?: string
+          match_id: string
+          party_code: string
+          result: string
+          scored_at?: string
+        }
+        Update: {
+          id?: string
+          match_id?: string
+          party_code?: string
+          result?: string
+          scored_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_results_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      parties: {
+        Row: {
+          code: string
+          created_at: string
+          event_started_at: string | null
+          host_session_id: string
+          mens_rumble_entrants: Json
+          status: string
+          womens_rumble_entrants: Json
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          event_started_at?: string | null
+          host_session_id: string
+          mens_rumble_entrants?: Json
+          status?: string
+          womens_rumble_entrants?: Json
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          event_started_at?: string | null
+          host_session_id?: string
+          mens_rumble_entrants?: Json
+          status?: string
+          womens_rumble_entrants?: Json
+        }
+        Relationships: []
+      }
+      picks: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string
+          player_id: string
+          points_awarded: number | null
+          prediction: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id: string
+          player_id: string
+          points_awarded?: number | null
+          prediction: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string
+          player_id?: string
+          points_awarded?: number | null
+          prediction?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "picks_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      players: {
+        Row: {
+          display_name: string
+          email: string
+          id: string
+          joined_at: string
+          party_code: string
+          points: number
+          session_id: string
+        }
+        Insert: {
+          display_name: string
+          email: string
+          id?: string
+          joined_at?: string
+          party_code: string
+          points?: number
+          session_id: string
+        }
+        Update: {
+          display_name?: string
+          email?: string
+          id?: string
+          joined_at?: string
+          party_code?: string
+          points?: number
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      rumble_numbers: {
+        Row: {
+          assigned_to_player_id: string | null
+          eliminated_by_number: number | null
+          elimination_timestamp: string | null
+          entry_timestamp: string | null
+          id: string
+          number: number
+          party_code: string
+          rumble_type: string
+          wrestler_name: string | null
+        }
+        Insert: {
+          assigned_to_player_id?: string | null
+          eliminated_by_number?: number | null
+          elimination_timestamp?: string | null
+          entry_timestamp?: string | null
+          id?: string
+          number: number
+          party_code: string
+          rumble_type: string
+          wrestler_name?: string | null
+        }
+        Update: {
+          assigned_to_player_id?: string | null
+          eliminated_by_number?: number | null
+          elimination_timestamp?: string | null
+          entry_timestamp?: string | null
+          id?: string
+          number?: number
+          party_code?: string
+          rumble_type?: string
+          wrestler_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rumble_numbers_assigned_to_player_id_fkey"
+            columns: ["assigned_to_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rumble_numbers_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
