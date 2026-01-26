@@ -41,7 +41,7 @@ export function ChaosPropsCard({ title, gender, values, onChange, disabled }: Ch
       </div>
 
       {/* Props List (Scrollable) */}
-      <ScrollArea className="flex-1 -mx-2 px-2">
+      <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
         <div className="space-y-4 pb-4">
           {CHAOS_PROPS.map((prop) => {
             const matchId = `${gender}_chaos_${prop.id}`;

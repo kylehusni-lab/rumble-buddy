@@ -87,7 +87,7 @@ export function RumbleWinnerCard({
       </div>
 
       {/* Wrestler Grid (Scrollable) */}
-      <ScrollArea className="flex-1 -mx-2 px-2">
+      <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
         <div className="grid grid-cols-4 md:grid-cols-6 gap-3 pb-8">
           {filteredEntrants.map((wrestler) => {
             const isSelected = value === wrestler;
