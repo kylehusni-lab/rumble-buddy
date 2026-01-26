@@ -23,7 +23,7 @@ export function ChaosPropsCard({ title, gender, values, onChange, disabled }: Ch
   const allAnswered = answeredCount === 6;
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden max-h-[70vh]">
+    <div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-220px)]">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Zap className="w-6 h-6 text-primary" />

@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MatchCard } from "./cards/MatchCard";
@@ -36,6 +36,11 @@ export function PickCardStack({
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(Object.keys(existingPicks).length > 0);
+  
+  // Touch swipe detection state
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const minSwipeDistance = 50;
 
   const currentCard = CARD_CONFIG[currentCardIndex];
   const isLastCard = currentCardIndex === TOTAL_CARDS - 1;
@@ -90,14 +95,31 @@ export function PickCardStack({
     setPicks(prev => ({ ...prev, ...values }));
   };
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
-    const threshold = 100;
+  // Touch event handlers for swipe detection (without visual dragging)
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
     
-    if (info.offset.x > threshold && currentCardIndex > 0) {
-      handleSwipe("left"); // Swipe right = go back
-    } else if (info.offset.x < -threshold && currentCardIndex < TOTAL_CARDS - 1) {
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe && currentCardIndex < TOTAL_CARDS - 1) {
       handleSwipe("right"); // Swipe left = go forward
+    } else if (isRightSwipe && currentCardIndex > 0) {
+      handleSwipe("left"); // Swipe right = go back
     }
+    
+    setTouchStart(null);
+    setTouchEnd(null);
   };
 
   const handleSubmit = async () => {
@@ -177,7 +199,7 @@ export function PickCardStack({
       </div>
 
       {/* Card Container */}
-      <div className="flex-1 flex items-start justify-center p-4 pt-2 overflow-y-auto">
+      <div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0">
         <AnimatePresence mode="wait" custom={swipeDirection}>
           <motion.div
             key={currentCardIndex}
@@ -198,11 +220,10 @@ export function PickCardStack({
               scale: 0.8
             }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.7}
-            onDragEnd={handleDragEnd}
-            className="w-full max-w-md cursor-grab active:cursor-grabbing"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            className="w-full max-w-md h-full"
           >
             {currentCard.type === "match" && (
               <MatchCard
