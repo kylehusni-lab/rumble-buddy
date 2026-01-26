@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { getWrestlerImageUrl } from "@/lib/wrestler-data";
+import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import confetti from "canvas-confetti";
 
 interface WrestlerPickerModalProps {
@@ -118,6 +118,10 @@ export function WrestlerPickerModal({
                       alt={wrestler}
                       className="w-full h-full object-cover"
                       loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = getPlaceholderImageUrl(wrestler);
+                      }}
                     />
                     
                     {/* Selected Checkmark Overlay */}
