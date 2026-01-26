@@ -1,19 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, Crown, Tv } from "lucide-react";
+import { Users, Crown, Tv, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { JoinPartyModal } from "@/components/JoinPartyModal";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
-import { DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
+import { DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS, EVENT_CONFIG } from "@/lib/constants";
 import { toast } from "sonner";
+
+interface TimeRemaining {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+function CountdownUnit({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="bg-card border border-border rounded-xl p-3 min-w-[65px] text-center">
+      <div className="text-2xl md:text-3xl font-black tabular-nums text-primary">
+        {String(value).padStart(2, '0')}
+      </div>
+      <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wide">
+        {label}
+      </div>
+    </div>
+  );
+}
 
 export default function Index() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    function calculateTimeRemaining(): TimeRemaining {
+      const now = new Date().getTime();
+      const distance = EVENT_CONFIG.DATE.getTime() - now;
+
+      if (distance < 0) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+
+      return {
+        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((distance % (1000 * 60)) / 1000),
+      };
+    }
+
+    setTimeRemaining(calculateTimeRemaining());
+    const interval = setInterval(() => {
+      setTimeRemaining(calculateTimeRemaining());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const generatePartyCode = async (): Promise<string> => {
     let attempts = 0;
@@ -75,14 +121,40 @@ export default function Index() {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
 
-      <div className="relative z-10 w-full max-w-md space-y-12">
+      <div className="relative z-10 w-full max-w-md space-y-8">
         <Logo size="lg" showTagline />
+
+        {/* Event Badge */}
+        <motion.div
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Calendar size={16} className="text-primary" />
+          <span>{EVENT_CONFIG.DATE.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} • {EVENT_CONFIG.VENUE}, {EVENT_CONFIG.LOCATION.split(',')[0]}</span>
+        </motion.div>
+
+        {/* Countdown Timer */}
+        {timeRemaining && (
+          <motion.div
+            className="flex justify-center gap-2 md:gap-3"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <CountdownUnit value={timeRemaining.days} label="Days" />
+            <CountdownUnit value={timeRemaining.hours} label="Hours" />
+            <CountdownUnit value={timeRemaining.minutes} label="Min" />
+            <CountdownUnit value={timeRemaining.seconds} label="Sec" />
+          </motion.div>
+        )}
 
         <motion.div
           className="space-y-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
         >
           <Button
             variant="hero"
