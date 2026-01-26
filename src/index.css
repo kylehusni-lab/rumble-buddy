@@ -182,6 +182,20 @@
   .tv-mode h2 {
     font-size: 2.5rem;
   }
+
+  /* Wrestler card styles */
+  .wrestler-card {
+    @apply relative flex flex-col items-center p-2 rounded-xl transition-all duration-200;
+  }
+
+  .wrestler-card-selected {
+    @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  /* Prop toggle container */
+  .prop-toggle-container {
+    @apply flex items-center justify-between gap-3;
+  }
 }
 
 @layer utilities {
