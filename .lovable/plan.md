@@ -1,217 +1,144 @@
 
 
-# Plan: Fix Content Cutoff & Improve Logo Background Blending
+# Plan: Fix Card Scrolling & Improve Swipe Behavior
 
 ## Overview
-Based on the screenshots, there are two main issues to fix:
-
-1. **Content getting cut off in pick cards** - Both the Rumble Winner grid and Chaos Props questions are being cut off at the bottom
-2. **Logo background blending** - The logo on the landing page needs better integration with the dark background
+Two issues need to be fixed:
+1. **Card content cutoff** - Rumble participants and Chaos Props are getting cut off at the bottom on mobile devices
+2. **Swipe behavior** - The current drag behavior moves the card during swiping, which conflicts with vertical scrolling and feels imprecise
 
 ---
 
 ## Issue Analysis
 
-### Issue 1: Card Content Cutoff
+### Issue 1: Content Cutoff
 
-**Root Cause**: The card container in `PickCardStack.tsx` uses `flex-1 overflow-hidden` which constrains the card height, but the inner cards have `max-h` constraints that don't account for the full available space on mobile devices.
+**Problem**: The `max-h-[70vh]` constraint is too restrictive on mobile devices, especially when there are many wrestlers or all 6 chaos props to display.
 
-**Affected Files**:
-- `src/components/picks/cards/RumbleWinnerCard.tsx` - Line 51: `max-h-[calc(100vh-200px)]`
-- `src/components/picks/cards/ChaosPropsCard.tsx` - Line 26: `max-h-[650px]`
+**Root Cause**: 
+- Cards have fixed `max-h-[70vh]` which doesn't account for varying screen sizes
+- The ScrollArea needs explicit height to know how much to scroll
 
-**Fix**: Remove fixed max-height constraints and instead use flexible height with proper overflow handling. The cards should fill the available space and scroll internally.
+**Solution**: Remove the percentage-based max-height and instead use a more flexible approach with `flex-1` and proper overflow handling in the parent container.
 
-### Issue 2: Logo Background Blending
+### Issue 2: Swipe Behavior
 
-**Root Cause**: The Royal Rumble logo has its own background (appears to be on a light/colored background in the image file), which creates a harsh contrast against the dark app background.
+**Problem**: The current implementation uses Framer Motion's `drag="x"` which:
+- Visually moves the card as you drag (looks like scrolling)
+- Conflicts with vertical scrolling inside the card
+- Doesn't feel like an intentional "swipe to navigate" action
 
-**Fix**: Add a subtle glow effect behind the logo and potentially add a gradient mask to blend it better with the dark background.
+**Solution**: Replace the drag-based swipe with touch event handlers that:
+- Detect horizontal swipe gestures without moving the card
+- Only trigger navigation after a complete swipe gesture
+- Don't interfere with vertical scrolling inside the card
 
 ---
 
-## Files to Modify
+## Technical Approach
 
-### 1. `src/components/picks/cards/RumbleWinnerCard.tsx`
+### Card Height Fix
 
-**Changes**:
-- Remove `max-h-[calc(100vh-200px)]` constraint
-- Add proper flex layout with `overflow-hidden` on outer and scroll on inner
-- Ensure the ScrollArea takes remaining height properly
+**Files to modify:**
+- `src/components/picks/PickCardStack.tsx`
+- `src/components/picks/cards/RumbleWinnerCard.tsx`
+- `src/components/picks/cards/ChaosPropsCard.tsx`
 
-```typescript
-// Line 51 - Change from:
-<div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col h-full max-h-[calc(100vh-200px)]">
+**Changes:**
 
-// To:
-<div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden">
+1. **PickCardStack.tsx** - Update card container to use calc-based height that accounts for header, progress bar, and footer:
+```tsx
+// Card container - explicit height calculation
+<div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0">
 ```
 
-Also add padding-bottom to the grid container to ensure last row isn't cut off:
-```typescript
-// Line 91 - Update grid padding:
-<div className="grid grid-cols-4 md:grid-cols-6 gap-3 pb-8">
+2. **RumbleWinnerCard.tsx & ChaosPropsCard.tsx** - Remove rigid max-height, use parent-constrained height:
+```tsx
+// Change from:
+max-h-[70vh]
+
+// Change to:
+h-full max-h-[calc(100vh-220px)]
 ```
 
-### 2. `src/components/picks/cards/ChaosPropsCard.tsx`
+This ensures the card takes available space while leaving room for progress bar, header, navigation controls.
 
-**Changes**:
-- Remove `min-h-[500px] max-h-[650px]` constraints
-- Use flexible layout that fills available space
+### Swipe Gesture Fix
 
-```typescript
-// Line 26 - Change from:
-<div className="bg-card rounded-2xl p-6 shadow-card border border-border min-h-[500px] max-h-[650px] flex flex-col">
+**File to modify:**
+- `src/components/picks/PickCardStack.tsx`
 
-// To:
-<div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden">
-```
+**Changes:**
 
-Also add padding-bottom to props list for last item visibility:
-```typescript
-// Line 45 - Update container padding:
-<div className="space-y-4 pb-4">
-```
+1. **Remove `drag="x"`** from the motion.div - the card should not visually move during swipes
 
-### 3. `src/components/picks/PickCardStack.tsx`
+2. **Add touch event handlers** to detect swipes without visual dragging:
+```tsx
+const [touchStart, setTouchStart] = useState<number | null>(null);
+const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
-**Changes**:
-- Update the card container to properly constrain height and allow internal scrolling
-- Change `overflow-hidden` to allow children to handle their own scrolling
+const minSwipeDistance = 50; // Minimum swipe distance in pixels
 
-```typescript
-// Line 180 - Change from:
-<div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+const onTouchStart = (e: React.TouchEvent) => {
+  setTouchEnd(null);
+  setTouchStart(e.targetTouches[0].clientX);
+};
 
-// To:
-<div className="flex-1 flex items-start justify-center p-4 pt-2 overflow-y-auto">
-```
+const onTouchMove = (e: React.TouchEvent) => {
+  setTouchEnd(e.targetTouches[0].clientX);
+};
 
-Also update the motion.div wrapper to have proper height:
-```typescript
-// Line 205 - Add max-height constraint:
-className="w-full max-w-md cursor-grab active:cursor-grabbing h-full max-h-full"
-```
-
-### 4. `src/components/Logo.tsx`
-
-**Changes**:
-- Add a background glow effect behind the logo
-- Add subtle vignette/gradient mask to blend with dark background
-
-```typescript
-// Add glow container around the logo image:
-<div className="relative">
-  {/* Background glow */}
-  <div className="absolute inset-0 bg-gradient-radial from-primary/20 via-primary/5 to-transparent blur-2xl scale-150" />
+const onTouchEnd = () => {
+  if (!touchStart || !touchEnd) return;
   
-  {/* Logo with blend */}
-  <motion.img
-    src={royalRumbleLogo}
-    alt="Royal Rumble 2026"
-    style={{ width: sizes[size].width }}
-    className="object-contain relative z-10 drop-shadow-[0_0_30px_rgba(212,175,55,0.3)]"
-    // ... rest of animation
-  />
-</div>
+  const distance = touchStart - touchEnd;
+  const isLeftSwipe = distance > minSwipeDistance;
+  const isRightSwipe = distance < -minSwipeDistance;
+  
+  if (isLeftSwipe && currentCardIndex < TOTAL_CARDS - 1) {
+    handleSwipe("right"); // Swipe left = go forward
+  } else if (isRightSwipe && currentCardIndex > 0) {
+    handleSwipe("left"); // Swipe right = go back
+  }
+};
 ```
 
-### 5. `src/index.css`
+3. **Keep card animations** for transitions between cards (the enter/exit animations still work)
 
-**Changes**:
-- Add a radial gradient utility class for the logo glow
-
-```css
-/* Add to @layer utilities */
-.bg-gradient-radial {
-  background: radial-gradient(circle, var(--tw-gradient-stops));
-}
-```
+4. **Remove dragConstraints, dragElastic, onDragEnd** - no longer needed
 
 ---
 
 ## Visual Comparison
 
-### Before (Current)
+### Before (Current Swipe)
 ```text
-Rumble Winner Card:
-+----------------------------------+
-| [Header + Search]                |
-| [Row 1] [Row 2] [Row 3] [Row 4]  |
-| [Row 5] [Row 6] [Row 7] [Row 8]  |
-| [Row 9] [Row 10] [Row 11] [CUTOFF]
-+----------------------------------+
-
-Chaos Props Card:
-+----------------------------------+
-| [Header]                         |
-| [Prop 1] [YES] [NO]              |
-| [Prop 2] [YES] [NO]              |
-| [Prop 3] [YES] [NO]              |
-| [Prop 4] [YES] [NO]              |
-| [Prop 5] [PARTIAL CUT]           |
-+----------------------------------+
+User touches card → Card follows finger → Card snaps back → Navigation triggered
+Problem: Card movement during drag conflicts with scrolling
 ```
 
-### After (Fixed)
+### After (New Swipe)
 ```text
-Rumble Winner Card:
-+----------------------------------+
-| [Header + Search]                |
-| ┌────────────────────────────┐   |
-| │ [Row 1] [Row 2] [Row 3]    │   |
-| │ [Row 4] [Row 5] [Row 6]    │   |
-| │ [Row 7] [Row 8] [Row 9]    │ ← |
-| │ [Row 10] [Row 11] [Row 12] │   | Scrollable
-| │ [Surprise/Other]           │   |
-| └────────────────────────────┘   |
-+----------------------------------+
-
-Chaos Props Card:
-+----------------------------------+
-| [Header]                         |
-| ┌────────────────────────────┐   |
-| │ [Prop 1] [YES] [NO]        │   |
-| │ [Prop 2] [YES] [NO]        │   |
-| │ [Prop 3] [YES] [NO]        │ ← | Scrollable
-| │ [Prop 4] [YES] [NO]        │   |
-| │ [Prop 5] [YES] [NO]        │   |
-| │ [Prop 6] [YES] [NO]        │   |
-| └────────────────────────────┘   |
-+----------------------------------+
+User swipes horizontally → Card stays in place → Swipe completes → Card animates out/in
+Benefit: Clean gesture detection, no conflict with vertical scrolling
 ```
 
 ---
 
-## Logo Enhancement
+## Files to Modify
 
-### Current
-- Logo appears with hard edges on dark background
-- No visual integration with dark theme
-
-### Enhanced
-- Subtle gold glow behind logo (using `drop-shadow` and radial gradient)
-- Soft vignette effect to blend edges
-- Logo appears to "emerge" from the dark background
+| File | Changes |
+|------|---------|
+| `PickCardStack.tsx` | Replace drag with touch handlers, adjust container height |
+| `RumbleWinnerCard.tsx` | Change `max-h-[70vh]` to `h-full max-h-[calc(100vh-220px)]` |
+| `ChaosPropsCard.tsx` | Change `max-h-[70vh]` to `h-full max-h-[calc(100vh-220px)]` |
 
 ---
 
-## Summary of Changes
+## Summary
 
-| File | Change |
-|------|--------|
-| `RumbleWinnerCard.tsx` | Remove fixed max-height, add scroll padding |
-| `ChaosPropsCard.tsx` | Remove fixed min/max-height, add scroll padding |
-| `PickCardStack.tsx` | Adjust container to allow proper scrolling |
-| `Logo.tsx` | Add gold glow effect and drop shadow |
-| `index.css` | Add radial gradient utility class |
-
----
-
-## Technical Notes
-
-- The `ScrollArea` component from Radix UI handles scrolling properly when given `flex-1` within a flex container
-- Adding `pb-8` (32px padding bottom) ensures the last row of wrestlers has space to be fully visible even with the scroll thumb
-- The `drop-shadow` filter creates a natural glow effect that follows the logo's shape
-- Using `overflow-hidden` on the outer card and scroll inside prevents layout shifts during card transitions
+1. **Better card heights**: Use `calc(100vh - 220px)` to ensure cards fit the viewport while leaving room for UI chrome
+2. **Clean swipe detection**: Use touch events instead of drag behavior so the card doesn't move during swipes
+3. **Preserve scrolling**: Internal ScrollArea continues to work for long content without gesture conflicts
+4. **Keep animations**: Card enter/exit animations remain smooth and intentional
 
