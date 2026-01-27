@@ -75,6 +75,14 @@ export default function HostControl() {
   const [mensFinalFourAwarded, setMensFinalFourAwarded] = useState(false);
   const [womensFinalFourAwarded, setWomensFinalFourAwarded] = useState(false);
 
+  // Match started tracking (for delayed timer on #1/#2)
+  const [mensMatchStarted, setMensMatchStarted] = useState(false);
+  const [womensMatchStarted, setWomensMatchStarted] = useState(false);
+
+  // Local surprise entrants (added during this session)
+  const [mensSurpriseEntrants, setMensSurpriseEntrants] = useState<string[]>([]);
+  const [womensSurpriseEntrants, setWomensSurpriseEntrants] = useState<string[]>([]);
+
   // Duration update timer
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -358,7 +366,9 @@ export default function HostControl() {
   // Confirm wrestler entry
   const handleConfirmEntry = async (type: "mens" | "womens", wrestlerName: string) => {
     const numbers = type === "mens" ? mensNumbers : womensNumbers;
-    const nextNumber = numbers.filter(n => n.entry_timestamp).length + 1;
+    const matchStarted = type === "mens" ? mensMatchStarted : womensMatchStarted;
+    const enteredCount = numbers.filter(n => n.wrestler_name).length;
+    const nextNumber = enteredCount + 1;
     const numberRecord = numbers.find(n => n.number === nextNumber);
 
     if (!numberRecord) {
@@ -366,12 +376,16 @@ export default function HostControl() {
       return;
     }
 
+    // For #1 and #2, only set timestamp if match has started
+    // For #3+, always set timestamp (match must have started by then)
+    const shouldSetTimestamp = matchStarted || nextNumber > 2;
+
     try {
       await supabase
         .from("rumble_numbers")
         .update({
           wrestler_name: wrestlerName,
-          entry_timestamp: new Date().toISOString(),
+          entry_timestamp: shouldSetTimestamp ? new Date().toISOString() : null,
         })
         .eq("id", numberRecord.id);
 
@@ -380,6 +394,45 @@ export default function HostControl() {
       console.error("Error confirming entry:", err);
       toast.error("Failed to confirm entry");
     }
+  };
+
+  // Start match handler - sets timestamp for pending entries
+  const handleStartMatch = async (type: "mens" | "womens") => {
+    const numbers = type === "mens" ? mensNumbers : womensNumbers;
+    const now = new Date().toISOString();
+
+    try {
+      // Find all entries that have a wrestler but no timestamp
+      const pendingEntries = numbers.filter(n => n.wrestler_name && !n.entry_timestamp);
+
+      for (const entry of pendingEntries) {
+        await supabase
+          .from("rumble_numbers")
+          .update({ entry_timestamp: now })
+          .eq("id", entry.id);
+      }
+
+      if (type === "mens") {
+        setMensMatchStarted(true);
+      } else {
+        setWomensMatchStarted(true);
+      }
+
+      toast.success(`${type === "mens" ? "Men's" : "Women's"} Rumble has begun! 🔔`);
+    } catch (err) {
+      console.error("Error starting match:", err);
+      toast.error("Failed to start match");
+    }
+  };
+
+  // Add surprise entrant handler
+  const handleAddSurprise = (type: "mens" | "womens", name: string) => {
+    if (type === "mens") {
+      setMensSurpriseEntrants(prev => [...prev, name]);
+    } else {
+      setWomensSurpriseEntrants(prev => [...prev, name]);
+    }
+    toast.success(`${name} added as surprise entrant!`);
   };
 
   // Handle elimination
@@ -609,8 +662,9 @@ export default function HostControl() {
       .sort((a, b) => new Date(b.entry_timestamp!).getTime() - new Date(a.entry_timestamp!).getTime());
   }, [womensNumbers]);
 
-  const mensEnteredCount = mensNumbers.filter(n => n.entry_timestamp).length;
-  const womensEnteredCount = womensNumbers.filter(n => n.entry_timestamp).length;
+  // Count entered as wrestlers with names (not just timestamps, since #1/#2 may not have timestamp yet)
+  const mensEnteredCount = mensNumbers.filter(n => n.wrestler_name).length;
+  const womensEnteredCount = womensNumbers.filter(n => n.wrestler_name).length;
 
   const mensNextNumber = mensEnteredCount + 1;
   const womensNextNumber = womensEnteredCount + 1;
@@ -618,8 +672,13 @@ export default function HostControl() {
   const mensNextOwner = getPlayerName(mensNumbers.find(n => n.number === mensNextNumber)?.assigned_to_player_id || null);
   const womensNextOwner = getPlayerName(womensNumbers.find(n => n.number === womensNextNumber)?.assigned_to_player_id || null);
 
-  // Calculate durations for active wrestlers
-  const getDuration = (entryTimestamp: string) => {
+  // Combine platform entrants with surprise entrants
+  const allMensEntrants = useMemo(() => [...mensEntrants, ...mensSurpriseEntrants], [mensEntrants, mensSurpriseEntrants]);
+  const allWomensEntrants = useMemo(() => [...womensEntrants, ...womensSurpriseEntrants], [womensEntrants, womensSurpriseEntrants]);
+
+  // Calculate durations for active wrestlers (handle null timestamp)
+  const getDuration = (entryTimestamp: string | null) => {
+    if (!entryTimestamp) return 0;
     return Math.floor((Date.now() - new Date(entryTimestamp).getTime()) / 1000);
   };
 
@@ -742,9 +801,12 @@ export default function HostControl() {
             <RumbleEntryControl
               nextNumber={mensNextNumber}
               ownerName={mensNextOwner}
-              entrants={mensEntrants}
+              entrants={allMensEntrants}
               enteredCount={mensEnteredCount}
               onConfirmEntry={(wrestler) => handleConfirmEntry("mens", wrestler)}
+              matchStarted={mensMatchStarted}
+              onStartMatch={() => handleStartMatch("mens")}
+              onAddSurprise={(name) => handleAddSurprise("mens", name)}
             />
 
             <div className="space-y-2">
@@ -781,9 +843,12 @@ export default function HostControl() {
             <RumbleEntryControl
               nextNumber={womensNextNumber}
               ownerName={womensNextOwner}
-              entrants={womensEntrants}
+              entrants={allWomensEntrants}
               enteredCount={womensEnteredCount}
               onConfirmEntry={(wrestler) => handleConfirmEntry("womens", wrestler)}
+              matchStarted={womensMatchStarted}
+              onStartMatch={() => handleStartMatch("womens")}
+              onAddSurprise={(name) => handleAddSurprise("womens", name)}
             />
 
             <div className="space-y-2">

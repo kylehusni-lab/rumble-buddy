@@ -11,6 +11,7 @@ interface ActiveWrestlerCardProps {
 }
 
 function formatDuration(seconds: number): string {
+  if (seconds === 0) return "Awaiting start";
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
