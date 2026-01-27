@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Bell, Sparkles } from "lucide-react";
-import { isUnconfirmedEntrant, getEntrantDisplayName } from "@/lib/entrant-utils";
+import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
 import { cn } from "@/lib/utils";
 
 interface RumbleEntryControlProps {
@@ -44,7 +44,7 @@ export function RumbleEntryControl({
   // Alphabetize and filter entrants
   const filteredEntrants = useMemo(() => {
     return [...entrants]
-      .sort((a, b) => a.localeCompare(b))
+      .sort(sortEntrants)
       .filter((name) =>
         name.toLowerCase().includes(searchQuery.toLowerCase())
       );

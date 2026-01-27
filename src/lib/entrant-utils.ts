@@ -20,3 +20,18 @@ export function getEntrantDisplayName(name: string): string {
 export function getEntrantRawName(name: string): string {
   return name;
 }
+
+/**
+ * Sort entrants alphabetically, ignoring the * prefix for unconfirmed entrants
+ * Keeps "Surprise" entries at the end
+ */
+export function sortEntrants(a: string, b: string): number {
+  // Keep "Surprise/Other Entrant" at the end
+  if (a.includes("Surprise")) return 1;
+  if (b.includes("Surprise")) return -1;
+  
+  // Compare by display name (strips * prefix)
+  const nameA = getEntrantDisplayName(a);
+  const nameB = getEntrantDisplayName(b);
+  return nameA.localeCompare(nameB);
+}

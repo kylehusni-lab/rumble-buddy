@@ -4,7 +4,7 @@ import { Crown, Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
-import { isUnconfirmedEntrant, getEntrantDisplayName } from "@/lib/entrant-utils";
+import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import confetti from "canvas-confetti";
@@ -34,11 +34,7 @@ export function RumbleWinnerCard({
   // Filter and alphabetize, keeping "Surprise/Other Entrant" at the end
   const filteredEntrants = entrants
     .filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => {
-      if (a.includes("Surprise")) return 1;
-      if (b.includes("Surprise")) return -1;
-      return a.localeCompare(b);
-    });
+    .sort(sortEntrants);
 
   const handleSelect = (wrestler: string) => {
     if (disabled) return;

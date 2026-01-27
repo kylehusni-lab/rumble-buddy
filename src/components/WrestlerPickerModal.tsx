@@ -4,6 +4,7 @@ import { X, Search, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import { sortEntrants } from "@/lib/entrant-utils";
 import confetti from "canvas-confetti";
 
 interface WrestlerPickerModalProps {
@@ -28,9 +29,11 @@ export function WrestlerPickerModal({
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredWrestlers = useMemo(() => {
-    if (!searchQuery.trim()) return wrestlers;
-    const query = searchQuery.toLowerCase();
-    return wrestlers.filter((name) => name.toLowerCase().includes(query));
+    const query = searchQuery.toLowerCase().trim();
+    const filtered = query
+      ? wrestlers.filter((name) => name.toLowerCase().includes(query))
+      : wrestlers;
+    return [...filtered].sort(sortEntrants);
   }, [wrestlers, searchQuery]);
 
   const handleSelect = (wrestler: string) => {
