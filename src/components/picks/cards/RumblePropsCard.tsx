@@ -277,7 +277,9 @@ export function RumblePropsCard({
                         "relative w-[60px] h-[60px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
                         isSelected
                           ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
-                          : "border-transparent"
+                          : isUnconfirmedEntrant(wrestler)
+                            ? "border-dashed border-muted-foreground/50"
+                            : "border-transparent"
                       )}
                     >
                       <img

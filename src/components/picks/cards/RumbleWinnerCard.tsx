@@ -107,7 +107,9 @@ export function RumbleWinnerCard({
                     "relative w-[70px] h-[70px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
                     isSelected
                       ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
-                      : "border-transparent"
+                      : isUnconfirmedEntrant(wrestler)
+                        ? "border-dashed border-muted-foreground/50"
+                        : "border-transparent"
                   )}
                 >
                   <img

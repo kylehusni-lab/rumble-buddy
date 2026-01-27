@@ -124,7 +124,6 @@ export const DEFAULT_WOMENS_ENTRANTS = [
   'Asuka',
   // Unconfirmed (prefixed with *)
   '*Bianca Belair',
-  '*Naomi',
   '*Natalya',
   '*Tiffany Stratton',
   '*Michin',
