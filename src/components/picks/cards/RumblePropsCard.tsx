@@ -158,8 +158,8 @@ export function RumblePropsCard({
 
       <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
         <div className="space-y-3 sm:space-y-4 pb-20">
-          {/* Wrestler Props Grid - responsive layout */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+          {/* Wrestler Props Grid - 2 columns on mobile, 3 on larger screens */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             {RUMBLE_PROPS.map((prop) => {
               const matchId = getMatchId(prop.id);
               const selectedWrestler = values[matchId];
@@ -175,31 +175,31 @@ export function RumblePropsCard({
                   onClick={() => openPicker(matchId)}
                   disabled={disabled}
                   className={cn(
-                    "p-3 rounded-xl border text-left transition-all",
+                    "p-3 sm:p-4 rounded-xl border text-left transition-all",
                     selectedWrestler 
                       ? "border-primary bg-primary/10" 
                       : "border-border bg-card hover:border-primary/50"
                   )}
                 >
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-2">
                     {(() => {
                       const Icon = PROP_ICONS[prop.id] || Target;
                       return <Icon className="w-4 h-4 text-primary flex-shrink-0" />;
                     })()}
-                    <span className="text-xs font-medium text-foreground truncate">{prop.title}</span>
+                    <span className="text-xs sm:text-sm font-medium text-foreground">{prop.title}</span>
                   </div>
                   {selectedWrestler ? (
                     <div className="flex items-center gap-2">
                       <img
                         src={getWrestlerImageUrl(getEntrantDisplayName(selectedWrestler))}
                         alt={getEntrantDisplayName(selectedWrestler)}
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0 border border-primary"
                         onError={(e) => {
                           e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(selectedWrestler));
                         }}
                       />
                       <span className={cn(
-                        "text-sm font-medium truncate flex-1",
+                        "text-xs sm:text-sm font-medium truncate flex-1",
                         isUnconfirmedEntrant(selectedWrestler) && "italic opacity-80"
                       )}>
                         {getEntrantDisplayName(selectedWrestler)}
@@ -207,7 +207,7 @@ export function RumblePropsCard({
                       <Check className="w-4 h-4 text-primary flex-shrink-0" />
                     </div>
                   ) : (
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">
                       Tap to pick • +{points}
                     </div>
                   )}
