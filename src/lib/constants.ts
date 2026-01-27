@@ -42,6 +42,28 @@ export const MATCH_IDS = {
   WOMENS_PROP_4: 'womens_chaos_prop_4',
   WOMENS_PROP_5: 'womens_chaos_prop_5',
   WOMENS_PROP_6: 'womens_chaos_prop_6',
+  // Men's Rumble Props
+  MENS_FIRST_ELIMINATION: 'mens_first_elimination',
+  MENS_MOST_ELIMINATIONS: 'mens_most_eliminations',
+  MENS_LONGEST_TIME: 'mens_longest_time',
+  MENS_FINAL_FOUR_1: 'mens_final_four_1',
+  MENS_FINAL_FOUR_2: 'mens_final_four_2',
+  MENS_FINAL_FOUR_3: 'mens_final_four_3',
+  MENS_FINAL_FOUR_4: 'mens_final_four_4',
+  MENS_ENTRANT_1: 'mens_entrant_1',
+  MENS_ENTRANT_30: 'mens_entrant_30',
+  MENS_NO_SHOW: 'mens_no_show',
+  // Women's Rumble Props
+  WOMENS_FIRST_ELIMINATION: 'womens_first_elimination',
+  WOMENS_MOST_ELIMINATIONS: 'womens_most_eliminations',
+  WOMENS_LONGEST_TIME: 'womens_longest_time',
+  WOMENS_FINAL_FOUR_1: 'womens_final_four_1',
+  WOMENS_FINAL_FOUR_2: 'womens_final_four_2',
+  WOMENS_FINAL_FOUR_3: 'womens_final_four_3',
+  WOMENS_FINAL_FOUR_4: 'womens_final_four_4',
+  WOMENS_ENTRANT_1: 'womens_entrant_1',
+  WOMENS_ENTRANT_30: 'womens_entrant_30',
+  WOMENS_NO_SHOW: 'womens_no_show',
 } as const;
 
 export const DEFAULT_MENS_ENTRANTS = [
@@ -97,6 +119,13 @@ export const SCORING = {
   IRON_MAN: 20,
   FINAL_FOUR: 10,
   JOBBER_PENALTY: -10,
+  // Rumble Props
+  FIRST_ELIMINATION: 10,
+  MOST_ELIMINATIONS: 20,
+  LONGEST_TIME: 20,
+  FINAL_FOUR_PICK: 10,
+  ENTRANT_GUESS: 15,
+  NO_SHOW_PROP: 10,
 } as const;
 
 export const EVENT_INFO = {
@@ -106,14 +135,28 @@ export const EVENT_INFO = {
   date: 'February 1, 2026',
 } as const;
 
+// Rumble Props configuration
+export const RUMBLE_PROPS = [
+  { id: 'first_elimination', title: 'First Eliminated', question: 'Who gets eliminated first?', type: 'wrestler' as const },
+  { id: 'most_eliminations', title: 'Most Eliminations', question: 'Who has the most eliminations?', type: 'wrestler' as const },
+  { id: 'longest_time', title: 'Iron Man/Woman', question: 'Who lasts longest in the ring?', type: 'wrestler' as const },
+  { id: 'entrant_1', title: '#1 Entrant', question: 'Who enters at #1?', type: 'wrestler' as const },
+  { id: 'entrant_30', title: '#30 Entrant', question: 'Who enters at #30?', type: 'wrestler' as const },
+  { id: 'no_show', title: 'No-Show', question: 'Will anyone not make it to the ring?', type: 'yesno' as const },
+] as const;
+
+export const FINAL_FOUR_SLOTS = 4;
+
 // Card configuration for the swipeable pick flow
 export const CARD_CONFIG = [
   { type: 'match', id: 'undercard_1', title: 'Drew McIntyre vs Sami Zayn', options: ['Drew McIntyre', 'Sami Zayn'] },
   { type: 'match', id: 'undercard_2', title: 'CM Punk vs Seth Rollins', options: ['CM Punk', 'Seth Rollins'] },
   { type: 'match', id: 'undercard_3', title: 'AJ Styles vs Gunther', options: ['AJ Styles', 'Gunther'] },
   { type: 'rumble-winner', id: 'mens_rumble_winner', title: "Men's Royal Rumble Winner", gender: 'mens' },
+  { type: 'rumble-props', id: 'mens_rumble_props', title: "Men's Rumble Props", gender: 'mens' },
   { type: 'chaos-props', id: 'mens_chaos_props', title: "Men's Rumble Chaos Props", gender: 'mens' },
   { type: 'rumble-winner', id: 'womens_rumble_winner', title: "Women's Royal Rumble Winner", gender: 'womens' },
+  { type: 'rumble-props', id: 'womens_rumble_props', title: "Women's Rumble Props", gender: 'womens' },
   { type: 'chaos-props', id: 'womens_chaos_props', title: "Women's Rumble Chaos Props", gender: 'womens' },
 ] as const;
 
