@@ -1,55 +1,51 @@
 
-# Host Party Participation Feature
+
+# Demo Mode Feature
 
 ## Overview
 
-This plan enables hosts to easily join their own party and make picks by routing them through the same player registration flow after party creation. This keeps the "Create Party" and "Join Party" experiences consistent.
+Add a "Demo Mode" button to the Index page that creates a pre-configured party with 6 guests, complete with picks and ready for testing TV mode and other features.
 
-## Current Problem
+## What Gets Seeded
 
-When a host creates a party:
-- They are stored as `host_session_id` in the `parties` table
-- Their localStorage session has `isHost: true` but **no `playerId`**
-- They are NOT added to the `players` table
-- The picks page requires a `playerId` to save picks
-- **Result**: Hosts cannot participate in their own party
+| Data Type | Count | Details |
+|-----------|-------|---------|
+| Party | 1 | Demo party with code like "DEMO" or random 4-digit |
+| Players | 6 | Demo Host + 5 guests with fun wrestling-themed names |
+| Picks | 7 per player (42 total) | Random picks for all 7 pick cards |
 
-## Proposed Solution
+## Demo Guest Names
 
-Route the host through the player registration flow immediately after party creation, then to the Host Setup page.
+Using fun wrestling-themed names:
+1. Demo Host (you)
+2. Randy Savage
+3. Macho Man
+4. Hulk Hogan
+5. Stone Cold
+6. The Rock
 
-### User Flow (Updated)
+## User Flow
 
 ```text
 Index Page
     |
     v
-"Create Party" clicked
+"Try Demo Mode" button (secondary style, below main buttons)
     |
     v
-Party created in database
+Creates demo party automatically
+Creates demo host as player
+Creates 5 additional demo guests with picks
     |
     v
-/player/join?code=XXXX&host=true  <-- NEW: Host goes through join flow
+Redirects to /host/setup/{code}
     |
     v
-Host enters name + email (same as regular players)
-    |
-    v
-Host added to players table with playerId
-    |
-    v
-/host/setup/XXXX  <-- Redirected to host setup (not player picks)
+Host can:
+- Open TV Display (fully populated leaderboard)
+- Start Event (distributes numbers)
+- Use Host Control features
 ```
-
-### Key Behaviors
-
-| Scenario | Behavior |
-|----------|----------|
-| Host creates party | Goes to PlayerJoin with `?host=true` flag |
-| Host submits join form | Creates player record, then redirects to Host Setup |
-| Regular player joins | Same flow as before, redirects to Player Picks |
-| Host returns later | Can access both Host Setup/Control AND Player Dashboard |
 
 ## File Changes
 
@@ -57,137 +53,200 @@ Host added to players table with playerId
 
 | File | Changes |
 |------|---------|
-| `src/pages/Index.tsx` | Change redirect from `/host/setup/{code}` to `/player/join?code={code}&host=true` |
-| `src/pages/PlayerJoin.tsx` | Detect `host=true` param and redirect to `/host/setup/{code}` after registration |
-| `src/components/host/QuickActionsSheet.tsx` | Add "Make My Picks" action to let host access player picks/dashboard |
+| `src/pages/Index.tsx` | Add "Try Demo Mode" button and seeding logic |
+| `src/lib/constants.ts` | Add demo guest names constant (optional) |
 
-### QuickActionsSheet Updates
+## Technical Implementation
 
-Add two new actions for host participation:
-
-1. **"Make My Picks"** - Takes host to `/player/picks/{code}` (pre-event) or `/player/dashboard/{code}` (live)
-2. **"My Dashboard"** - Takes host to their player dashboard to see their numbers, points, etc.
-
-## Technical Details
-
-### Index.tsx Changes
+### Demo Seeding Logic
 
 ```typescript
-// Before:
-navigate(`/host/setup/${partyCode}`);
-
-// After:
-navigate(`/player/join?code=${partyCode}&host=true`);
-```
-
-### PlayerJoin.tsx Changes
-
-```typescript
-const isHostJoining = searchParams.get("host") === "true";
-
-// In handleSubmit, after creating/updating player:
-setPlayerSession({
-  sessionId,
-  playerId,
-  partyCode,
-  displayName: displayName.trim(),
-  email: email.toLowerCase().trim(),
-  isHost: isHostJoining, // Set isHost based on URL param
-});
-
-// Redirect logic:
-if (isHostJoining) {
-  // Host goes to setup page after registering
-  navigate(`/host/setup/${partyCode}`);
-} else if (partyStatus === "live") {
-  navigate(`/player/dashboard/${partyCode}`);
-} else {
-  navigate(`/player/picks/${partyCode}`);
-}
-```
-
-### QuickActionsSheet.tsx Updates
-
-Add new actions array entries:
-
-```typescript
-{
-  icon: ClipboardList, // or UserCircle
-  title: "Make My Picks",
-  subtitle: "Submit your predictions",
-  onClick: handleMakeMyPicks,
-},
-{
-  icon: Trophy,
-  title: "My Dashboard", 
-  subtitle: "View your numbers & points",
-  onClick: handleMyDashboard,
-},
-```
-
-Handler functions:
-
-```typescript
-const handleMakeMyPicks = () => {
-  // Check if player session exists
-  const session = getPlayerSession();
-  if (session?.playerId) {
-    navigate(`/player/picks/${code}`);
-  } else {
-    toast.info("Please join the party first");
-    navigate(`/player/join?code=${code}&host=true`);
+const handleDemoMode = async () => {
+  setIsCreating(true);
+  
+  try {
+    const sessionId = getSessionId();
+    const demoCode = await generatePartyCode(); // Use same function
+    
+    // 1. Create demo party
+    await supabase.from("parties").insert({
+      code: demoCode,
+      host_session_id: sessionId,
+      status: "pre_event",
+    });
+    
+    // 2. Create demo host as player first
+    const { data: hostPlayer } = await supabase
+      .from("players")
+      .insert({
+        party_code: demoCode,
+        email: "demo-host@example.com",
+        display_name: "Demo Host",
+        session_id: sessionId,
+      })
+      .select("id")
+      .single();
+    
+    // 3. Create 5 demo guests
+    const demoGuests = [
+      { name: "Randy Savage", email: "randy@example.com" },
+      { name: "Macho Man", email: "macho@example.com" },
+      { name: "Hulk Hogan", email: "hulk@example.com" },
+      { name: "Stone Cold", email: "stone@example.com" },
+      { name: "The Rock", email: "rock@example.com" },
+    ];
+    
+    const guestInserts = demoGuests.map(g => ({
+      party_code: demoCode,
+      email: g.email,
+      display_name: g.name,
+      session_id: crypto.randomUUID(), // Random session for each
+    }));
+    
+    const { data: guests } = await supabase
+      .from("players")
+      .insert(guestInserts)
+      .select("id");
+    
+    // 4. Generate random picks for all players
+    const allPlayerIds = [hostPlayer.id, ...guests.map(g => g.id)];
+    await generateDemoPicksForPlayers(allPlayerIds, demoCode);
+    
+    // 5. Set session and redirect
+    setPlayerSession({
+      sessionId,
+      playerId: hostPlayer.id,
+      partyCode: demoCode,
+      displayName: "Demo Host",
+      email: "demo-host@example.com",
+      isHost: true,
+    });
+    
+    // Skip PIN for demo - auto-store a PIN
+    localStorage.setItem(`party_${demoCode}_pin`, "0000");
+    
+    toast.success("Demo party created!");
+    navigate(`/host/setup/${demoCode}`);
+    
+  } catch (err) {
+    console.error("Error creating demo:", err);
+    toast.error("Failed to create demo party");
+  } finally {
+    setIsCreating(false);
   }
-  onOpenChange(false);
-};
-
-const handleMyDashboard = () => {
-  const session = getPlayerSession();
-  if (session?.playerId) {
-    navigate(`/player/dashboard/${code}`);
-  } else {
-    toast.info("Please join the party first");
-    navigate(`/player/join?code=${code}&host=true`);
-  }
-  onOpenChange(false);
 };
 ```
 
-## Edge Cases Handled
+### Pick Generation Logic
 
-| Scenario | Handling |
-|----------|----------|
-| Host created party before this change | Quick Actions shows "Make My Picks" which routes them to join flow with `host=true` |
-| Host tries to re-register | PlayerJoin detects existing email and updates session (existing behavior) |
-| Host loses session | Can re-join via Quick Actions or join party modal with same email |
-| Party status is "live" | Host can still access dashboard via Quick Actions |
-
-## UI Considerations
-
-- The join form looks identical for hosts and regular players
-- Form title could optionally say "Join Your Party" for hosts
-- The only difference is the redirect destination after submission
-- Quick Actions menu provides easy access to player features from host screens
-
-## Session Data Structure
-
-After implementation, a host's session will contain all fields:
+Each player needs 7 picks covering all card types:
 
 ```typescript
-{
-  sessionId: "uuid",
-  playerId: "uuid",      // Now populated for hosts
-  partyCode: "1234",
-  displayName: "Host Name",
-  email: "host@example.com",
-  isHost: true
-}
+const generateDemoPicksForPlayers = async (playerIds: string[], partyCode: string) => {
+  const picks = [];
+  
+  // Get platform entrants for rumble winner picks
+  const mensEntrants = DEFAULT_MENS_ENTRANTS; // or fetch from platform_config
+  const womensEntrants = DEFAULT_WOMENS_ENTRANTS;
+  
+  for (const playerId of playerIds) {
+    // Undercard matches (3 picks)
+    UNDERCARD_MATCHES.forEach(match => {
+      picks.push({
+        player_id: playerId,
+        match_id: match.id,
+        prediction: match.options[Math.random() > 0.5 ? 0 : 1],
+      });
+    });
+    
+    // Men's Rumble Winner (1 pick)
+    picks.push({
+      player_id: playerId,
+      match_id: "mens_rumble_winner",
+      prediction: mensEntrants[Math.floor(Math.random() * mensEntrants.length)],
+    });
+    
+    // Women's Rumble Winner (1 pick)
+    picks.push({
+      player_id: playerId,
+      match_id: "womens_rumble_winner",
+      prediction: womensEntrants[Math.floor(Math.random() * womensEntrants.length)],
+    });
+    
+    // Men's Chaos Props (6 picks bundled as 1 card type)
+    CHAOS_PROPS.forEach((prop, i) => {
+      picks.push({
+        player_id: playerId,
+        match_id: `mens_chaos_prop_${i + 1}`,
+        prediction: Math.random() > 0.5 ? "yes" : "no",
+      });
+    });
+    
+    // Women's Chaos Props (6 picks bundled as 1 card type)
+    CHAOS_PROPS.forEach((prop, i) => {
+      picks.push({
+        player_id: playerId,
+        match_id: `womens_chaos_prop_${i + 1}`,
+        prediction: Math.random() > 0.5 ? "yes" : "no",
+      });
+    });
+  }
+  
+  await supabase.from("picks").insert(picks);
+};
 ```
 
-This allows hosts to use all player features while retaining host privileges.
+## UI Design
 
-## Benefits
+### Demo Button Placement
 
-1. **Consistency** - Same registration flow for everyone
-2. **Simplicity** - No separate host registration system
-3. **Full participation** - Hosts get numbers, can make picks, see their dashboard
-4. **Backward compatible** - Existing hosts can join via Quick Actions
+```text
++---------------------------+
+|      ROYAL RUMBLE         |
+|       2026 LOGO           |
++---------------------------+
+|      [Countdown Timer]    |
++---------------------------+
+|  [ 👑 Create Party ]      |  <-- Primary gold button
++---------------------------+
+|  [ 👥 Join Party ]        |  <-- Secondary purple button
++---------------------------+
+|                           |
+|   [ 🧪 Try Demo Mode ]    |  <-- Tertiary ghost/outline button
+|                           |
+|   No signup required      |
++---------------------------+
+```
+
+### Button Styling
+
+The demo button should be styled as a less prominent option:
+- Use `variant="ghost"` or `variant="outline"`
+- Smaller size (`size="default"` vs `size="xl"`)
+- Subtle icon like `Beaker` or `TestTube2` from Lucide
+
+## What Demo Mode Enables
+
+Once created, the demo party allows testing:
+
+1. **TV Display** - Shows 6 players on leaderboard, ready for number reveal
+2. **Host Setup** - All 6 guests appear with complete picks
+3. **Start Event** - Distributes numbers to all demo guests
+4. **Host Control** - Full scoring, eliminations, and celebrations
+5. **Player Dashboard** - Switch to player view via Quick Actions
+
+## PIN Handling
+
+For demo mode simplicity:
+- Auto-set host PIN to "0000" 
+- Store it in localStorage so host can access immediately
+- No need for PIN verification modal in demo flow
+
+## Implementation Steps
+
+1. Add demo guest names constant
+2. Create `generateDemoPicksForPlayers` utility function
+3. Add `handleDemoMode` handler in Index.tsx
+4. Add demo mode button to Index.tsx UI
+5. Auto-store demo PIN for instant host access
+
