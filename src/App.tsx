@@ -12,6 +12,8 @@ import HostVerifyPin from "./pages/HostVerifyPin";
 import HostSetup from "./pages/HostSetup";
 import HostControl from "./pages/HostControl";
 import TvDisplay from "./pages/TvDisplay";
+import PlatformAdmin from "./pages/PlatformAdmin";
+import PlatformAdminVerify from "./pages/PlatformAdminVerify";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/host/setup/:code" element={<HostSetup />} />
           <Route path="/host/control/:code" element={<HostControl />} />
           <Route path="/tv/:code" element={<TvDisplay />} />
+          <Route path="/platform-admin" element={<PlatformAdmin />} />
+          <Route path="/platform-admin/verify" element={<PlatformAdminVerify />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

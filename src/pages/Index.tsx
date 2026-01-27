@@ -7,7 +7,7 @@ import { Logo } from "@/components/Logo";
 import { JoinPartyModal } from "@/components/JoinPartyModal";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
-import { DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS, EVENT_CONFIG } from "@/lib/constants";
+import { EVENT_CONFIG } from "@/lib/constants";
 import { toast } from "sonner";
 
 interface TimeRemaining {
@@ -92,8 +92,6 @@ export default function Index() {
         code: partyCode,
         host_session_id: sessionId,
         status: "pre_event",
-        mens_rumble_entrants: DEFAULT_MENS_ENTRANTS,
-        womens_rumble_entrants: DEFAULT_WOMENS_ENTRANTS,
       });
 
       if (error) throw error;
