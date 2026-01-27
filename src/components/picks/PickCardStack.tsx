@@ -283,9 +283,9 @@ export function PickCardStack({
         onJumpToCard={setCurrentCardIndex}
       />
 
-      {/* Party Code & Name */}
+      {/* Group Code & Name */}
       <div className="text-center py-2 border-b border-border">
-        <div className="text-sm text-muted-foreground">Party {partyCode}</div>
+        <div className="text-sm text-muted-foreground">Group {partyCode}</div>
         <div className="font-bold text-primary">Hey {displayName}!</div>
       </div>
 

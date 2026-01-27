@@ -76,7 +76,7 @@ export default function HostVerifyPin() {
       }
 
       if (!data) {
-        setError("Party not found.");
+        setError("Group not found.");
         clearInputs();
         return;
       }
@@ -174,7 +174,7 @@ export default function HostVerifyPin() {
         )}
 
         <p className="text-xs text-muted-foreground mt-8">
-          Party Code: <span className="font-bold text-primary">{code}</span>
+          Group Code: <span className="font-bold text-primary">{code}</span>
         </p>
       </motion.div>
     </div>

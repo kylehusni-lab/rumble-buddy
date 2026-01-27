@@ -447,7 +447,7 @@ export default function PlayerDashboard() {
               <ArrowLeft size={22} />
             </button>
             <div className="text-center flex-1 min-w-0 px-3">
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">Party {code}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">Group {code}</div>
               <div className="font-bold truncate text-[15px]">{session?.displayName}</div>
             </div>
             <div className="text-right">
