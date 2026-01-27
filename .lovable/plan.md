@@ -1,86 +1,187 @@
 
+# Bottom Nav Badges + Demo Seeder Enhancement
 
-# Simplify Gold Button Styling
+## Overview
 
-## Problem
-
-The `gold` and `hero` button variants use a `gold-shimmer` CSS class that applies a continuously looping gradient animation. This creates a "shaky" or distracting appearance that conflicts with the preference for clean, purposeful UI.
-
-## Current State
-
-**Button variants using shimmer:**
-- `gold`: Used for standard gold-styled buttons
-- `hero`: Used for large call-to-action buttons (like "Start Party" on the home page)
-
-**The shimmer effect:**
-```css
-.gold-shimmer {
-  background: linear-gradient(110deg, gold1, gold2, gold1, gold1);
-  background-size: 200% 100%;
-  animation: shimmer 3s ease-in-out infinite;
-}
-```
-
-This constantly animates the background position, creating movement.
+Two enhancements:
+1. **Nav Tab Badges** - Show correct/pending pick counts on each bottom nav tab
+2. **Demo Seeder Update** - Add Kyle (kyle.husni@gmail.com) as the host player in demo mode
 
 ---
 
-## Solution
+## Part 1: Bottom Navigation Badges
 
-Remove the shimmer animation and replace with a clean, static gold gradient that still looks premium but doesn't move. Keep a subtle hover effect for interactivity.
+### Current State
+The `BottomNavBar` component shows tabs but no indication of pick status per category.
 
----
+### Solution
+Pass pick statistics to `BottomNavBar` and display small badge indicators:
+- **Green badge** - Number of correct picks in that tab
+- **Gray/pending indicator** - Shows "X pending" if results aren't in yet
 
-## Changes
+### Match ID Groupings per Tab
 
-### File: `src/index.css`
+**Matches Tab (5 picks):**
+- `undercard_1`, `undercard_2`, `undercard_3`
+- `mens_rumble_winner`, `womens_rumble_winner`
 
-**Replace the shimmer class with a static gold gradient:**
+**Men's Tab (10 picks):**
+- `mens_first_elimination`, `mens_most_eliminations`, `mens_longest_time`
+- `mens_entrant_1`, `mens_entrant_30`
+- `mens_final_four_1` through `mens_final_four_4`
+- `mens_no_show`
 
-```css
-/* Before */
-.gold-shimmer {
-  background: linear-gradient(110deg, ...);
-  background-size: 200% 100%;
-  animation: shimmer 3s ease-in-out infinite;
+**Women's Tab (10 picks):**
+- Same pattern with `womens_` prefix
+
+**Chaos Tab (12 picks):**
+- `mens_chaos_prop_1` through `mens_chaos_prop_6`
+- `womens_chaos_prop_1` through `womens_chaos_prop_6`
+
+### Implementation
+
+**File: `src/components/dashboard/BottomNavBar.tsx`**
+
+Add optional badge props:
+
+```typescript
+interface TabBadge {
+  correct: number;
+  pending: number;
 }
 
-/* After */
-.gold-shimmer {
-  background: linear-gradient(
-    135deg,
-    hsl(43 85% 58%) 0%,
-    hsl(43 75% 52%) 50%,
-    hsl(38 80% 48%) 100%
-  );
+interface BottomNavBarProps {
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
+  showNumbers?: boolean;
+  badges?: Record<TabId, TabBadge>;
 }
 ```
 
-**Remove the shimmer keyframes** (no longer needed):
-```css
-/* DELETE this entire block */
-@keyframes shimmer {
-  0%, 100% { background-position: 200% 0; }
-  50% { background-position: -200% 0; }
-}
+Render badges inside each tab button:
+- If `correct > 0`, show green badge with checkmark and count
+- If `pending > 0` and no correct, show subtle pending indicator
+
+**File: `src/pages/PlayerDashboard.tsx`**
+
+Add a helper function to calculate badges from picks and results:
+
+```typescript
+const calculateBadges = (picks: Pick[], results: MatchResult[]) => {
+  const TAB_MATCH_IDS: Record<TabId, string[]> = {
+    numbers: [], // Numbers don't have picks
+    matches: ['undercard_1', 'undercard_2', 'undercard_3', 'mens_rumble_winner', 'womens_rumble_winner'],
+    mens: ['mens_first_elimination', 'mens_most_eliminations', 'mens_longest_time', 'mens_entrant_1', 'mens_entrant_30', 'mens_final_four_1', 'mens_final_four_2', 'mens_final_four_3', 'mens_final_four_4', 'mens_no_show'],
+    womens: ['womens_first_elimination', 'womens_most_eliminations', 'womens_longest_time', 'womens_entrant_1', 'womens_entrant_30', 'womens_final_four_1', 'womens_final_four_2', 'womens_final_four_3', 'womens_final_four_4', 'womens_no_show'],
+    chaos: ['mens_chaos_prop_1', 'mens_chaos_prop_2', 'mens_chaos_prop_3', 'mens_chaos_prop_4', 'mens_chaos_prop_5', 'mens_chaos_prop_6', 'womens_chaos_prop_1', 'womens_chaos_prop_2', 'womens_chaos_prop_3', 'womens_chaos_prop_4', 'womens_chaos_prop_5', 'womens_chaos_prop_6'],
+  };
+  
+  // For each tab, count correct and pending picks
+  const badges: Record<TabId, TabBadge> = {};
+  for (const [tabId, matchIds] of Object.entries(TAB_MATCH_IDS)) {
+    let correct = 0;
+    let pending = 0;
+    
+    for (const matchId of matchIds) {
+      const pick = picks.find(p => p.match_id === matchId);
+      const result = results.find(r => r.match_id === matchId);
+      
+      if (!pick) continue;
+      if (!result) {
+        pending++;
+      } else if (pick.prediction === result.result) {
+        correct++;
+      }
+    }
+    
+    badges[tabId as TabId] = { correct, pending };
+  }
+  
+  return badges;
+};
 ```
 
-### File: `src/components/ui/button.tsx`
+Pass badges to BottomNavBar:
+```typescript
+<BottomNavBar 
+  activeTab={activeTab} 
+  onTabChange={setActiveTab}
+  showNumbers={showNumbers}
+  badges={calculateBadges(picks, results)}
+/>
+```
 
-**Update gold button hover effect for subtle feedback:**
-
-The existing hover effects (`hover:shadow-[...]` and `hover:scale-[1.02]`) will still provide good visual feedback without the constant animation.
-
-No changes needed here - the button file is already fine once the CSS shimmer is removed.
+### Badge Visual Design
+- Small circular badge positioned at top-right of the icon container
+- Green background for correct picks (`bg-success`)
+- Muted gray for pending (`bg-muted`)
+- Size: ~16px diameter with small text
 
 ---
 
-## Visual Result
+## Part 2: Demo Seeder Enhancement
 
-| State | Before | After |
-|-------|--------|-------|
-| Idle | Constantly animating gradient | Clean static gold gradient |
-| Hover | Glow + scale + animation | Glow + scale (static gradient) |
+### Current State
+Demo mode creates:
+- "Demo Host" (demo-host@demo.local) as the host player
+- 5 wrestling-themed guests (Randy Savage, Hulk Hogan, etc.)
+
+### Solution
+Replace "Demo Host" with Kyle's actual details and update session accordingly.
+
+### Implementation
+
+**File: `src/lib/demo-seeder.ts`**
+
+Update the host creation in `seedDemoParty`:
+
+```typescript
+// Before
+const { data: hostPlayer, error: hostError } = await supabase
+  .from("players")
+  .insert({
+    party_code: partyCode,
+    email: "demo-host@demo.local",
+    display_name: "Demo Host",
+    session_id: hostSessionId,
+  })
+  
+// After
+const { data: hostPlayer, error: hostError } = await supabase
+  .from("players")
+  .insert({
+    party_code: partyCode,
+    email: "kyle.husni@gmail.com",
+    display_name: "Kyle",
+    session_id: hostSessionId,
+  })
+```
+
+**File: `src/pages/Index.tsx`**
+
+Update the session after demo seeding:
+
+```typescript
+// Before
+setPlayerSession({
+  sessionId,
+  playerId: hostPlayerId,
+  partyCode: demoCode,
+  displayName: "Demo Host",
+  email: "demo-host@demo.local",
+  isHost: true,
+});
+
+// After
+setPlayerSession({
+  sessionId,
+  playerId: hostPlayerId,
+  partyCode: demoCode,
+  displayName: "Kyle",
+  email: "kyle.husni@gmail.com",
+  isHost: true,
+});
+```
 
 ---
 
@@ -88,5 +189,19 @@ No changes needed here - the button file is already fine once the CSS shimmer is
 
 | File | Change |
 |------|--------|
-| `src/index.css` | Replace animated shimmer with static gradient, remove keyframes |
+| `src/components/dashboard/BottomNavBar.tsx` | Add `badges` prop and render badge indicators |
+| `src/pages/PlayerDashboard.tsx` | Calculate badges from picks/results and pass to nav |
+| `src/lib/demo-seeder.ts` | Update host to Kyle (kyle.husni@gmail.com) |
+| `src/pages/Index.tsx` | Update session details for demo host |
 
+---
+
+## Technical Notes
+
+### Badge Calculation Logic
+- **Correct**: Pick exists AND result exists AND they match
+- **Pending**: Pick exists AND result does not exist
+- **Incorrect**: Pick exists AND result exists AND they don't match (not shown as badge)
+
+### Numbers Tab
+The Numbers tab doesn't show a badge since it doesn't contain picks - it shows assigned Rumble numbers.
