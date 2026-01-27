@@ -1,149 +1,201 @@
 
-# Fix: TV Display Infinite Reload Loop
+# Add Rumble Prediction Props
 
-## Problem Identified
+## Overview
 
-The `useEffect` hook in `TvDisplay.tsx` (line 72-333) has problematic dependencies that cause an infinite loop:
+Add new Rumble-specific prediction props where players can guess wrestlers for key milestones. These are different from the existing YES/NO "Chaos Props" - most require selecting wrestlers from the entrant list.
+
+---
+
+## New Props Structure
+
+### Per Rumble (Men's & Women's)
+
+| Prop ID | Name | Type | Description |
+|---------|------|------|-------------|
+| `{gender}_first_elimination` | First Eliminated | Wrestler Select | Who gets eliminated first? |
+| `{gender}_most_eliminations` | Most Eliminations | Wrestler Select | Who will have the most eliminations? |
+| `{gender}_longest_time` | Iron Man/Woman | Wrestler Select | Who lasts the longest in the ring? |
+| `{gender}_final_four_1-4` | Final Four | 4x Wrestler Select | Pick 4 wrestlers in Final Four |
+| `{gender}_entrant_1` | #1 Entrant | Wrestler Select | Who enters at #1? |
+| `{gender}_entrant_30` | #30 Entrant | Wrestler Select | Who enters at #30? |
+| `{gender}_no_show` | No-Show | YES/NO | Will anyone not make it to the ring? |
+
+**Total: 10 new predictions per Rumble = 20 new picks overall**
+
+---
+
+## Scoring
+
+| Prediction | Points |
+|------------|--------|
+| First Elimination | +10 |
+| Most Eliminations | +20 |
+| Longest Time | +20 |
+| Final Four (each correct) | +10 |
+| #1 Entrant | +15 |
+| #30 Entrant | +15 |
+| No-Show Prop | +10 |
+
+---
+
+## File Changes
+
+### 1. Constants Update (`src/lib/constants.ts`)
+
+Add new prop definitions and scoring values:
 
 ```typescript
-}, [code, players, partyStatus, mensNumbers, womensNumbers]);
+export const RUMBLE_PROPS = [
+  { id: 'first_elimination', title: 'First Eliminated', question: 'Who gets eliminated first?', type: 'wrestler' },
+  { id: 'most_eliminations', title: 'Most Eliminations', question: 'Who has the most eliminations?', type: 'wrestler' },
+  { id: 'longest_time', title: 'Iron Man/Woman', question: 'Who lasts longest in the ring?', type: 'wrestler' },
+  { id: 'entrant_1', title: '#1 Entrant', question: 'Who enters at #1?', type: 'wrestler' },
+  { id: 'entrant_30', title: '#30 Entrant', question: 'Who enters at #30?', type: 'wrestler' },
+  { id: 'no_show', title: 'No-Show', question: 'Will anyone not make it to the ring?', type: 'yesno' },
+] as const;
+
+export const FINAL_FOUR_SLOTS = 4;
 ```
 
-**What happens:**
-1. `useEffect` runs, sets up realtime subscriptions
-2. Realtime callback fires (e.g., player update)
-3. Callback updates state: `setPlayers(data)` 
-4. `players` is a dependency, so `useEffect` re-runs
-5. Effect cleanup removes the subscription
-6. Effect runs again, re-fetches ALL data including picks
-7. New subscription set up, fires again
-8. Infinite loop → constant loading/resetting
-
----
-
-## Solution
-
-Split the `useEffect` into two separate effects:
-
-### Effect 1: Initial Data Fetch (runs once)
-- Fetch party status, players, numbers, picks, match results
-- Dependencies: `[code]` only
-
-### Effect 2: Realtime Subscriptions (stable reference)
-- Set up all realtime channels
-- Use refs to access current state values in callbacks
-- Dependencies: `[code]` only (or stable function refs)
-
----
-
-## Technical Changes
-
-### File: `src/pages/TvDisplay.tsx`
-
-**Current problematic code (lines 72-333):**
-
-Single massive `useEffect` with state dependencies that cause re-runs.
-
-**Fixed approach:**
+Update MATCH_IDS:
 
 ```typescript
-// Refs to hold current state for use in callbacks
-const playersRef = useRef<Player[]>([]);
-const mensNumbersRef = useRef<RumbleNumber[]>([]);
-const womensNumbersRef = useRef<RumbleNumber[]>([]);
-const partyStatusRef = useRef<string>("pre_event");
-
-// Keep refs in sync with state
-useEffect(() => {
-  playersRef.current = players;
-}, [players]);
-
-useEffect(() => {
-  mensNumbersRef.current = mensNumbers;
-}, [mensNumbers]);
-
-useEffect(() => {
-  womensNumbersRef.current = womensNumbers;
-}, [womensNumbers]);
-
-useEffect(() => {
-  partyStatusRef.current = partyStatus;
-}, [partyStatus]);
-
-// Effect 1: Initial data fetch (runs once per code change)
-useEffect(() => {
-  if (!code) return;
-
-  const fetchData = async () => {
-    // ... fetch party, players, numbers, picks, results
-  };
-
-  fetchData();
-}, [code]); // Only re-run when party code changes
-
-// Effect 2: Realtime subscriptions (stable, no state deps)
-useEffect(() => {
-  if (!code) return;
-
-  // Helper functions that read from refs, not state
-  const getPlayerName = (playerId: string | null) => {
-    if (!playerId) return "Vacant";
-    const player = playersRef.current.find(p => p.id === playerId);
-    return player?.display_name || "Unknown";
-  };
-
-  const checkForFinalFour = (numbers: RumbleNumber[], type: "mens" | "womens") => {
-    // Uses shownCelebrations ref (already exists)
-    // ...
-  };
-
-  const channel = supabase
-    .channel(`tv-display-${code}`)
-    .on("postgres_changes", { ... }, (payload) => {
-      // Update state, but DON'T trigger effect re-run
-      setPlayers(data);
-    })
-    // ... other subscriptions
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [code]); // Only code as dependency
+// Men's Rumble Props
+MENS_FIRST_ELIMINATION: 'mens_first_elimination',
+MENS_MOST_ELIMINATIONS: 'mens_most_eliminations',
+MENS_LONGEST_TIME: 'mens_longest_time',
+MENS_FINAL_FOUR_1: 'mens_final_four_1',
+// ... etc
 ```
 
----
+Update SCORING:
 
-## Changes Summary
+```typescript
+FIRST_ELIMINATION: 10,
+MOST_ELIMINATIONS: 20,
+LONGEST_TIME: 20,
+FINAL_FOUR_PICK: 10,
+ENTRANT_GUESS: 15,
+NO_SHOW_PROP: 10,
+```
 
-| Location | Change |
-|----------|--------|
-| Lines 50-66 | Add refs for players, mensNumbers, womensNumbers, partyStatus |
-| Lines 67-80 | Add 4 small useEffect hooks to sync refs with state |
-| Lines 72-118 | Extract initial fetch into separate useEffect with `[code]` only |
-| Lines 120-333 | Keep realtime subscriptions in separate useEffect with `[code]` only |
-| Line 178-182 | Update `getPlayerName` to use `playersRef.current` |
-| Line 184-203 | Update `checkForFinalFour` to use refs |
-| Lines 277-291 | Update winner celebration to use refs |
-
----
-
-## Root Cause Fix
-
-The key insight is that realtime callbacks should:
-- ✅ Update state (triggers re-render)
-- ❌ NOT cause the subscription effect to re-run
-
-By using refs to access current state values inside callbacks, we break the dependency cycle while still having access to up-to-date data.
+Update CARD_CONFIG to include new card types.
 
 ---
 
-## Testing Checklist
+### 2. New Card Component (`src/components/picks/cards/RumblePropsCard.tsx`)
 
-After fix:
-- [ ] TV Display loads once without constant reloading
-- [ ] Picks panel shows data and stays stable
-- [ ] Realtime updates still work (player joins, match results)
-- [ ] Celebrations still trigger correctly
-- [ ] Navigation between views still works
+Create a new card that handles both wrestler-select and YES/NO props for Rumble predictions:
 
+- Header with icon and progress indicator
+- List of props with:
+  - Wrestler selector button (opens picker modal) for wrestler-type props
+  - YES/NO buttons for no_show prop
+- "Final Four" section with 4 wrestler slots
+- Completion indicator when all filled
+
+---
+
+### 3. Update Pick Card Stack (`src/components/picks/PickCardStack.tsx`)
+
+- Import and render new `RumblePropsCard` component
+- Add new card type handler: `rumble-props`
+- Update submission logic to include new prop types
+- Update completion calculation for the new card type
+
+---
+
+### 4. Update CARD_CONFIG Flow
+
+Change the card flow to:
+
+```typescript
+export const CARD_CONFIG = [
+  // Undercard matches
+  { type: 'match', id: 'undercard_1', ... },
+  { type: 'match', id: 'undercard_2', ... },
+  { type: 'match', id: 'undercard_3', ... },
+  
+  // Men's Rumble
+  { type: 'rumble-winner', id: 'mens_rumble_winner', ... },
+  { type: 'rumble-props', id: 'mens_rumble_props', title: "Men's Rumble Props", gender: 'mens' },
+  { type: 'chaos-props', id: 'mens_chaos_props', ... },
+  
+  // Women's Rumble  
+  { type: 'rumble-winner', id: 'womens_rumble_winner', ... },
+  { type: 'rumble-props', id: 'womens_rumble_props', title: "Women's Rumble Props", gender: 'womens' },
+  { type: 'chaos-props', id: 'womens_chaos_props', ... },
+] as const;
+```
+
+**Total cards: 9 (was 7)**
+
+---
+
+### 5. Host Scoring Updates (`src/pages/HostControl.tsx`)
+
+Add scoring for new prop types:
+
+- **First Elimination**: Auto-score when first wrestler is eliminated
+- **Most Eliminations**: Calculate at Rumble end from elimination data
+- **Longest Time**: Already tracked, score at winner declaration
+- **Final Four**: Score when Final Four milestone is reached
+- **#1/#30 Entrants**: Score when those wrestlers are confirmed
+- **No-Show**: Manual YES/NO button (like chaos props)
+
+Add a new "Rumble Props" section in the Rumble tabs with:
+- Auto-scored props shown with green checkmarks
+- Manual score button for No-Show prop
+
+---
+
+### 6. New Prop Scoring Card (`src/components/host/RumblePropScoringCard.tsx`)
+
+Create component to display Rumble prop status:
+
+- Show predicted wrestler with player's guess
+- Display actual result when scored
+- Indicate auto-scored vs pending
+
+---
+
+## Database Considerations
+
+No schema changes needed - picks are stored with:
+- `match_id`: e.g., `mens_first_elimination`, `mens_final_four_1`
+- `prediction`: wrestler name or "YES"/"NO"
+
+Results stored in `match_results` the same way.
+
+---
+
+## UI Flow Summary
+
+**Player Experience:**
+1. Swipe through undercard matches (3 cards)
+2. Pick Men's Rumble winner
+3. Pick Men's Rumble props (new card with wrestler pickers + Final Four)
+4. Answer Men's Chaos Props (YES/NO questions)
+5. Pick Women's Rumble winner  
+6. Pick Women's Rumble props (new card)
+7. Answer Women's Chaos Props
+8. Submit all picks
+
+**Host Experience:**
+- First Elimination, #1/#30 entrants auto-score when entries/eliminations happen
+- Most Eliminations and Iron Man/Woman calculated at Rumble end
+- Final Four auto-scores when 4 wrestlers remain
+- No-Show has manual YES/NO buttons
+
+---
+
+## Summary
+
+| Change | Files |
+|--------|-------|
+| Add prop definitions | `src/lib/constants.ts` |
+| New Rumble Props card | `src/components/picks/cards/RumblePropsCard.tsx` |
+| Update card stack | `src/components/picks/PickCardStack.tsx` |
+| Host scoring logic | `src/pages/HostControl.tsx` |
+| Scoring display component | `src/components/host/RumblePropScoringCard.tsx` |
