@@ -25,19 +25,34 @@ interface ParticipantPicksViewProps {
   players: Player[];
   picks: Pick[];
   matchResults: MatchResult[];
+  currentMatchId?: string; // Optional override to sync with navigator
 }
 
-export function ParticipantPicksView({ players, picks, matchResults }: ParticipantPicksViewProps) {
+export function ParticipantPicksView({ players, picks, matchResults, currentMatchId }: ParticipantPicksViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Find the current active match
+  // Find the current active match (fallback if no currentMatchId provided)
   const activeMatch = useMemo(() => {
     const completedMatchIds = new Set(matchResults.map(r => r.match_id));
     return UNDERCARD_MATCHES.find(m => !completedMatchIds.has(m.id));
   }, [matchResults]);
 
-  // Get the most recent completed match if no active match
+  // Get the match to display - prioritize currentMatchId if provided
   const displayMatch = useMemo(() => {
+    // If currentMatchId is provided, use it directly
+    if (currentMatchId) {
+      const match = UNDERCARD_MATCHES.find(m => m.id === currentMatchId);
+      if (match) {
+        const result = matchResults.find(r => r.match_id === currentMatchId);
+        return { 
+          match, 
+          isComplete: !!result, 
+          result: result?.result || null 
+        };
+      }
+    }
+    
+    // Fallback to auto-detection
     if (activeMatch) return { match: activeMatch, isComplete: false, result: null };
     
     // Show last completed undercard match
@@ -52,7 +67,7 @@ export function ParticipantPicksView({ players, picks, matchResults }: Participa
     }
     
     return null;
-  }, [activeMatch, matchResults]);
+  }, [currentMatchId, activeMatch, matchResults]);
 
   // Get picks for current match
   const currentPicks = useMemo(() => {

@@ -1,6 +1,8 @@
 // Wrestler data with WWE.com official images
 // Note: URLs may change if WWE updates their website
 
+import samiZaynImage from '@/assets/wrestlers/sami-zayn.webp';
+
 export interface WrestlerData {
   name: string;
   imageUrl: string;
@@ -31,6 +33,8 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'Drew McIntyre', imageUrl: `${WWE_CDN}/all/2021/09/Drew_Mcintyre_Profile--aca391095fe74e721e098cadc93571d3.png`, gender: 'male' },
   { name: 'Randy Orton', imageUrl: `${WWE_CDN}/2025/04/Randy_Orton_Profile.png`, gender: 'male' },
   { name: 'Trick Williams', imageUrl: `${WWE_CDN}/2025/11/Trick_Williams_Profile.png`, gender: 'male' },
+  { name: 'Sami Zayn', imageUrl: samiZaynImage, gender: 'male' },
+  { name: 'Seth Rollins', imageUrl: `${WWE_CDN}/2025/11/Seth_Rollins_Profile.png`, gender: 'male' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'male' },
 ];
 
