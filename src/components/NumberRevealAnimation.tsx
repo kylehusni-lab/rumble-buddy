@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Zap, Film, X } from "lucide-react";
+import { Zap, Film, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
 
 interface PlayerNumbers {
   playerName: string;
@@ -14,7 +15,6 @@ interface NumberRevealAnimationProps {
   onComplete: () => void;
 }
 
-type RevealMode = "instant" | "dramatic";
 type Phase = "choice" | "instant" | "dramatic" | "complete";
 
 export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnimationProps) {
@@ -24,7 +24,6 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
   // Skip button handler
   const handleSkip = () => {
     setPhase("complete");
-    setTimeout(onComplete, 500);
   };
 
   // Mode selection handlers
@@ -36,16 +35,23 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
     setPhase("dramatic");
   };
 
+  // Dedicated effect for completion callback
+  useEffect(() => {
+    if (phase === "complete") {
+      const timer = setTimeout(onComplete, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, onComplete]);
+
   // Instant mode: auto-complete after display
   useEffect(() => {
     if (phase === "instant") {
       const timer = setTimeout(() => {
         setPhase("complete");
-        setTimeout(onComplete, 1500);
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [phase, onComplete]);
+  }, [phase]);
 
   // Dramatic mode: advance through players
   useEffect(() => {
@@ -56,13 +62,12 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
             setCurrentPlayerIndex(prev => prev + 1);
           } else {
             setPhase("complete");
-            setTimeout(onComplete, 1500);
           }
         }, 1500);
         return () => clearTimeout(timer);
       }
     }
-  }, [phase, currentPlayerIndex, players.length, onComplete]);
+  }, [phase, currentPlayerIndex, players.length]);
 
   return (
     <motion.div
@@ -95,7 +100,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <Crown className="mx-auto text-primary mb-6" size={80} />
+            <Logo size="md" className="mx-auto mb-6" />
             <h1 className="text-4xl md:text-5xl font-black mb-3">
               <span className="text-gradient-gold">NUMBER DRAW</span>
             </h1>
@@ -165,7 +170,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">🧔 Men's</div>
+                      <div className="text-xs text-muted-foreground mb-1">Men's</div>
                       <div className="flex flex-wrap gap-1">
                         {player.mensNumbers.map(num => (
                           <span
@@ -178,7 +183,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">👩 Women's</div>
+                      <div className="text-xs text-muted-foreground mb-1">Women's</div>
                       <div className="flex flex-wrap gap-1">
                         {player.womensNumbers.map(num => (
                           <span
@@ -218,7 +223,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <div className="text-sm text-muted-foreground mb-2">🧔 Men's Rumble</div>
+                  <div className="text-sm text-muted-foreground mb-2">Men's Rumble</div>
                   <div className="flex flex-wrap justify-center gap-2">
                     {players[currentPlayerIndex].mensNumbers.map((num, idx) => (
                       <motion.span
@@ -234,7 +239,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground mb-2">👩 Women's Rumble</div>
+                  <div className="text-sm text-muted-foreground mb-2">Women's Rumble</div>
                   <div className="flex flex-wrap justify-center gap-2">
                     {players[currentPlayerIndex].womensNumbers.map((num, idx) => (
                       <motion.span
@@ -279,7 +284,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
           >
-            <Crown className="mx-auto text-primary mb-4" size={80} />
+            <Logo size="md" className="mx-auto mb-4" />
             <h2 className="text-4xl md:text-5xl font-black text-gradient-gold mb-2">
               LET'S RUMBLE!
             </h2>

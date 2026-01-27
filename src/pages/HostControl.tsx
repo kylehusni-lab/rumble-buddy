@@ -672,9 +672,26 @@ export default function HostControl() {
   const mensNextOwner = getPlayerName(mensNumbers.find(n => n.number === mensNextNumber)?.assigned_to_player_id || null);
   const womensNextOwner = getPlayerName(womensNumbers.find(n => n.number === womensNextNumber)?.assigned_to_player_id || null);
 
-  // Combine platform entrants with surprise entrants
-  const allMensEntrants = useMemo(() => [...mensEntrants, ...mensSurpriseEntrants], [mensEntrants, mensSurpriseEntrants]);
-  const allWomensEntrants = useMemo(() => [...womensEntrants, ...womensSurpriseEntrants], [womensEntrants, womensSurpriseEntrants]);
+  // Combine platform entrants with surprise entrants, filtering out already-entered wrestlers
+  const allMensEntrants = useMemo(() => {
+    const enteredNames = new Set(
+      mensNumbers
+        .filter(n => n.wrestler_name)
+        .map(n => n.wrestler_name!.toLowerCase())
+    );
+    return [...mensEntrants, ...mensSurpriseEntrants]
+      .filter(name => !enteredNames.has(name.toLowerCase()));
+  }, [mensEntrants, mensSurpriseEntrants, mensNumbers]);
+
+  const allWomensEntrants = useMemo(() => {
+    const enteredNames = new Set(
+      womensNumbers
+        .filter(n => n.wrestler_name)
+        .map(n => n.wrestler_name!.toLowerCase())
+    );
+    return [...womensEntrants, ...womensSurpriseEntrants]
+      .filter(name => !enteredNames.has(name.toLowerCase()));
+  }, [womensEntrants, womensSurpriseEntrants, womensNumbers]);
 
   // Calculate durations for active wrestlers (handle null timestamp)
   const getDuration = (entryTimestamp: string | null) => {
