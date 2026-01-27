@@ -283,14 +283,11 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
           </motion.div>
         )}
 
-        {/* Complete Phase */}
+        {/* Complete Phase - simplified, no scale animation */}
         {phase === "complete" && (
-          <motion.div
+          <div
             key="complete"
-            className="text-center"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
+            className="text-center animate-fade-in"
           >
             <Logo size="md" className="mx-auto mb-4" />
             <h2 className="text-4xl md:text-5xl font-black text-gradient-gold mb-2">
@@ -306,7 +303,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
             >
               Let's Go!
             </Button>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </motion.div>
