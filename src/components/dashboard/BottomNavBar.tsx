@@ -1,7 +1,7 @@
-import { LucideIcon, Hash, Trophy, User, Zap, Check } from "lucide-react";
+import { LucideIcon, Hash, Trophy, User, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type TabId = "numbers" | "matches" | "mens" | "womens" | "chaos";
+export type TabId = "numbers" | "matches" | "mens" | "womens";
 
 interface NavTab {
   id: TabId;
@@ -14,7 +14,6 @@ const TABS: NavTab[] = [
   { id: "matches", icon: Trophy, label: "Matches" },
   { id: "mens", icon: User, label: "Men's" },
   { id: "womens", icon: User, label: "Women's" },
-  { id: "chaos", icon: Zap, label: "Chaos" },
 ];
 
 export interface TabBadge {
