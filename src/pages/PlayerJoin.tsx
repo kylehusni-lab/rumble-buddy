@@ -14,6 +14,7 @@ export default function PlayerJoin() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const partyCode = searchParams.get("code") || "";
+  const isHostJoining = searchParams.get("host") === "true";
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -107,11 +108,13 @@ export default function PlayerJoin() {
         partyCode,
         displayName: displayName.trim(),
         email: email.toLowerCase().trim(),
-        isHost: false,
+        isHost: isHostJoining,
       });
 
-      // Redirect based on party status
-      if (partyStatus === "live") {
+      // Redirect based on host status and party status
+      if (isHostJoining) {
+        navigate(`/host/setup/${partyCode}`);
+      } else if (partyStatus === "live") {
         navigate(`/player/dashboard/${partyCode}`);
       } else {
         navigate(`/player/picks/${partyCode}`);
@@ -154,7 +157,9 @@ export default function PlayerJoin() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          <h2 className="text-2xl font-bold text-center">Join Party</h2>
+          <h2 className="text-2xl font-bold text-center">
+            {isHostJoining ? "Join Your Party" : "Join Party"}
+          </h2>
 
           <div className="space-y-4">
             <div className="space-y-2">
