@@ -773,6 +773,12 @@ export default function HostControl() {
     return Math.floor((Date.now() - new Date(entryTimestamp).getTime()) / 1000);
   };
 
+  // Get elimination count for a wrestler by their number
+  const getEliminationCount = useCallback((number: number, type: "mens" | "womens") => {
+    const numbers = type === "mens" ? mensNumbers : womensNumbers;
+    return numbers.filter(n => n.eliminated_by_number === number).length;
+  }, [mensNumbers, womensNumbers]);
+
   // Derive Rumble prop values from match data
   const getDerivedPropValues = (numbers: RumbleNumber[], type: "mens" | "womens") => {
     // #1 Entrant - whoever is assigned to number 1
@@ -827,7 +833,7 @@ export default function HostControl() {
     
     // Final Four - last 4 wrestlers remaining (only when exactly 4 are left or match ended)
     const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
-    const finalFour = active.length === 4 
+    const finalFourArray = active.length === 4 
       ? active.map(n => n.wrestler_name).filter(Boolean) as string[]
       : [];
     
@@ -837,7 +843,11 @@ export default function HostControl() {
       [`${type}_first_elimination`]: firstElimination,
       [`${type}_most_eliminations`]: mostEliminationsWrestler,
       [`${type}_longest_time`]: ironMan,
-      [`${type}_final_four`]: finalFour.length === 4 ? finalFour.join(", ") : null,
+      [`${type}_final_four`]: finalFourArray.length === 4 ? finalFourArray.join(", ") : null,
+      [`${type}_final_four_1`]: finalFourArray[0] || null,
+      [`${type}_final_four_2`]: finalFourArray[1] || null,
+      [`${type}_final_four_3`]: finalFourArray[2] || null,
+      [`${type}_final_four_4`]: finalFourArray[3] || null,
     };
   };
 
@@ -954,6 +964,23 @@ export default function HostControl() {
                   onReset={handleResetRumbleProp}
                   type="yesno"
                 />
+
+                {/* Final Four Predictions */}
+                <div className="border-t border-border pt-4 mt-4">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">Final Four Predictions</h4>
+                  {[1, 2, 3, 4].map((slot) => (
+                    <RumblePropScoringCard
+                      key={`mens_final_four_${slot}`}
+                      propId={`mens_final_four_${slot}`}
+                      title={`Final Four Pick #${slot}`}
+                      question={`Player's ${slot === 1 ? '1st' : slot === 2 ? '2nd' : slot === 3 ? '3rd' : '4th'} Final Four pick`}
+                      scoredResult={getMatchResult(`mens_final_four_${slot}`)}
+                      derivedValue={mensDerivedProps[`mens_final_four_${slot}`]}
+                      onScore={handleScoreRumbleProp}
+                      onReset={handleResetRumbleProp}
+                    />
+                  ))}
+                </div>
               </div>
             </section>
 
@@ -1047,6 +1074,23 @@ export default function HostControl() {
                   onReset={handleResetRumbleProp}
                   type="yesno"
                 />
+
+                {/* Final Four Predictions */}
+                <div className="border-t border-border pt-4 mt-4">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">Final Four Predictions</h4>
+                  {[1, 2, 3, 4].map((slot) => (
+                    <RumblePropScoringCard
+                      key={`womens_final_four_${slot}`}
+                      propId={`womens_final_four_${slot}`}
+                      title={`Final Four Pick #${slot}`}
+                      question={`Player's ${slot === 1 ? '1st' : slot === 2 ? '2nd' : slot === 3 ? '3rd' : '4th'} Final Four pick`}
+                      scoredResult={getMatchResult(`womens_final_four_${slot}`)}
+                      derivedValue={womensDerivedProps[`womens_final_four_${slot}`]}
+                      onScore={handleScoreRumbleProp}
+                      onReset={handleResetRumbleProp}
+                    />
+                  ))}
+                </div>
               </div>
             </section>
 
@@ -1114,6 +1158,7 @@ export default function HostControl() {
                     wrestlerName={wrestler.wrestler_name || "Unknown"}
                     ownerName={getPlayerName(wrestler.assigned_to_player_id)}
                     duration={getDuration(wrestler.entry_timestamp!)}
+                    eliminationCount={getEliminationCount(wrestler.number, "mens")}
                     onEliminate={() => {
                       setEliminationTarget(wrestler);
                       setEliminationType("mens");
@@ -1156,6 +1201,7 @@ export default function HostControl() {
                     wrestlerName={wrestler.wrestler_name || "Unknown"}
                     ownerName={getPlayerName(wrestler.assigned_to_player_id)}
                     duration={getDuration(wrestler.entry_timestamp!)}
+                    eliminationCount={getEliminationCount(wrestler.number, "womens")}
                     onEliminate={() => {
                       setEliminationTarget(wrestler);
                       setEliminationType("womens");

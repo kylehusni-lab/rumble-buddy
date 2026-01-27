@@ -1,11 +1,13 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface ActiveWrestlerCardProps {
   number: number;
   wrestlerName: string;
   ownerName: string | null;
   duration: number; // in seconds
+  eliminationCount: number;
   onEliminate: () => void;
   disabled?: boolean;
 }
@@ -22,6 +24,7 @@ export function ActiveWrestlerCard({
   wrestlerName,
   ownerName,
   duration,
+  eliminationCount,
   onEliminate,
   disabled = false,
 }: ActiveWrestlerCardProps) {
@@ -31,6 +34,11 @@ export function ActiveWrestlerCard({
         <div className="flex items-center gap-2">
           <span className="font-bold text-primary text-lg">#{number}</span>
           <span className="font-semibold truncate">{wrestlerName}</span>
+          {eliminationCount > 0 && (
+            <Badge variant="secondary" className="ml-1 bg-destructive/20 text-destructive border-destructive/30">
+              {eliminationCount} KO{eliminationCount > 1 ? 's' : ''}
+            </Badge>
+          )}
         </div>
         <div className="text-sm text-muted-foreground">
           {ownerName || "Vacant"} • {formatDuration(duration)}
