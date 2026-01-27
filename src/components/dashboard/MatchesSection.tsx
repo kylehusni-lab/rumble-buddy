@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Check, X, Crown } from "lucide-react";
+import { Check, X, Crown, Trophy } from "lucide-react";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -34,33 +34,47 @@ function PickRow({
 }) {
   return (
     <div className={cn(
-      "p-3 flex items-center justify-between",
-      isWinner && "bg-winner/5"
+      "p-4 flex items-center justify-between gap-3 pick-row-interactive",
+      isWinner && "bg-winner/5 border-l-2 border-winner",
+      isCorrect === true && "status-correct-glow bg-success/5",
+      isCorrect === false && "bg-destructive/5"
     )}>
       <div className="min-w-0 flex-1">
         <div className={cn(
-          "text-sm",
+          "text-xs font-medium uppercase tracking-wide mb-0.5",
           isWinner ? "text-winner" : "text-muted-foreground"
         )}>
-          {isWinner && <Crown size={12} className="inline mr-1 mb-0.5" />}
+          {isWinner && <Crown size={10} className="inline mr-1 mb-0.5" />}
           {label}
         </div>
         <div className={cn(
-          "font-medium truncate",
-          isWinner && "text-winner"
+          "font-semibold text-[15px] truncate",
+          isCorrect === true && "text-success",
+          isCorrect === false && "text-destructive/80 line-through",
+          isWinner && isCorrect === null && "text-winner"
         )}>
-          {prediction || "No pick"}
+          {prediction || <span className="text-muted-foreground italic">No pick</span>}
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+      
+      {/* Result indicator */}
+      <div className="flex items-center gap-2 flex-shrink-0">
         {isCorrect === true && (
-          <>
-            <Check size={18} className="text-success" />
-            <span className="text-success text-sm font-medium">+{points}</span>
-          </>
+          <div className="flex items-center gap-1.5 point-badge px-2.5 py-1 rounded-full">
+            <Check size={14} className="text-white" />
+            <span className="text-white text-sm font-bold">+{points}</span>
+          </div>
         )}
-        {isCorrect === false && <X size={18} className="text-destructive" />}
-        {isCorrect === null && <span className="text-xs text-muted-foreground">pending</span>}
+        {isCorrect === false && (
+          <div className="w-8 h-8 rounded-full bg-destructive/20 flex items-center justify-center">
+            <X size={16} className="text-destructive" />
+          </div>
+        )}
+        {isCorrect === null && (
+          <div className="px-2.5 py-1 rounded-full bg-muted/50 text-muted-foreground text-xs font-medium">
+            Pending
+          </div>
+        )}
       </div>
     </div>
   );
@@ -81,44 +95,51 @@ export function MatchesSection({ picks, results }: MatchesSectionProps) {
       className="space-y-4"
     >
       {/* Undercard Matches */}
-      <div className="bg-card border border-border rounded-xl divide-y divide-border">
-        <div className="px-3 py-2 bg-muted/50 rounded-t-xl">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Undercard Matches</h3>
+      <div className="card-gradient border border-border/80 rounded-2xl shadow-premium overflow-hidden">
+        <div className="section-header ring-rope-texture">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Trophy size={14} className="text-primary" />
+            Undercard Matches
+          </h3>
         </div>
-        {UNDERCARD_MATCHES.map((match) => {
-          const pick = picks.find(p => p.match_id === match.id);
-          return (
-            <PickRow
-              key={match.id}
-              label={match.title}
-              prediction={pick?.prediction || ""}
-              isCorrect={getPickResult(match.id)}
-              points={SCORING.UNDERCARD_WINNER}
-            />
-          );
-        })}
+        <div className="divide-y divide-border/50">
+          {UNDERCARD_MATCHES.map((match) => {
+            const pick = picks.find(p => p.match_id === match.id);
+            return (
+              <PickRow
+                key={match.id}
+                label={match.title}
+                prediction={pick?.prediction || ""}
+                isCorrect={getPickResult(match.id)}
+                points={SCORING.UNDERCARD_WINNER}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* Rumble Winners - Winner Theme */}
-      <div className="bg-card border border-winner/30 rounded-xl divide-y divide-winner/20 overflow-hidden">
-        <div className="px-3 py-2 bg-winner/10 rounded-t-xl flex items-center gap-2">
+      <div className="card-gradient-winner border border-winner/30 rounded-2xl shadow-premium overflow-hidden">
+        <div className="section-header border-winner/20 flex items-center gap-2">
           <Crown size={14} className="text-winner" />
-          <h3 className="text-xs font-semibold text-winner uppercase tracking-wide">Rumble Winners</h3>
+          <h3 className="text-sm font-bold text-winner uppercase tracking-wide">Rumble Winners</h3>
         </div>
-        {["mens_rumble_winner", "womens_rumble_winner"].map((matchId) => {
-          const pick = picks.find(p => p.match_id === matchId);
-          const label = matchId === "mens_rumble_winner" ? "🧔 Men's Winner" : "👩 Women's Winner";
-          return (
-            <PickRow
-              key={matchId}
-              label={label}
-              prediction={pick?.prediction || ""}
-              isCorrect={getPickResult(matchId)}
-              points={SCORING.RUMBLE_WINNER_PICK}
-              isWinner
-            />
-          );
-        })}
+        <div className="divide-y divide-winner/20">
+          {["mens_rumble_winner", "womens_rumble_winner"].map((matchId) => {
+            const pick = picks.find(p => p.match_id === matchId);
+            const label = matchId === "mens_rumble_winner" ? "🧔 Men's Winner" : "👩 Women's Winner";
+            return (
+              <PickRow
+                key={matchId}
+                label={label}
+                prediction={pick?.prediction || ""}
+                isCorrect={getPickResult(matchId)}
+                points={SCORING.RUMBLE_WINNER_PICK}
+                isWinner
+              />
+            );
+          })}
+        </div>
       </div>
     </motion.div>
   );
