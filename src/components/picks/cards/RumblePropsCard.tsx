@@ -279,6 +279,29 @@ export function RumblePropsCard({
             </DialogTitle>
           </DialogHeader>
 
+          {/* Current Selection - matching RumbleWinnerCard style */}
+          {activePickerId && values[activePickerId] && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3 rounded-lg bg-primary/10 border border-primary flex items-center gap-3"
+            >
+              <img
+                src={getWrestlerImageUrl(values[activePickerId]!)}
+                alt={values[activePickerId]!}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-primary flex-shrink-0"
+                onError={(e) => {
+                  e.currentTarget.src = getPlaceholderImageUrl(values[activePickerId]!);
+                }}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground">Your Pick:</div>
+                <div className="text-lg font-bold text-primary truncate">{getEntrantDisplayName(values[activePickerId]!)}</div>
+              </div>
+              <Check className="w-6 h-6 text-primary flex-shrink-0" />
+            </motion.div>
+          )}
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
