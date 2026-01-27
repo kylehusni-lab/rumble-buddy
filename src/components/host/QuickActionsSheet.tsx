@@ -24,8 +24,9 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
   };
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(code);
-    toast.success("Code copied!");
+    const joinUrl = `${window.location.origin}/player/join?code=${code}`;
+    navigator.clipboard.writeText(joinUrl);
+    toast.success("Join link copied!");
     onOpenChange(false);
   };
 
@@ -89,8 +90,8 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
     },
     {
       icon: Copy,
-      title: "Copy Party Code",
-      subtitle: `Code: ${code}`,
+      title: "Copy Join Link",
+      subtitle: `Pre-filled with code ${code}`,
       onClick: handleCopyCode,
     },
     {
