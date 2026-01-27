@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Crown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActiveMatchDisplay } from "./ActiveMatchDisplay";
 import { NumberCell } from "./NumberCell";
 import { ParticipantPicksView } from "./ParticipantPicksView";
 import { RumblePropsDisplay } from "./RumblePropsDisplay";
+import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
 import { WrestlerImage } from "./WrestlerImage";
-import { UNDERCARD_MATCHES } from "@/lib/constants";
-
+import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 interface MatchResult {
   match_id: string;
   result: string;
@@ -185,30 +185,84 @@ export function TvViewNavigator({
           ))}
         </div>
         
-        {/* Winner Display - show when declared */}
+        {/* Enhanced Winner Display - show when declared */}
         {winnerNumber && winnerNumber.wrestler_name && (
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-6 p-6 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-xl border-2 border-primary"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="relative mt-8 p-8 bg-gradient-to-r from-primary/30 via-primary/15 to-primary/30 rounded-2xl border-4 border-primary overflow-hidden"
           >
-            <div className="flex items-center justify-center gap-6">
-              <Crown className="w-10 h-10 text-primary flex-shrink-0" />
-              <WrestlerImage 
-                name={winnerNumber.wrestler_name} 
-                size="lg" 
-                className="border-4 border-primary flex-shrink-0" 
-              />
-              <div className="text-left">
-                <div className="text-sm text-muted-foreground uppercase tracking-wide">Winner</div>
-                <div className="text-3xl font-bold text-primary">{winnerNumber.wrestler_name}</div>
-                <div className="text-lg text-muted-foreground">
-                  Entry #{winnerNumber.number} • Owned by {getPlayerName(winnerNumber.assigned_to_player_id)}
-                </div>
+            {/* Animated glow effect */}
+            <motion.div
+              className="absolute inset-0 rounded-2xl bg-primary/20"
+              animate={{ opacity: [0.1, 0.3, 0.1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+            
+            <div className="relative z-10 flex flex-col items-center gap-4">
+              {/* Trophy + WINNER label */}
+              <div className="flex items-center gap-2">
+                <Trophy className="w-8 h-8 text-primary" />
+                <motion.span 
+                  className="text-2xl font-black text-primary uppercase tracking-widest"
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  Winner
+                </motion.span>
+                <Trophy className="w-8 h-8 text-primary" />
               </div>
+              
+              {/* Large wrestler photo with animated border */}
+              <motion.div
+                className="relative"
+                animate={{ 
+                  boxShadow: [
+                    "0 0 20px hsl(var(--primary) / 0.3)",
+                    "0 0 40px hsl(var(--primary) / 0.5)",
+                    "0 0 20px hsl(var(--primary) / 0.3)"
+                  ]
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <WrestlerImage 
+                  name={winnerNumber.wrestler_name} 
+                  size="xl" 
+                  className="border-4 border-primary rounded-full" 
+                />
+              </motion.div>
+              
+              {/* Winner name - large */}
+              <div className="text-4xl font-black text-primary tracking-tight">
+                {winnerNumber.wrestler_name}
+              </div>
+              
+              {/* Entry number and owner */}
+              <div className="text-lg text-muted-foreground">
+                Entry #{winnerNumber.number} • Owned by {getPlayerName(winnerNumber.assigned_to_player_id)}
+              </div>
+              
+              {/* Points awarded */}
+              <motion.div 
+                className="text-2xl font-bold text-success"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+              >
+                +{SCORING.RUMBLE_WINNER_NUMBER} pts
+              </motion.div>
             </div>
           </motion.div>
         )}
+
+        {/* Winner Predictions Panel - always shown for Rumble views */}
+        <RumbleWinnerPredictions
+          gender={rumbleId as "mens" | "womens"}
+          players={players}
+          picks={picks}
+          matchResults={matchResults}
+        />
       </div>
     );
   };
