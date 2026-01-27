@@ -9,6 +9,7 @@ import { RumblePropsDisplay } from "./RumblePropsDisplay";
 import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
 import { WrestlerImage } from "./WrestlerImage";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
+
 interface MatchResult {
   match_id: string;
   result: string;
@@ -180,58 +181,34 @@ export function TvViewNavigator({
               wrestlerName={num.wrestler_name}
               ownerInitials={getPlayerInitials(num.assigned_to_player_id)}
               status={getNumberStatus(num)}
-              delay={num.number}
             />
           ))}
         </div>
         
         {/* Enhanced Winner Display - show when declared */}
         {winnerNumber && winnerNumber.wrestler_name && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="relative mt-8 p-8 bg-gradient-to-r from-primary/30 via-primary/15 to-primary/30 rounded-2xl border-4 border-primary overflow-hidden"
-          >
-            {/* Animated glow effect */}
-            <motion.div
-              className="absolute inset-0 rounded-2xl bg-primary/20"
-              animate={{ opacity: [0.1, 0.3, 0.1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            />
+          <div className="relative mt-8 p-8 bg-gradient-to-r from-primary/30 via-primary/15 to-primary/30 rounded-2xl border-4 border-primary overflow-hidden animate-scale-in">
+            {/* Animated glow effect - CSS-based instead of Framer Motion infinite loop */}
+            <div className="absolute inset-0 rounded-2xl bg-primary/20 animate-glow-pulse" />
             
             <div className="relative z-10 flex flex-col items-center gap-4">
               {/* Trophy + WINNER label */}
               <div className="flex items-center gap-2">
                 <Trophy className="w-8 h-8 text-primary" />
-                <motion.span 
-                  className="text-2xl font-black text-primary uppercase tracking-widest"
-                  animate={{ scale: [1, 1.02, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
+                <span className="text-2xl font-black text-primary uppercase tracking-widest animate-winner-pulse">
                   Winner
-                </motion.span>
+                </span>
                 <Trophy className="w-8 h-8 text-primary" />
               </div>
               
-              {/* Large wrestler photo with animated border */}
-              <motion.div
-                className="relative"
-                animate={{ 
-                  boxShadow: [
-                    "0 0 20px hsl(var(--primary) / 0.3)",
-                    "0 0 40px hsl(var(--primary) / 0.5)",
-                    "0 0 20px hsl(var(--primary) / 0.3)"
-                  ]
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
+              {/* Large wrestler photo with animated border - CSS-based shadow pulse */}
+              <div className="relative animate-winner-glow">
                 <WrestlerImage 
                   name={winnerNumber.wrestler_name} 
                   size="xl" 
                   className="border-4 border-primary rounded-full" 
                 />
-              </motion.div>
+              </div>
               
               {/* Winner name - large */}
               <div className="text-4xl font-black text-primary tracking-tight">
@@ -253,7 +230,7 @@ export function TvViewNavigator({
                 +{SCORING.RUMBLE_WINNER_NUMBER} pts
               </motion.div>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Winner Predictions Panel - always shown for Rumble views */}

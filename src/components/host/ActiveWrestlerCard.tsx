@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function ActiveWrestlerCard({
+export const ActiveWrestlerCard = memo(function ActiveWrestlerCard({
   number,
   wrestlerName,
   ownerName,
@@ -57,4 +58,18 @@ export function ActiveWrestlerCard({
       </Button>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render when important values change
+  // Duration changes every second, but we format it - so compare formatted output
+  const prevFormatted = formatDuration(prevProps.duration);
+  const nextFormatted = formatDuration(nextProps.duration);
+  
+  return (
+    prevProps.number === nextProps.number &&
+    prevProps.wrestlerName === nextProps.wrestlerName &&
+    prevProps.ownerName === nextProps.ownerName &&
+    prevFormatted === nextFormatted &&
+    prevProps.eliminationCount === nextProps.eliminationCount &&
+    prevProps.disabled === nextProps.disabled
+  );
+});

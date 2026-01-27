@@ -89,10 +89,11 @@ export default function HostControl() {
   const [mensSurpriseEntrants, setMensSurpriseEntrants] = useState<string[]>([]);
   const [womensSurpriseEntrants, setWomensSurpriseEntrants] = useState<string[]>([]);
 
-  // Duration update timer
-  const [, setTick] = useState(0);
+  // Duration update timer - optimized to only update currentTime
+  // Child components use this via getDuration() which is memoized per wrestler
+  const [currentTime, setCurrentTime] = useState(Date.now());
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -821,10 +822,11 @@ export default function HostControl() {
   }, [womensEntrants, womensSurpriseEntrants, womensNumbers]);
 
   // Calculate durations for active wrestlers (handle null timestamp)
-  const getDuration = (entryTimestamp: string | null) => {
+  // Uses currentTime state to trigger re-renders only when timer updates
+  const getDuration = useCallback((entryTimestamp: string | null) => {
     if (!entryTimestamp) return 0;
-    return Math.floor((Date.now() - new Date(entryTimestamp).getTime()) / 1000);
-  };
+    return Math.floor((currentTime - new Date(entryTimestamp).getTime()) / 1000);
+  }, [currentTime]);
 
   // Get elimination count for a wrestler by their number
   const getEliminationCount = useCallback((number: number, type: "mens" | "womens") => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -25,91 +25,93 @@ interface EliminationModalProps {
   onConfirm: (eliminatedByNumber: number) => Promise<void>;
 }
 
-export function EliminationModal({
-  open,
-  onOpenChange,
-  targetNumber,
-  targetWrestler,
-  activeWrestlers,
-  onConfirm,
-}: EliminationModalProps) {
-  const [eliminatedBy, setEliminatedBy] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export const EliminationModal = forwardRef<HTMLDivElement, EliminationModalProps>(
+  function EliminationModal({
+    open,
+    onOpenChange,
+    targetNumber,
+    targetWrestler,
+    activeWrestlers,
+    onConfirm,
+  }, ref) {
+    const [eliminatedBy, setEliminatedBy] = useState<number | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter out the target wrestler from selectable eliminators
-  const eliminators = activeWrestlers.filter((w) => w.number !== targetNumber);
+    // Filter out the target wrestler from selectable eliminators
+    const eliminators = activeWrestlers.filter((w) => w.number !== targetNumber);
 
-  const handleConfirm = async () => {
-    if (eliminatedBy === null) return;
+    const handleConfirm = async () => {
+      if (eliminatedBy === null) return;
 
-    setIsSubmitting(true);
-    try {
-      await onConfirm(eliminatedBy);
+      setIsSubmitting(true);
+      try {
+        await onConfirm(eliminatedBy);
+        setEliminatedBy(null);
+        onOpenChange(false);
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    const handleClose = () => {
       setEliminatedBy(null);
       onOpenChange(false);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    };
 
-  const handleClose = () => {
-    setEliminatedBy(null);
-    onOpenChange(false);
-  };
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground={false}>
+        <DrawerContent ref={ref}>
+          <DrawerHeader>
+            <DrawerTitle>
+              Eliminate #{targetNumber} {targetWrestler}?
+            </DrawerTitle>
+          </DrawerHeader>
 
-  return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>
-            Eliminate #{targetNumber} {targetWrestler}?
-          </DrawerTitle>
-        </DrawerHeader>
+          <div className="p-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Select who eliminated them:
+            </p>
 
-        <div className="p-4">
-          <p className="text-sm text-muted-foreground mb-4">
-            Select who eliminated them:
-          </p>
-
-          <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-            {eliminators.map((wrestler) => (
-              <button
-                key={wrestler.number}
-                className={cn(
-                  "w-full p-3 rounded-lg border text-left min-h-[48px] transition-colors",
-                  eliminatedBy === wrestler.number
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
-                )}
-                onClick={() => setEliminatedBy(wrestler.number)}
-              >
-                <span className="font-bold text-primary">#{wrestler.number}</span>
-                <span className="ml-2">{wrestler.wrestler_name}</span>
-                {wrestler.ownerName && (
-                  <span className="text-sm text-muted-foreground ml-2">
-                    ({wrestler.ownerName})
-                  </span>
-                )}
-              </button>
-            ))}
+            <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+              {eliminators.map((wrestler) => (
+                <button
+                  key={wrestler.number}
+                  className={cn(
+                    "w-full p-3 rounded-lg border text-left min-h-[48px] transition-colors",
+                    eliminatedBy === wrestler.number
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:border-primary/50"
+                  )}
+                  onClick={() => setEliminatedBy(wrestler.number)}
+                >
+                  <span className="font-bold text-primary">#{wrestler.number}</span>
+                  <span className="ml-2">{wrestler.wrestler_name}</span>
+                  {wrestler.ownerName && (
+                    <span className="text-sm text-muted-foreground ml-2">
+                      ({wrestler.ownerName})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <DrawerFooter>
-          <DrawerClose asChild>
-            <Button variant="outline" onClick={handleClose}>
-              Cancel
+          <DrawerFooter>
+            <DrawerClose asChild>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+            </DrawerClose>
+            <Button
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={eliminatedBy === null || isSubmitting}
+            >
+              {isSubmitting ? "Eliminating..." : "Confirm Elimination"}
             </Button>
-          </DrawerClose>
-          <Button
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={eliminatedBy === null || isSubmitting}
-          >
-            {isSubmitting ? "Eliminating..." : "Confirm Elimination"}
-          </Button>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
-  );
-}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+);
