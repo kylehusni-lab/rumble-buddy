@@ -116,8 +116,8 @@ export function WrestlerPickerModal({
           className="flex-1 overflow-y-auto overscroll-contain"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 20px)" }}
         >
-          <div className="p-3 sm:p-4 md:p-6">
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
+          <div className="p-3 sm:p-4">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2 sm:gap-3">
               {filteredWrestlers.map((wrestler) => {
                 const isSelected = currentSelection === wrestler;
                 return (
@@ -129,10 +129,10 @@ export function WrestlerPickerModal({
                     animate={isSelected ? { scale: [1, 1.05, 1] } : {}}
                     transition={{ duration: 0.2 }}
                   >
-                    {/* Photo Container */}
+                    {/* Photo Container - using aspect-square for responsive sizing */}
                     <div
                       className={cn(
-                        "relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-[3px] transition-all duration-200",
+                        "relative w-full aspect-square max-w-[70px] sm:max-w-[80px] md:max-w-[90px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
                         isSelected
                           ? "border-primary shadow-[0_0_12px_hsla(43,75%,52%,0.5)]"
                           : isUnconfirmedEntrant(wrestler)
@@ -158,7 +158,7 @@ export function WrestlerPickerModal({
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                         >
-                          <Check className="text-primary-foreground w-6 h-6 sm:w-8 sm:h-8" strokeWidth={3} />
+                          <Check className="text-primary-foreground w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
                         </motion.div>
                       )}
                     </div>
@@ -166,7 +166,7 @@ export function WrestlerPickerModal({
                     {/* Name */}
                     <span
                       className={cn(
-                        "mt-1.5 sm:mt-2 text-[10px] sm:text-xs md:text-sm text-center leading-tight line-clamp-2 w-16 sm:w-20 md:w-24 lg:w-28",
+                        "mt-1 text-[9px] sm:text-[10px] md:text-xs text-center leading-tight line-clamp-2 w-full max-w-[70px] sm:max-w-[80px] md:max-w-[90px]",
                         isSelected ? "text-primary font-semibold" : "text-foreground",
                         isUnconfirmedEntrant(wrestler) && "italic opacity-80"
                       )}
