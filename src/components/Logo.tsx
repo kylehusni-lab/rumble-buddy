@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import royalRumbleLogo from "@/assets/royal-rumble-logo.jpeg";
+import royalRumbleLogo from "@/assets/royal-rumble-logo.png";
 
 interface LogoProps {
   size?: "sm" | "md" | "lg";
