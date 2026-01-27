@@ -22,6 +22,16 @@ import biancaBelairImage from '@/assets/wrestlers/bianca-belair.png';
 import candiceLeRaeImage from '@/assets/wrestlers/candice-lerae.png';
 import chelseaGreenImage from '@/assets/wrestlers/chelsea-green.png';
 import charlotteFlairImage from '@/assets/wrestlers/charlotte-flair.png';
+import dragonLeeImage from '@/assets/wrestlers/dragon-lee.png';
+import elGrandeGordoImage from '@/assets/wrestlers/el-grande-gordo.png';
+import finnBalorImage from '@/assets/wrestlers/finn-balor.png';
+import iyoSkyImage from '@/assets/wrestlers/iyo-sky.png';
+import iljaDragunovImage from '@/assets/wrestlers/ilja-dragunov.png';
+import jacobFatuImage from '@/assets/wrestlers/jacob-fatu.png';
+import jordynneGraceImage from '@/assets/wrestlers/jordynne-grace.png';
+import kairiSaneImage from '@/assets/wrestlers/kairi-sane.png';
+import laKnightImage from '@/assets/wrestlers/la-knight.png';
+import kofiKingstonImage from '@/assets/wrestlers/kofi-kingston.png';
 
 export interface WrestlerData {
   name: string;
@@ -45,9 +55,9 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'Gunther', imageUrl: guntherImage, gender: 'male' },
   { name: 'Jey Uso', imageUrl: jeyUsoImage, gender: 'male' },
   { name: 'Solo Sikoa', imageUrl: `${WWE_CDN}/2025/11/Solo_Sikoa_Profile.png`, gender: 'male' },
-  { name: 'Jacob Fatu', imageUrl: `${WWE_CDN}/2025/11/Jacob_Fatu_Profile.png`, gender: 'male' },
+  { name: 'Jacob Fatu', imageUrl: jacobFatuImage, gender: 'male' },
   { name: 'Rey Mysterio', imageUrl: `${WWE_CDN}/2025/04/Rey_Mysterio_Profile.png`, gender: 'male' },
-  { name: 'Dragon Lee', imageUrl: `${WWE_CDN}/2025/04/Dragon_Lee_Profile.png`, gender: 'male' },
+  { name: 'Dragon Lee', imageUrl: dragonLeeImage, gender: 'male' },
   { name: 'Penta', imageUrl: `${WWE_CDN}/2025/02/Penta_Profile.png`, gender: 'male' },
   { name: 'CM Punk', imageUrl: `${WWE_CDN}/2025/11/CMPUNK_PROFILE.png`, gender: 'male' },
   { name: 'Drew McIntyre', imageUrl: `${WWE_CDN}/all/2021/09/Drew_Mcintyre_Profile--aca391095fe74e721e098cadc93571d3.png`, gender: 'male' },
@@ -63,6 +73,11 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'Dominik Mysterio', imageUrl: dominikMysterioImage, gender: 'male' },
   { name: 'Carmelo Hayes', imageUrl: carmeloHayesImage, gender: 'male' },
   { name: 'Aleister Black', imageUrl: aleisterBlackImage, gender: 'male' },
+  { name: 'Finn Balor', imageUrl: finnBalorImage, gender: 'male' },
+  { name: 'Ilja Dragunov', imageUrl: iljaDragunovImage, gender: 'male' },
+  { name: 'LA Knight', imageUrl: laKnightImage, gender: 'male' },
+  { name: 'Kofi Kingston', imageUrl: kofiKingstonImage, gender: 'male' },
+  { name: 'El Grande Gordo', imageUrl: elGrandeGordoImage, gender: 'male' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'male' },
 ];
 
@@ -70,12 +85,12 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
 export const DEFAULT_FEMALE_WRESTLERS: WrestlerData[] = [
   { name: 'Liv Morgan', imageUrl: `${WWE_CDN}/2025/11/Liv_Morgan_Profile.png`, gender: 'female' },
   { name: 'Rhea Ripley', imageUrl: `${WWE_CDN}/2025/11/Rhea_Ripley_Profile.png`, gender: 'female' },
-  { name: 'IYO SKY', imageUrl: `${WWE_CDN}/2025/11/IYO_SKY_Profile.png`, gender: 'female' },
+  { name: 'IYO SKY', imageUrl: iyoSkyImage, gender: 'female' },
   { name: 'Charlotte Flair', imageUrl: charlotteFlairImage, gender: 'female' },
   { name: 'Bayley', imageUrl: bayleyImage, gender: 'female' },
   { name: 'Asuka', imageUrl: asukaImage, gender: 'female' },
   { name: 'Giulia', imageUrl: `${WWE_CDN}/2026/01/guilia_PROFILE.png`, gender: 'female' },
-  { name: 'Jordynne Grace', imageUrl: getPlaceholderImageUrl('Jordynne Grace'), gender: 'female' },
+  { name: 'Jordynne Grace', imageUrl: jordynneGraceImage, gender: 'female' },
   { name: 'Alexa Bliss', imageUrl: alexaBlissImage, gender: 'female' },
   { name: 'Nia Jax', imageUrl: `${WWE_CDN}/2025/11/Nia_Jax_Profile.png`, gender: 'female' },
   { name: 'Roxanne Perez', imageUrl: `${WWE_CDN}/2025/11/Roxanne_Perez_Profile.png`, gender: 'female' },
@@ -87,6 +102,7 @@ export const DEFAULT_FEMALE_WRESTLERS: WrestlerData[] = [
   { name: 'Bianca Belair', imageUrl: biancaBelairImage, gender: 'female' },
   { name: 'Candice LeRae', imageUrl: candiceLeRaeImage, gender: 'female' },
   { name: 'B-Fab', imageUrl: bFabImage, gender: 'female' },
+  { name: 'Kairi Sane', imageUrl: kairiSaneImage, gender: 'female' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'female' },
 ];
 
