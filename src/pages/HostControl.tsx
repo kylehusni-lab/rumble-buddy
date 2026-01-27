@@ -130,13 +130,13 @@ export default function HostControl() {
           .single();
 
         if (error || !partyData) {
-          toast.error("Party not found");
+          toast.error("Group not found");
           navigate("/");
           return;
         }
 
         if (!isHostSession(partyData.host_session_id)) {
-          toast.error("You are not the host of this party");
+          toast.error("You are not the host of this group");
           navigate("/");
           return;
         }

@@ -45,7 +45,7 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
     if (session?.playerId) {
       navigate(`/player/picks/${code}`);
     } else {
-      toast.info("Please join the party first");
+      toast.info("Please join the group first");
       navigate(`/player/join?code=${code}&host=true`);
     }
     onOpenChange(false);
@@ -56,7 +56,7 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
     if (session?.playerId) {
       navigate(`/player/dashboard/${code}`);
     } else {
-      toast.info("Please join the party first");
+      toast.info("Please join the group first");
       navigate(`/player/join?code=${code}&host=true`);
     }
     onOpenChange(false);

@@ -35,7 +35,7 @@ export default function PlayerJoin() {
         .maybeSingle();
 
       if (!data) {
-        toast.error("Party not found");
+        toast.error("Group not found");
         navigate("/");
         return;
       }
@@ -92,14 +92,14 @@ export default function PlayerJoin() {
 
         if (error) {
           if (error.code === "23505") {
-            toast.error("This email is already in use for this party");
+            toast.error("This email is already in use for this group");
             return;
           }
           throw error;
         }
 
         playerId = newPlayer.id;
-        toast.success("Joined the party!");
+        toast.success("Joined the group!");
       }
 
       setPlayerSession({
@@ -122,8 +122,8 @@ export default function PlayerJoin() {
         navigate(`/player/picks/${partyCode}`);
       }
     } catch (err) {
-      console.error("Error joining party:", err);
-      toast.error("Failed to join party. Please try again.");
+      console.error("Error joining group:", err);
+      toast.error("Failed to join group. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +146,7 @@ export default function PlayerJoin() {
             <ArrowLeft size={24} />
           </button>
           <div className="bg-primary/20 text-primary px-4 py-2 rounded-full font-bold">
-            Party {partyCode}
+            Group {partyCode}
           </div>
         </div>
 
@@ -160,7 +160,7 @@ export default function PlayerJoin() {
           transition={{ delay: 0.2 }}
         >
           <h2 className="text-2xl font-bold text-center">
-            {isHostJoining ? "Join Your Party" : "Join Party"}
+            {isHostJoining ? "Join Your Group" : "Join Group"}
           </h2>
 
           <div className="space-y-4">

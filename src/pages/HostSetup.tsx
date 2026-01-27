@@ -66,14 +66,14 @@ export default function HostSetup() {
           .single();
 
         if (error || !partyData) {
-          toast.error("Party not found");
+          toast.error("Group not found");
           navigate("/");
           return;
         }
 
         // Verify host access
         if (!isHostSession(partyData.host_session_id)) {
-          toast.error("You are not the host of this party");
+          toast.error("You are not the host of this group");
           navigate("/");
           return;
         }

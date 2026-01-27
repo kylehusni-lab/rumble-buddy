@@ -28,12 +28,12 @@ export function HostHeader({ code, onMenuClick }: HostHeaderProps) {
           <ArrowLeft size={24} />
         </Button>
         
-        {/* Party Code - centered */}
+        {/* Group Code - centered */}
         <button
           onClick={handleCopyCode}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <span className="font-bold text-lg">Party #{code}</span>
+          <span className="font-bold text-lg">Group #{code}</span>
           {copied ? (
             <Check size={16} className="text-success" />
           ) : (
