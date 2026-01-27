@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Target, Users, Search, Check, X, Ban, Plus } from "lucide-react";
+import { Target, Users, Search, Check, X, Ban, Plus, Hash, Clock, Zap, Trophy, Timer, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { RUMBLE_PROPS, FINAL_FOUR_SLOTS, SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
@@ -21,6 +21,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+// Map prop IDs to Lucide icons
+const PROP_ICONS: Record<string, LucideIcon> = {
+  entrant_1: Hash,
+  entrant_30: Hash,
+  first_elimination: Zap,
+  most_eliminations: Trophy,
+  longest_time: Timer,
+};
 
 interface RumblePropsCardProps {
   title: string;
@@ -173,7 +182,10 @@ export function RumblePropsCard({
                   )}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">{prop.icon}</span>
+                    {(() => {
+                      const Icon = PROP_ICONS[prop.id] || Target;
+                      return <Icon className="w-4 h-4 text-primary flex-shrink-0" />;
+                    })()}
                     <span className="text-xs font-medium text-foreground truncate">{prop.title}</span>
                   </div>
                   {selectedWrestler ? (
