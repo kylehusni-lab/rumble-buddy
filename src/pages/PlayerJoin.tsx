@@ -111,12 +111,14 @@ export default function PlayerJoin() {
         isHost: isHostJoining,
       });
 
-      // Redirect based on host status and party status
+      // Redirect based on host status and player type
       if (isHostJoining) {
         navigate(`/host/setup/${partyCode}`);
-      } else if (partyStatus === "live") {
+      } else if (existingPlayer) {
+        // Returning players go to dashboard (more natural hub)
         navigate(`/player/dashboard/${partyCode}`);
       } else {
+        // New players go to picks to complete initial submission
         navigate(`/player/picks/${partyCode}`);
       }
     } catch (err) {

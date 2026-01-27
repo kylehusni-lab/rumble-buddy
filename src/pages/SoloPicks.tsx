@@ -304,25 +304,34 @@ export default function SoloPicks() {
           {currentCardIndex + 1} / {TOTAL_CARDS}
         </div>
 
-        {!isLastCard ? (
+        <div className="flex items-center gap-2">
+          {!isLastCard ? (
+            <Button
+              variant="ghost"
+              onClick={() => handleSwipe("right")}
+              className="flex items-center gap-2"
+            >
+              Next
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSubmit}
+              disabled={!allPicksComplete}
+              className={allPicksComplete ? "gold-shimmer" : ""}
+            >
+              Save
+            </Button>
+          )}
           <Button
-            variant="ghost"
-            onClick={() => handleSwipe("right")}
-            className="flex items-center gap-2"
-          >
-            Skip
-            <ChevronRight className="w-5 h-5" />
-          </Button>
-        ) : (
-          <Button
+            variant="outline"
             onClick={handleSubmit}
-            disabled={!allPicksComplete}
-            className={allPicksComplete ? "gold-shimmer" : ""}
+            className="flex items-center gap-1"
           >
-            <Check className="w-4 h-4 mr-2" />
+            <Check className="w-4 h-4" />
             Done
           </Button>
-        )}
+        </div>
       </div>
 
       {/* Back to Home */}
