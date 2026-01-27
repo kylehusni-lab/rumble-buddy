@@ -69,10 +69,21 @@ export function RumbleWinnerCard({
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary"
+          className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary flex items-center gap-3"
         >
-          <div className="text-xs text-muted-foreground mb-1">Your Pick:</div>
-          <div className="text-lg font-bold text-primary">{value}</div>
+          <img
+            src={getWrestlerImageUrl(value)}
+            alt={value}
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-primary flex-shrink-0"
+            onError={(e) => {
+              e.currentTarget.src = getPlaceholderImageUrl(value);
+            }}
+          />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-muted-foreground">Your Pick:</div>
+            <div className="text-lg font-bold text-primary truncate">{getEntrantDisplayName(value)}</div>
+          </div>
+          <Check className="w-6 h-6 text-primary flex-shrink-0" />
         </motion.div>
       )}
 
