@@ -83,8 +83,8 @@ export const DEFAULT_MENS_ENTRANTS = [
   'Penta',
   'Solo Sikoa',
   'Jacob Fatu',
-  'CM Punk',
-  'Drew McIntyre',
+  '*CM Punk',
+  '*Drew McIntyre',
   'Trick Williams',
   // Unconfirmed (prefixed with *)
   '*Seth Rollins',
