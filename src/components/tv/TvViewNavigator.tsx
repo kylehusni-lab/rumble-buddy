@@ -9,6 +9,8 @@ import { RumblePropsDisplay } from "./RumblePropsDisplay";
 import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
 import { WrestlerImage } from "./WrestlerImage";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
+import { useTvScale } from "@/hooks/useTvScale";
+import { cn } from "@/lib/utils";
 
 interface MatchResult {
   match_id: string;
@@ -75,6 +77,9 @@ export function TvViewNavigator({
 }: TvViewNavigatorProps) {
   const [currentViewIndex, setCurrentViewIndex] = useState(0);
   const [direction, setDirection] = useState(0);
+  
+  // Get responsive scale values
+  const { scale, photoSize, gridGapClass } = useTvScale();
 
   // Check if a view is complete
   const isViewComplete = useCallback((view: View): boolean => {
@@ -173,7 +178,7 @@ export function TvViewNavigator({
           <h2 className="text-2xl font-bold">{title}</h2>
           <span className="text-success text-lg font-semibold">Active: {activeCount}</span>
         </div>
-        <div className="grid grid-cols-10 gap-2">
+        <div className={cn("grid grid-cols-10", gridGapClass)}>
           {numbers.map((num) => (
             <NumberCell
               key={num.number}
@@ -181,6 +186,8 @@ export function TvViewNavigator({
               wrestlerName={num.wrestler_name}
               ownerInitials={getPlayerInitials(num.assigned_to_player_id)}
               status={getNumberStatus(num)}
+              scale={scale}
+              photoSize={photoSize}
             />
           ))}
         </div>

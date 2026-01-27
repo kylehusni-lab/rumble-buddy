@@ -5,10 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
 import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
-
 import { TvViewNavigator } from "@/components/tv/TvViewNavigator";
 import { Logo } from "@/components/Logo";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
+import { useTvScale } from "@/hooks/useTvScale";
 
 interface Player {
   id: string;
@@ -48,6 +48,9 @@ interface MatchResult {
 
 export default function TvDisplay() {
   const { code } = useParams<{ code: string }>();
+  
+  // Responsive scaling hook
+  const { mainColSpan, sideColSpan } = useTvScale();
 
   const [partyStatus, setPartyStatus] = useState<string>("pre_event");
   const [players, setPlayers] = useState<Player[]>([]);
@@ -446,8 +449,8 @@ export default function TvDisplay() {
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        {/* Main Content */}
-        <div className="col-span-9 space-y-6">
+        {/* Main Content - responsive column span */}
+        <div className={`${mainColSpan} space-y-6`}>
           {partyStatus === "pre_event" ? (
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
@@ -472,8 +475,8 @@ export default function TvDisplay() {
           )}
         </div>
 
-        {/* Leaderboard */}
-        <div className="col-span-3">
+        {/* Leaderboard - responsive column span */}
+        <div className={sideColSpan}>
           <LeaderboardPanel players={players} />
         </div>
       </div>
