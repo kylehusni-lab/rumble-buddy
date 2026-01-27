@@ -51,6 +51,16 @@ import rusevImage from '@/assets/wrestlers/rusev.png';
 import samiZaynImage from '@/assets/wrestlers/sami-zayn.png';
 import sheamusImage from '@/assets/wrestlers/sheamus.png';
 import sethRollinsImage from '@/assets/wrestlers/seth-rollins.png';
+import shinsukeNakamuraImage from '@/assets/wrestlers/shinsuke-nakamura.png';
+import soloSikoaImage from '@/assets/wrestlers/solo-sikoa.png';
+import solRucaImage from '@/assets/wrestlers/sol-ruca.png';
+import theMizImage from '@/assets/wrestlers/the-miz.png';
+import tiffanyStrattonImage from '@/assets/wrestlers/tiffany-stratton.png';
+import xavierWoodsImage from '@/assets/wrestlers/xavier-woods.png';
+import obaFemiImage from '@/assets/wrestlers/oba-femi.png';
+import trickWilliamsImage from '@/assets/wrestlers/trick-williams.png';
+import zackRyderImage from '@/assets/wrestlers/zack-ryder.png';
+import chadGableImage from '@/assets/wrestlers/chad-gable.png';
 
 export interface WrestlerData {
   name: string;
@@ -73,7 +83,7 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'Cody Rhodes', imageUrl: `${WWE_CDN}/2025/04/Cody_Rhodes_Profile.png`, gender: 'male' },
   { name: 'Gunther', imageUrl: guntherImage, gender: 'male' },
   { name: 'Jey Uso', imageUrl: jeyUsoImage, gender: 'male' },
-  { name: 'Solo Sikoa', imageUrl: `${WWE_CDN}/2025/11/Solo_Sikoa_Profile.png`, gender: 'male' },
+  { name: 'Solo Sikoa', imageUrl: soloSikoaImage, gender: 'male' },
   { name: 'Jacob Fatu', imageUrl: jacobFatuImage, gender: 'male' },
   { name: 'Rey Mysterio', imageUrl: reyMysterioImage, gender: 'male' },
   { name: 'Dragon Lee', imageUrl: dragonLeeImage, gender: 'male' },
@@ -81,7 +91,7 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'CM Punk', imageUrl: `${WWE_CDN}/2025/11/CMPUNK_PROFILE.png`, gender: 'male' },
   { name: 'Drew McIntyre', imageUrl: `${WWE_CDN}/all/2021/09/Drew_Mcintyre_Profile--aca391095fe74e721e098cadc93571d3.png`, gender: 'male' },
   { name: 'Randy Orton', imageUrl: randyOrtonImage, gender: 'male' },
-  { name: 'Trick Williams', imageUrl: `${WWE_CDN}/2025/11/Trick_Williams_Profile.png`, gender: 'male' },
+  { name: 'Trick Williams', imageUrl: trickWilliamsImage, gender: 'male' },
   { name: 'Sami Zayn', imageUrl: samiZaynImage, gender: 'male' },
   { name: 'Seth Rollins', imageUrl: sethRollinsImage, gender: 'male' },
   { name: 'Damian Priest', imageUrl: damianPriestImage, gender: 'male' },
@@ -102,6 +112,12 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'Rey Fenix', imageUrl: reyFenixImage, gender: 'male' },
   { name: 'Rusev', imageUrl: rusevImage, gender: 'male' },
   { name: 'Sheamus', imageUrl: sheamusImage, gender: 'male' },
+  { name: 'Shinsuke Nakamura', imageUrl: shinsukeNakamuraImage, gender: 'male' },
+  { name: 'The Miz', imageUrl: theMizImage, gender: 'male' },
+  { name: 'Xavier Woods', imageUrl: xavierWoodsImage, gender: 'male' },
+  { name: 'Oba Femi', imageUrl: obaFemiImage, gender: 'male' },
+  { name: 'Zack Ryder', imageUrl: zackRyderImage, gender: 'male' },
+  { name: 'Chad Gable', imageUrl: chadGableImage, gender: 'male' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'male' },
 ];
 
@@ -132,6 +148,8 @@ export const DEFAULT_FEMALE_WRESTLERS: WrestlerData[] = [
   { name: 'Natalya', imageUrl: natalyaImage, gender: 'female' },
   { name: 'Nikki Bella', imageUrl: nikkiBellaImage, gender: 'female' },
   { name: 'Nikki Cross', imageUrl: nikkiCrossImage, gender: 'female' },
+  { name: 'Sol Ruca', imageUrl: solRucaImage, gender: 'female' },
+  { name: 'Tiffany Stratton', imageUrl: tiffanyStrattonImage, gender: 'female' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'female' },
 ];
 
