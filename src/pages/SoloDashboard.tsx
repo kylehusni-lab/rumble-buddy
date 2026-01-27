@@ -73,7 +73,7 @@ export default function SoloDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col overflow-hidden">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-gradient-to-b from-background via-background to-background/95 backdrop-blur-sm">
         <div className="p-4 pb-2">
@@ -146,7 +146,7 @@ export default function SoloDashboard() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 pb-24">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 pb-32">
         {activeTab === "matches" && (
           <MatchesTab picks={picks} results={results} />
         )}
