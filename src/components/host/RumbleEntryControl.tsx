@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Bell, Sparkles } from "lucide-react";
+import { isUnconfirmedEntrant, getEntrantDisplayName } from "@/lib/entrant-utils";
+import { cn } from "@/lib/utils";
 
 interface RumbleEntryControlProps {
   nextNumber: number;
@@ -143,13 +145,15 @@ export function RumbleEntryControl({
                   key={wrestler}
                   onClick={() => handleWrestlerSelect(wrestler)}
                   disabled={disabled || isSubmitting}
-                  className={`w-full text-left px-3 py-2.5 rounded-md transition-colors min-h-[44px] ${
+                  className={cn(
+                    "w-full text-left px-3 py-2.5 rounded-md transition-colors min-h-[44px]",
                     selectedWrestler === wrestler
                       ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent"
-                  }`}
+                      : "hover:bg-accent",
+                    isUnconfirmedEntrant(wrestler) && "italic opacity-80"
+                  )}
                 >
-                  {wrestler}
+                  {getEntrantDisplayName(wrestler)}
                 </button>
               ))
             ) : searchQuery.length > 0 ? (

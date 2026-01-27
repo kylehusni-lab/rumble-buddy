@@ -4,6 +4,7 @@ import { Crown, Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
+import { isUnconfirmedEntrant, getEntrantDisplayName } from "@/lib/entrant-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import confetti from "canvas-confetti";
@@ -134,10 +135,11 @@ export function RumbleWinnerCard({
                 <span
                   className={cn(
                     "mt-2 text-xs text-center leading-tight line-clamp-2 w-[70px]",
-                    isSelected ? "text-primary font-semibold" : "text-foreground"
+                    isSelected ? "text-primary font-semibold" : "text-foreground",
+                    isUnconfirmedEntrant(wrestler) && "italic opacity-80"
                   )}
                 >
-                  {wrestler}
+                  {getEntrantDisplayName(wrestler)}
                 </span>
               </motion.button>
             );
