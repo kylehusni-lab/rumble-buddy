@@ -64,6 +64,7 @@ import bronsonReedImage from '@/assets/wrestlers/bronson-reed.png';
 import bronBreakkerImage from '@/assets/wrestlers/bron-breakker.png';
 import codyRhodesImage from '@/assets/wrestlers/cody-rhodes.png';
 import austinTheoryImage from '@/assets/wrestlers/austin-theory.png';
+import jevonEvansImage from '@/assets/wrestlers/jevon-evans.png';
 
 export interface WrestlerData {
   name: string;
@@ -101,6 +102,7 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'Gunther', imageUrl: guntherImage, gender: 'male' },
   { name: 'Ilja Dragunov', imageUrl: iljaDragunovImage, gender: 'male' },
   { name: 'Jacob Fatu', imageUrl: jacobFatuImage, gender: 'male' },
+  { name: "Je'Von Evans", imageUrl: jevonEvansImage, gender: 'male' },
   { name: 'Jey Uso', imageUrl: jeyUsoImage, gender: 'male' },
   { name: 'Joe Hendry', imageUrl: joeHendryImage, gender: 'male' },
   { name: 'Kofi Kingston', imageUrl: kofiKingstonImage, gender: 'male' },
