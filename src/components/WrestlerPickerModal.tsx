@@ -116,15 +116,15 @@ export function WrestlerPickerModal({
           className="flex-1 overflow-y-auto overscroll-contain"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 20px)" }}
         >
-          <div className="p-3">
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
+          <div className="p-3 sm:p-4 md:p-6">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
               {filteredWrestlers.map((wrestler) => {
                 const isSelected = currentSelection === wrestler;
                 return (
                   <motion.button
                     key={wrestler}
                     onClick={() => handleSelect(wrestler)}
-                    className="flex flex-col items-center p-1"
+                    className="flex flex-col items-center"
                     whileTap={{ scale: 0.95 }}
                     animate={isSelected ? { scale: [1, 1.05, 1] } : {}}
                     transition={{ duration: 0.2 }}
@@ -132,7 +132,7 @@ export function WrestlerPickerModal({
                     {/* Photo Container */}
                     <div
                       className={cn(
-                        "relative w-[60px] h-[60px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
+                        "relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-[3px] transition-all duration-200",
                         isSelected
                           ? "border-primary shadow-[0_0_12px_hsla(43,75%,52%,0.5)]"
                           : isUnconfirmedEntrant(wrestler)
@@ -158,16 +158,18 @@ export function WrestlerPickerModal({
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                         >
-                          <Check className="text-primary-foreground" size={24} strokeWidth={3} />
+                          <Check className="text-primary-foreground w-6 h-6 sm:w-8 sm:h-8" strokeWidth={3} />
                         </motion.div>
                       )}
                     </div>
 
                     {/* Name */}
                     <span
-                      className={`mt-1.5 text-[10px] text-center leading-tight line-clamp-2 ${
-                        isSelected ? "text-primary font-semibold" : "text-foreground"
-                      }`}
+                      className={cn(
+                        "mt-1.5 sm:mt-2 text-[10px] sm:text-xs md:text-sm text-center leading-tight line-clamp-2 w-16 sm:w-20 md:w-24 lg:w-28",
+                        isSelected ? "text-primary font-semibold" : "text-foreground",
+                        isUnconfirmedEntrant(wrestler) && "italic opacity-80"
+                      )}
                     >
                       {wrestler}
                     </span>
