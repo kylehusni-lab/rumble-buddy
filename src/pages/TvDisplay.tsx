@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
-import { NumberCell } from "@/components/tv/NumberCell";
 import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
 import { MatchProgressBar } from "@/components/tv/MatchProgressBar";
 import { TvViewNavigator } from "@/components/tv/TvViewNavigator";
@@ -64,11 +63,35 @@ export default function TvDisplay() {
   // Track shown celebrations to avoid duplicates
   const shownCelebrations = useRef<Set<string>>(new Set());
 
+  // Refs to hold current state for use in realtime callbacks (prevents infinite loops)
+  const playersRef = useRef<Player[]>([]);
+  const mensNumbersRef = useRef<RumbleNumber[]>([]);
+  const womensNumbersRef = useRef<RumbleNumber[]>([]);
+  const partyStatusRef = useRef<string>("pre_event");
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
+  useEffect(() => {
+    mensNumbersRef.current = mensNumbers;
+  }, [mensNumbers]);
+
+  useEffect(() => {
+    womensNumbersRef.current = womensNumbers;
+  }, [womensNumbers]);
+
+  useEffect(() => {
+    partyStatusRef.current = partyStatus;
+  }, [partyStatus]);
+
   // Check if we're in undercard phase (any undercard match not yet resolved)
   const isUndercardPhase = UNDERCARD_MATCHES.some(m => 
     !matchResults.some(r => r.match_id === m.id)
   );
 
+  // Effect 1: Initial data fetch (runs once per code change)
   useEffect(() => {
     if (!code) return;
 
@@ -119,8 +142,90 @@ export default function TvDisplay() {
 
     fetchData();
 
+    const checkInitialReveal = async () => {
+      const hasSeenReveal = sessionStorage.getItem(`tv-reveal-seen-${code}`);
+      if (!hasSeenReveal) {
+        const { data: partyData } = await supabase
+          .from("parties")
+          .select("status, event_started_at")
+          .eq("code", code)
+          .single();
+        
+        if (partyData?.status === "live" && partyData.event_started_at) {
+          const startedAt = new Date(partyData.event_started_at);
+          const now = new Date();
+          const timeSinceStart = (now.getTime() - startedAt.getTime()) / 1000;
+          
+          // Show reveal if event started within the last 2 minutes
+          if (timeSinceStart < 120) {
+            const { data: allPlayers } = await supabase
+              .from("players")
+              .select("id, display_name")
+              .eq("party_code", code)
+              .order("joined_at");
+
+            const { data: allNumbers } = await supabase
+              .from("rumble_numbers")
+              .select("number, assigned_to_player_id, rumble_type")
+              .eq("party_code", code);
+
+            if (allPlayers && allNumbers) {
+              const playerData: PlayerWithNumbers[] = allPlayers.map(p => ({
+                playerName: p.display_name,
+                mensNumbers: allNumbers
+                  .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
+                  .map(n => n.number)
+                  .sort((a, b) => a - b),
+                womensNumbers: allNumbers
+                  .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
+                  .map(n => n.number)
+                  .sort((a, b) => a - b),
+              }));
+              
+              setRevealPlayers(playerData);
+              setShowNumberReveal(true);
+            }
+          }
+        }
+      }
+    };
+
+    checkInitialReveal();
+  }, [code]); // Only re-run when party code changes
+
+  // Effect 2: Realtime subscriptions (stable, no state deps)
+  useEffect(() => {
+    if (!code) return;
+
+    // Helper functions that read from refs, not state
+    const getPlayerName = (playerId: string | null) => {
+      if (!playerId) return "Vacant";
+      const player = playersRef.current.find(p => p.id === playerId);
+      return player?.display_name || "Unknown";
+    };
+
+    const checkForFinalFour = (numbers: RumbleNumber[], type: "mens" | "womens") => {
+      const celebrationKey = `${type}_final_four`;
+      if (shownCelebrations.current.has(celebrationKey)) return;
+
+      const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
+      if (active.length === 4) {
+        shownCelebrations.current.add(celebrationKey);
+        setCelebration({
+          type: "final-four",
+          data: {
+            rumbleType: type,
+            wrestlers: active.map(n => ({
+              number: n.number,
+              wrestlerName: n.wrestler_name || "Unknown",
+              ownerName: getPlayerName(n.assigned_to_player_id),
+            })),
+          },
+        });
+      }
+    };
+
     const loadRevealData = async () => {
-      // Fetch all players with their numbers for the reveal
       const { data: allPlayers } = await supabase
         .from("players")
         .select("id, display_name")
@@ -150,64 +255,12 @@ export default function TvDisplay() {
       }
     };
 
-    // Check if we should show reveal on initial load
-    const checkInitialReveal = async () => {
-      const hasSeenReveal = sessionStorage.getItem(`tv-reveal-seen-${code}`);
-      if (!hasSeenReveal) {
-        const { data: partyData } = await supabase
-          .from("parties")
-          .select("status, event_started_at")
-          .eq("code", code)
-          .single();
-        
-        if (partyData?.status === "live" && partyData.event_started_at) {
-          const startedAt = new Date(partyData.event_started_at);
-          const now = new Date();
-          const timeSinceStart = (now.getTime() - startedAt.getTime()) / 1000;
-          
-          // Show reveal if event started within the last 2 minutes
-          if (timeSinceStart < 120) {
-            await loadRevealData();
-          }
-        }
-      }
-    };
-
-    checkInitialReveal();
-
-    const getPlayerName = (playerId: string | null) => {
-      if (!playerId) return "Vacant";
-      const player = players.find(p => p.id === playerId);
-      return player?.display_name || "Unknown";
-    };
-
-    const checkForFinalFour = (numbers: RumbleNumber[], type: "mens" | "womens") => {
-      const celebrationKey = `${type}_final_four`;
-      if (shownCelebrations.current.has(celebrationKey)) return;
-
-      const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
-      if (active.length === 4) {
-        shownCelebrations.current.add(celebrationKey);
-        setCelebration({
-          type: "final-four",
-          data: {
-            rumbleType: type,
-            wrestlers: active.map(n => ({
-              number: n.number,
-              wrestlerName: n.wrestler_name || "Unknown",
-              ownerName: getPlayerName(n.assigned_to_player_id),
-            })),
-          },
-        });
-      }
-    };
-
     const channel = supabase
       .channel(`tv-display-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "parties", filter: `code=eq.${code}` }, async (payload) => {
         if (payload.new && typeof payload.new === "object" && "status" in payload.new) {
           const newStatus = payload.new.status as string;
-          if (newStatus === "live" && partyStatus === "pre_event") {
+          if (newStatus === "live" && partyStatusRef.current === "pre_event") {
             // Event just started - trigger number reveal animation
             await loadRevealData();
           }
@@ -222,9 +275,9 @@ export default function TvDisplay() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, (payload) => {
         const updated = payload.new as any;
         
-        // Show entry overlay
+        // Show entry overlay - use ref for player lookup
         if (updated.entry_timestamp && !payload.old?.entry_timestamp) {
-          const player = players.find(p => p.id === updated.assigned_to_player_id);
+          const player = playersRef.current.find(p => p.id === updated.assigned_to_player_id);
           setShowOverlay({
             type: "entry",
             data: {
@@ -268,14 +321,14 @@ export default function TvDisplay() {
           return [...prev, matchResult];
         });
 
-        // Check for winner celebration
+        // Check for winner celebration - use refs
         if (matchResult.match_id === "mens_rumble_winner" || matchResult.match_id === "womens_rumble_winner") {
           const celebrationKey = matchResult.match_id;
           if (shownCelebrations.current.has(celebrationKey)) return;
           shownCelebrations.current.add(celebrationKey);
 
           const type = matchResult.match_id === "mens_rumble_winner" ? "mens" : "womens";
-          const numbers = type === "mens" ? mensNumbers : womensNumbers;
+          const numbers = type === "mens" ? mensNumbersRef.current : womensNumbersRef.current;
           const winnerNumber = numbers.find(n => n.wrestler_name === matchResult.result);
 
           if (winnerNumber) {
@@ -330,7 +383,7 @@ export default function TvDisplay() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [code, players, partyStatus, mensNumbers, womensNumbers]);
+  }, [code]); // Only code as dependency - refs handle current state access
 
   const getPlayerInitials = (playerId: string | null) => {
     if (!playerId) return "V";
@@ -350,30 +403,6 @@ export default function TvDisplay() {
     return "active";
   };
 
-  const renderNumberGrid = (numbers: RumbleNumber[], title: string) => {
-    const activeCount = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length;
-
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">{title}</h2>
-          <span className="text-success text-lg font-semibold">Active: {activeCount}</span>
-        </div>
-        <div className="grid grid-cols-10 gap-2">
-          {numbers.map((num) => (
-            <NumberCell
-              key={num.number}
-              number={num.number}
-              wrestlerName={num.wrestler_name}
-              ownerInitials={getPlayerInitials(num.assigned_to_player_id)}
-              status={getNumberStatus(num)}
-              delay={num.number}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   const handleRevealComplete = () => {
     setShowNumberReveal(false);
