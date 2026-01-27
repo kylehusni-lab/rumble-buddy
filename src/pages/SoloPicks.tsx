@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Loader2, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MatchCard } from "@/components/picks/cards/MatchCard";
 import { RumbleWinnerCard } from "@/components/picks/cards/RumbleWinnerCard";
@@ -246,12 +246,21 @@ export default function SoloPicks() {
       />
 
       {/* Header */}
-      <div className="text-center py-2 border-b border-border">
-        <div className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-success animate-pulse" />
-          Synced
+      <div className="py-2 px-4 border-b border-border flex items-center justify-between">
+        <button 
+          onClick={() => navigate("/solo/dashboard")}
+          className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
+        >
+          <Home className="w-5 h-5 text-muted-foreground" />
+        </button>
+        <div className="text-center">
+          <div className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-success animate-pulse" />
+            Synced
+          </div>
+          <div className="font-bold text-primary">Hey {displayName}!</div>
         </div>
-        <div className="font-bold text-primary">Hey {displayName}!</div>
+        <div className="w-9" /> {/* Spacer for balance */}
       </div>
 
       {/* Card Container */}
@@ -381,16 +390,6 @@ export default function SoloPicks() {
         )}
       </div>
 
-      {/* Back to Dashboard */}
-      <div className="p-2 text-center border-t border-border">
-        <Button 
-          variant="link" 
-          onClick={() => navigate("/solo/dashboard")}
-          className="text-muted-foreground"
-        >
-          ← Back to Dashboard
-        </Button>
-      </div>
       
       {/* Incomplete Picks Warning Dialog */}
       <AlertDialog open={showIncompleteWarning} onOpenChange={setShowIncompleteWarning}>
