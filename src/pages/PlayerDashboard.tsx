@@ -1,13 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy, Hash, Check, X, Clock, Edit } from "lucide-react";
+import { ArrowLeft, Clock, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlayerSession } from "@/lib/session";
-import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING } from "@/lib/constants";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
+import { BottomNavBar, TabId } from "@/components/dashboard/BottomNavBar";
+import { NumbersSection } from "@/components/dashboard/NumbersSection";
+import { MatchesSection } from "@/components/dashboard/MatchesSection";
+import { RumblePropsSection } from "@/components/dashboard/RumblePropsSection";
+import { ChaosPropsSection } from "@/components/dashboard/ChaosPropsSection";
 
 interface Pick {
   match_id: string;
@@ -45,6 +49,7 @@ export default function PlayerDashboard() {
   const navigate = useNavigate();
   const session = getPlayerSession();
 
+  const [activeTab, setActiveTab] = useState<TabId>("matches");
   const [partyStatus, setPartyStatus] = useState<string>("pre_event");
   const [playerPoints, setPlayerPoints] = useState(0);
   const [playerRank, setPlayerRank] = useState<number | null>(null);
@@ -61,6 +66,13 @@ export default function PlayerDashboard() {
 
   // Track shown celebrations to avoid duplicates
   const shownCelebrations = useRef<Set<string>>(new Set());
+
+  // Switch to numbers tab when event goes live
+  useEffect(() => {
+    if (partyStatus === "live" && numbers.length > 0) {
+      setActiveTab("numbers");
+    }
+  }, [partyStatus, numbers.length]);
 
   useEffect(() => {
     if (!code || !session?.playerId) {
@@ -332,19 +344,6 @@ export default function PlayerDashboard() {
     };
   }, [code, session?.playerId, navigate, partyStatus, players, allNumbers, picks]);
 
-  const getPickResult = (matchId: string) => {
-    const result = results.find(r => r.match_id === matchId);
-    const pick = picks.find(p => p.match_id === matchId);
-    if (!result || !pick) return null;
-    return result.result === pick.prediction;
-  };
-
-  const getNumberStatus = (num: RumbleNumber) => {
-    if (!num.entry_timestamp) return "pending";
-    if (num.elimination_timestamp) return "eliminated";
-    return "active";
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -364,6 +363,24 @@ export default function PlayerDashboard() {
 
   const mensNumbers = numbers.filter(n => n.rumble_type === "mens");
   const womensNumbers = numbers.filter(n => n.rumble_type === "womens");
+  const showNumbers = partyStatus !== "pre_event" || numbers.length > 0;
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "numbers":
+        return <NumbersSection mensNumbers={mensNumbers} womensNumbers={womensNumbers} />;
+      case "matches":
+        return <MatchesSection picks={picks} results={results} />;
+      case "mens":
+        return <RumblePropsSection picks={picks} results={results} gender="mens" />;
+      case "womens":
+        return <RumblePropsSection picks={picks} results={results} gender="womens" />;
+      case "chaos":
+        return <ChaosPropsSection picks={picks} results={results} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
@@ -388,218 +405,77 @@ export default function PlayerDashboard() {
         )}
       </AnimatePresence>
 
-    <div className="min-h-screen pb-8">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
-        <div className="flex items-center justify-between p-4 max-w-lg mx-auto">
-          <button
-            onClick={() => navigate("/")}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft size={24} />
-          </button>
-          <div className="text-center">
-            <div className="text-sm text-muted-foreground">Party {code}</div>
-            <div className="font-bold">{session?.displayName}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-black text-primary">{playerPoints}</div>
-            <div className="text-xs text-muted-foreground">
-              {playerRank ? `#${playerRank} of ${totalPlayers}` : "pts"}
+      <div className="min-h-screen pb-24">
+        {/* Header with persistent points */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
+          <div className="flex items-center justify-between p-4 max-w-lg mx-auto">
+            <button
+              onClick={() => navigate("/")}
+              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <div className="text-center flex-1 min-w-0 px-2">
+              <div className="text-sm text-muted-foreground">Party {code}</div>
+              <div className="font-bold truncate">{session?.displayName}</div>
+            </div>
+            <div className="text-right">
+              <motion.div 
+                key={playerPoints}
+                initial={{ scale: 1.2 }}
+                animate={{ scale: 1 }}
+                className="text-2xl font-black text-primary"
+              >
+                {playerPoints}
+              </motion.div>
+              <div className="text-xs text-muted-foreground">
+                {playerRank ? `#${playerRank} of ${totalPlayers}` : "pts"}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Main Content Area */}
+        <div className="max-w-lg mx-auto p-4">
+          {/* Status Banner (pre-event only) */}
+          {partyStatus === "pre_event" && (
+            <motion.div
+              className="bg-muted/50 rounded-xl p-4 text-center mb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <Clock className="mx-auto mb-2 text-muted-foreground" size={24} />
+              <p className="text-muted-foreground">Waiting for event to start...</p>
+              <Link to={`/player/picks/${code}`}>
+                <Button variant="outline" size="sm" className="mt-3">
+                  <Edit size={16} className="mr-2" />
+                  Edit Picks
+                </Button>
+              </Link>
+            </motion.div>
+          )}
+
+          {/* Tab Content */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.15 }}
+            >
+              {renderTabContent()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Bottom Navigation */}
+        <BottomNavBar 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab}
+          showNumbers={showNumbers}
+        />
       </div>
-
-      <div className="max-w-lg mx-auto p-4 space-y-6">
-        {/* Status Banner */}
-        {partyStatus === "pre_event" && (
-          <motion.div
-            className="bg-muted/50 rounded-xl p-4 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <Clock className="mx-auto mb-2 text-muted-foreground" size={24} />
-            <p className="text-muted-foreground">Waiting for event to start...</p>
-            <Link to={`/player/picks/${code}`}>
-              <Button variant="outline" size="sm" className="mt-3">
-                <Edit size={16} className="mr-2" />
-                Edit Picks
-              </Button>
-            </Link>
-          </motion.div>
-        )}
-
-        {/* Your Numbers (only show after event starts) */}
-        {partyStatus !== "pre_event" && (mensNumbers.length > 0 || womensNumbers.length > 0) && (
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            <div className="flex items-center gap-2 text-xl font-bold">
-              <Hash className="text-primary" size={24} />
-              Your Numbers
-            </div>
-
-            {mensNumbers.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground">🧔 Men's Rumble</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {mensNumbers.map((num) => {
-                    const status = getNumberStatus(num);
-                    return (
-                      <div
-                        key={`mens-${num.number}`}
-                        className={`p-3 rounded-xl border ${
-                          status === "active"
-                            ? "bg-primary/20 border-primary active-pulse"
-                            : status === "eliminated"
-                            ? "bg-destructive/20 border-destructive opacity-60"
-                            : "bg-muted border-border"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-lg">#{num.number}</span>
-                          {status === "active" && <span className="text-xs text-primary">ACTIVE</span>}
-                          {status === "eliminated" && <X size={16} className="text-destructive" />}
-                        </div>
-                        <div className="text-sm truncate">
-                          {num.wrestler_name || "Not yet entered"}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {womensNumbers.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground">👩 Women's Rumble</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {womensNumbers.map((num) => {
-                    const status = getNumberStatus(num);
-                    return (
-                      <div
-                        key={`womens-${num.number}`}
-                        className={`p-3 rounded-xl border ${
-                          status === "active"
-                            ? "bg-primary/20 border-primary active-pulse"
-                            : status === "eliminated"
-                            ? "bg-destructive/20 border-destructive opacity-60"
-                            : "bg-muted border-border"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-lg">#{num.number}</span>
-                          {status === "active" && <span className="text-xs text-primary">ACTIVE</span>}
-                          {status === "eliminated" && <X size={16} className="text-destructive" />}
-                        </div>
-                        <div className="text-sm truncate">
-                          {num.wrestler_name || "Not yet entered"}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </motion.section>
-        )}
-
-        {/* Your Picks */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-4"
-        >
-          <div className="flex items-center gap-2 text-xl font-bold">
-            <Trophy className="text-primary" size={24} />
-            Your Picks
-          </div>
-
-          <div className="bg-card border border-border rounded-xl divide-y divide-border">
-            {/* Undercard matches */}
-            {UNDERCARD_MATCHES.map((match) => {
-              const pick = picks.find(p => p.match_id === match.id);
-              const isCorrect = getPickResult(match.id);
-              
-              return (
-                <div key={match.id} className="p-3 flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-muted-foreground">{match.title}</div>
-                    <div className="font-medium">{pick?.prediction || "No pick"}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isCorrect === true && (
-                      <>
-                        <Check size={18} className="text-success" />
-                        <span className="text-success text-sm">+{SCORING.UNDERCARD_WINNER}</span>
-                      </>
-                    )}
-                    {isCorrect === false && <X size={18} className="text-destructive" />}
-                    {isCorrect === null && <span className="text-xs text-muted-foreground">pending</span>}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Rumble winners */}
-            {["mens_rumble_winner", "womens_rumble_winner"].map((matchId) => {
-              const pick = picks.find(p => p.match_id === matchId);
-              const isCorrect = getPickResult(matchId);
-              const label = matchId === "mens_rumble_winner" ? "🧔 Men's Winner" : "👩 Women's Winner";
-
-              return (
-                <div key={matchId} className="p-3 flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-muted-foreground">{label}</div>
-                    <div className="font-medium">{pick?.prediction || "No pick"}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isCorrect === true && (
-                      <>
-                        <Check size={18} className="text-success" />
-                        <span className="text-success text-sm">+{SCORING.RUMBLE_WINNER_PICK}</span>
-                      </>
-                    )}
-                    {isCorrect === false && <X size={18} className="text-destructive" />}
-                    {isCorrect === null && <span className="text-xs text-muted-foreground">pending</span>}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Props */}
-            {CHAOS_PROPS.map((prop) => {
-              const pick = picks.find(p => p.match_id === prop.id);
-              const isCorrect = getPickResult(prop.id);
-
-              return (
-                <div key={prop.id} className="p-3 flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-muted-foreground">{prop.shortName}</div>
-                    <div className="font-medium">{pick?.prediction || "No pick"}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isCorrect === true && (
-                      <>
-                        <Check size={18} className="text-success" />
-                        <span className="text-success text-sm">+{SCORING.PROP_BET}</span>
-                      </>
-                    )}
-                    {isCorrect === false && <X size={18} className="text-destructive" />}
-                    {isCorrect === null && <span className="text-xs text-muted-foreground">pending</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </motion.section>
-      </div>
-    </div>
     </>
   );
 }
