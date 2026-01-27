@@ -443,15 +443,6 @@ export default function TvDisplay() {
           <Logo size="sm" />
           <p className="text-muted-foreground text-lg">Party {code}</p>
         </div>
-        <div className="flex items-center gap-4">
-          {/* Status */}
-          <div className="text-right">
-            <div className="text-sm text-muted-foreground">Status</div>
-            <div className={`text-xl font-bold ${partyStatus === "live" ? "text-success" : "text-muted-foreground"}`}>
-              {partyStatus === "pre_event" ? "PRE-EVENT" : partyStatus === "live" ? "LIVE" : "COMPLETED"}
-            </div>
-          </div>
-        </div>
       </div>
 
       <div className="grid grid-cols-12 gap-6">

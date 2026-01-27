@@ -10,12 +10,13 @@ import { QuickActionsSheet } from "@/components/host/QuickActionsSheet";
 import { ConnectionStatus } from "@/components/host/ConnectionStatus";
 import { MatchScoringCard } from "@/components/host/MatchScoringCard";
 import { PropScoringCard } from "@/components/host/PropScoringCard";
+import { RumblePropScoringCard } from "@/components/host/RumblePropScoringCard";
 import { BulkPropsModal } from "@/components/host/BulkPropsModal";
 import { RumbleEntryControl } from "@/components/host/RumbleEntryControl";
 import { ActiveWrestlerCard } from "@/components/host/ActiveWrestlerCard";
 import { EliminationModal } from "@/components/host/EliminationModal";
 import { WinnerDeclarationModal } from "@/components/host/WinnerDeclarationModal";
-import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING } from "@/lib/constants";
+import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING, RUMBLE_PROPS, MATCH_IDS } from "@/lib/constants";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 
 interface RumbleNumber {
@@ -320,6 +321,68 @@ export default function HostControl() {
     } catch (err) {
       console.error("Error scoring prop:", err);
       toast.error("Failed to score prop");
+    }
+  };
+
+  // Score a Rumble prop (wrestler-based)
+  const handleScoreRumbleProp = async (propId: string, answer: string) => {
+    try {
+      await supabase.from("match_results").insert({
+        party_code: code!,
+        match_id: propId,
+        result: answer,
+      });
+
+      // Award points based on prop type
+      let points: number = SCORING.PROP_BET;
+      if (propId.includes("most_eliminations") || propId.includes("longest_time")) {
+        points = SCORING.MOST_ELIMINATIONS;
+      } else if (propId.includes("entrant_1") || propId.includes("entrant_30")) {
+        points = SCORING.ENTRANT_GUESS;
+      } else if (propId.includes("first_elimination") || propId.includes("no_show")) {
+        points = SCORING.FIRST_ELIMINATION;
+      } else if (propId.includes("final_four")) {
+        points = SCORING.FINAL_FOUR_PICK;
+      }
+
+      // Award points to correct predictions
+      const { data: correctPicks } = await supabase
+        .from("picks")
+        .select("player_id")
+        .eq("match_id", propId)
+        .eq("prediction", answer);
+
+      if (correctPicks) {
+        for (const pick of correctPicks) {
+          const player = getPlayer(pick.player_id);
+          if (player) {
+            await supabase
+              .from("players")
+              .update({ points: player.points + points })
+              .eq("id", pick.player_id);
+          }
+        }
+      }
+
+      toast.success(`Rumble prop scored: ${answer}`);
+    } catch (err) {
+      console.error("Error scoring rumble prop:", err);
+      toast.error("Failed to score prop");
+    }
+  };
+
+  // Reset a Rumble prop result
+  const handleResetRumbleProp = async (propId: string) => {
+    try {
+      await supabase
+        .from("match_results")
+        .delete()
+        .eq("party_code", code)
+        .eq("match_id", propId);
+      toast.success("Prop result reset");
+    } catch (err) {
+      console.error("Error resetting prop:", err);
+      toast.error("Failed to reset prop");
     }
   };
 
@@ -649,17 +712,28 @@ export default function HostControl() {
     }
   };
 
-  // Computed values
+  // Computed values - show wrestlers with names as "active" even before match starts
   const mensActiveWrestlers = useMemo(() => {
     return mensNumbers
-      .filter(n => n.entry_timestamp && !n.elimination_timestamp)
-      .sort((a, b) => new Date(b.entry_timestamp!).getTime() - new Date(a.entry_timestamp!).getTime());
+      .filter(n => n.wrestler_name && !n.elimination_timestamp)
+      .sort((a, b) => {
+        // Sort by entry timestamp if available, otherwise by number
+        if (a.entry_timestamp && b.entry_timestamp) {
+          return new Date(b.entry_timestamp).getTime() - new Date(a.entry_timestamp).getTime();
+        }
+        return b.number - a.number;
+      });
   }, [mensNumbers]);
 
   const womensActiveWrestlers = useMemo(() => {
     return womensNumbers
-      .filter(n => n.entry_timestamp && !n.elimination_timestamp)
-      .sort((a, b) => new Date(b.entry_timestamp!).getTime() - new Date(a.entry_timestamp!).getTime());
+      .filter(n => n.wrestler_name && !n.elimination_timestamp)
+      .sort((a, b) => {
+        if (a.entry_timestamp && b.entry_timestamp) {
+          return new Date(b.entry_timestamp).getTime() - new Date(a.entry_timestamp).getTime();
+        }
+        return b.number - a.number;
+      });
   }, [womensNumbers]);
 
   // Count entered as wrestlers with names (not just timestamps, since #1/#2 may not have timestamp yet)
@@ -698,6 +772,77 @@ export default function HostControl() {
     if (!entryTimestamp) return 0;
     return Math.floor((Date.now() - new Date(entryTimestamp).getTime()) / 1000);
   };
+
+  // Derive Rumble prop values from match data
+  const getDerivedPropValues = (numbers: RumbleNumber[], type: "mens" | "womens") => {
+    // #1 Entrant - whoever is assigned to number 1
+    const entrant1 = numbers.find(n => n.number === 1)?.wrestler_name || null;
+    
+    // #30 Entrant - whoever is assigned to number 30
+    const entrant30 = numbers.find(n => n.number === 30)?.wrestler_name || null;
+    
+    // First Elimination - first wrestler to be eliminated (earliest elimination_timestamp)
+    const eliminated = numbers.filter(n => n.elimination_timestamp);
+    const firstEliminated = eliminated.length > 0
+      ? eliminated.reduce((first, n) => {
+          if (!first.elimination_timestamp) return n;
+          return new Date(n.elimination_timestamp!).getTime() < new Date(first.elimination_timestamp).getTime() ? n : first;
+        })
+      : null;
+    const firstElimination = firstEliminated?.wrestler_name || null;
+    
+    // Most Eliminations - wrestler with most eliminations (by eliminated_by_number)
+    const eliminationCounts = new Map<number, number>();
+    eliminated.forEach(n => {
+      if (n.eliminated_by_number) {
+        eliminationCounts.set(n.eliminated_by_number, (eliminationCounts.get(n.eliminated_by_number) || 0) + 1);
+      }
+    });
+    let mostEliminationsNumber: number | null = null;
+    let maxElims = 0;
+    eliminationCounts.forEach((count, num) => {
+      if (count > maxElims) {
+        maxElims = count;
+        mostEliminationsNumber = num;
+      }
+    });
+    const mostEliminationsWrestler = mostEliminationsNumber 
+      ? numbers.find(n => n.number === mostEliminationsNumber)?.wrestler_name || null
+      : null;
+    
+    // Iron Man/Woman - longest time in ring (only calculable when match is complete or we have eliminations)
+    const withDurations = numbers
+      .filter(n => n.entry_timestamp)
+      .map(n => ({
+        ...n,
+        duration: n.elimination_timestamp
+          ? new Date(n.elimination_timestamp).getTime() - new Date(n.entry_timestamp!).getTime()
+          : Date.now() - new Date(n.entry_timestamp!).getTime(),
+      }));
+    const longestSurvivor = withDurations.length > 0
+      ? withDurations.reduce((max, n) => n.duration > max.duration ? n : max)
+      : null;
+    // Only show Iron Man if we have at least some eliminations (match in progress)
+    const ironMan = eliminated.length > 0 ? longestSurvivor?.wrestler_name || null : null;
+    
+    // Final Four - last 4 wrestlers remaining (only when exactly 4 are left or match ended)
+    const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
+    const finalFour = active.length === 4 
+      ? active.map(n => n.wrestler_name).filter(Boolean) as string[]
+      : [];
+    
+    return {
+      [`${type}_entrant_1`]: entrant1,
+      [`${type}_entrant_30`]: entrant30,
+      [`${type}_first_elimination`]: firstElimination,
+      [`${type}_most_eliminations`]: mostEliminationsWrestler,
+      [`${type}_longest_time`]: ironMan,
+      [`${type}_final_four`]: finalFour.length === 4 ? finalFour.join(", ") : null,
+    };
+  };
+
+  const mensDerivedProps = useMemo(() => getDerivedPropValues(mensNumbers, "mens"), [mensNumbers]);
+  const womensDerivedProps = useMemo(() => getDerivedPropValues(womensNumbers, "womens"), [womensNumbers]);
 
   if (isLoading || configLoading) {
     return (
@@ -750,9 +895,71 @@ export default function HostControl() {
 
           {/* Props Tab */}
           <TabsContent value="props" className="space-y-6">
-            {/* Men's Props */}
+            {/* Men's Rumble Props */}
             <section>
               <h3 className="font-bold mb-4">Men's Rumble Props</h3>
+              <div className="space-y-3">
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.MENS_ENTRANT_1}
+                  title="#1 Entrant"
+                  question="Who enters at #1?"
+                  scoredResult={getMatchResult(MATCH_IDS.MENS_ENTRANT_1)}
+                  derivedValue={mensDerivedProps.mens_entrant_1}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.MENS_ENTRANT_30}
+                  title="#30 Entrant"
+                  question="Who enters at #30?"
+                  scoredResult={getMatchResult(MATCH_IDS.MENS_ENTRANT_30)}
+                  derivedValue={mensDerivedProps.mens_entrant_30}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.MENS_FIRST_ELIMINATION}
+                  title="First Eliminated"
+                  question="Who gets eliminated first?"
+                  scoredResult={getMatchResult(MATCH_IDS.MENS_FIRST_ELIMINATION)}
+                  derivedValue={mensDerivedProps.mens_first_elimination}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.MENS_MOST_ELIMINATIONS}
+                  title="Most Eliminations"
+                  question="Who has the most eliminations?"
+                  scoredResult={getMatchResult(MATCH_IDS.MENS_MOST_ELIMINATIONS)}
+                  derivedValue={mensDerivedProps.mens_most_eliminations}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.MENS_LONGEST_TIME}
+                  title="Iron Man"
+                  question="Who lasts longest in the ring?"
+                  scoredResult={getMatchResult(MATCH_IDS.MENS_LONGEST_TIME)}
+                  derivedValue={mensDerivedProps.mens_longest_time}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.MENS_NO_SHOW}
+                  title="No-Show"
+                  question="Will anyone not make it to the ring?"
+                  scoredResult={getMatchResult(MATCH_IDS.MENS_NO_SHOW)}
+                  derivedValue={null}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                  type="yesno"
+                />
+              </div>
+            </section>
+
+            {/* Men's Chaos Props */}
+            <section>
+              <h3 className="font-bold mb-4">Men's Chaos Props</h3>
               <div className="space-y-3">
                 {CHAOS_PROPS.map((prop) => {
                   const matchId = `mens_chaos_${prop.id}`;
@@ -777,13 +984,75 @@ export default function HostControl() {
                   setBulkPropsOpen(true);
                 }}
               >
-                Score All Men's Props at Once
+                Score All Men's Chaos Props at Once
               </Button>
             </section>
 
-            {/* Women's Props */}
+            {/* Women's Rumble Props */}
             <section>
               <h3 className="font-bold mb-4">Women's Rumble Props</h3>
+              <div className="space-y-3">
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.WOMENS_ENTRANT_1}
+                  title="#1 Entrant"
+                  question="Who enters at #1?"
+                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_ENTRANT_1)}
+                  derivedValue={womensDerivedProps.womens_entrant_1}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.WOMENS_ENTRANT_30}
+                  title="#30 Entrant"
+                  question="Who enters at #30?"
+                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_ENTRANT_30)}
+                  derivedValue={womensDerivedProps.womens_entrant_30}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.WOMENS_FIRST_ELIMINATION}
+                  title="First Eliminated"
+                  question="Who gets eliminated first?"
+                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_FIRST_ELIMINATION)}
+                  derivedValue={womensDerivedProps.womens_first_elimination}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.WOMENS_MOST_ELIMINATIONS}
+                  title="Most Eliminations"
+                  question="Who has the most eliminations?"
+                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_MOST_ELIMINATIONS)}
+                  derivedValue={womensDerivedProps.womens_most_eliminations}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.WOMENS_LONGEST_TIME}
+                  title="Iron Woman"
+                  question="Who lasts longest in the ring?"
+                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_LONGEST_TIME)}
+                  derivedValue={womensDerivedProps.womens_longest_time}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+                <RumblePropScoringCard
+                  propId={MATCH_IDS.WOMENS_NO_SHOW}
+                  title="No-Show"
+                  question="Will anyone not make it to the ring?"
+                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_NO_SHOW)}
+                  derivedValue={null}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                  type="yesno"
+                />
+              </div>
+            </section>
+
+            {/* Women's Chaos Props */}
+            <section>
+              <h3 className="font-bold mb-4">Women's Chaos Props</h3>
               <div className="space-y-3">
                 {CHAOS_PROPS.map((prop) => {
                   const matchId = `womens_chaos_${prop.id}`;
@@ -808,7 +1077,7 @@ export default function HostControl() {
                   setBulkPropsOpen(true);
                 }}
               >
-                Score All Women's Props at Once
+                Score All Women's Chaos Props at Once
               </Button>
             </section>
           </TabsContent>
