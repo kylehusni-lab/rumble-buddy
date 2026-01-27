@@ -62,6 +62,7 @@ export default function TvDisplay() {
   const [showNumberReveal, setShowNumberReveal] = useState(false);
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
   const [celebration, setCelebration] = useState<CelebrationData | null>(null);
+  const [currentViewType, setCurrentViewType] = useState<"undercard" | "rumble" | "rumble-props">("undercard");
   
   // Track shown celebrations to avoid duplicates
   const shownCelebrations = useRef<Set<string>>(new Set());
@@ -448,9 +449,10 @@ export default function TvDisplay() {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        {/* Main Content - responsive column span */}
-        <div className={`${mainColSpan} space-y-6`}>
+      {/* Hide sidebar leaderboard when viewing rumble-props (it's inline) */}
+      <div className={currentViewType === "rumble-props" ? "" : "grid grid-cols-12 gap-6"}>
+        {/* Main Content - full width on rumble-props, otherwise responsive */}
+        <div className={currentViewType === "rumble-props" ? "w-full" : `${mainColSpan} space-y-6`}>
           {partyStatus === "pre_event" ? (
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
@@ -470,15 +472,18 @@ export default function TvDisplay() {
                 picks={picks}
                 getPlayerInitials={getPlayerInitials}
                 getNumberStatus={getNumberStatus}
+                onViewChange={setCurrentViewType}
               />
             </>
           )}
         </div>
 
-        {/* Leaderboard - responsive column span */}
-        <div className={sideColSpan}>
-          <LeaderboardPanel players={players} />
-        </div>
+        {/* Leaderboard - hidden when viewing rumble-props */}
+        {currentViewType !== "rumble-props" && (
+          <div className={sideColSpan}>
+            <LeaderboardPanel players={players} />
+          </div>
+        )}
       </div>
 
       {/* Entry Overlay */}
