@@ -127,8 +127,6 @@ export function calculateSoloScore(
           score += SCORING.LONGEST_TIME;
         } else if (prop.id.startsWith('entrant_')) {
           score += SCORING.ENTRANT_GUESS;
-        } else if (prop.id === 'no_show') {
-          score += SCORING.NO_SHOW_PROP;
         }
       }
     });

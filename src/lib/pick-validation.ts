@@ -143,8 +143,8 @@ export function countCompletedPicks(picks: Record<string, any>, cardConfig: read
         if (picks[`${card.gender}_chaos_prop_${i}`]) completed++;
       }
     } else if (card.type === 'rumble-props') {
-      // 5 wrestler props + 4 final four + 1 yes/no = 10
-      total += 10;
+      // 5 wrestler props + 4 final four = 9
+      total += 9;
       const wrestlerPropIds = ['first_elimination', 'most_eliminations', 'longest_time', 'entrant_1', 'entrant_30'];
       wrestlerPropIds.forEach((propId) => {
         if (picks[`${card.gender}_${propId}`]) completed++;
@@ -152,7 +152,6 @@ export function countCompletedPicks(picks: Record<string, any>, cardConfig: read
       for (let i = 1; i <= 4; i++) {
         if (picks[`${card.gender}_final_four_${i}`]) completed++;
       }
-      if (picks[`${card.gender}_no_show`]) completed++;
     }
   });
   
