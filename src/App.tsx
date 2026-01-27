@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import PlayerJoin from "./pages/PlayerJoin";
 import PlayerPicks from "./pages/PlayerPicks";
 import PlayerDashboard from "./pages/PlayerDashboard";
+import HostVerifyPin from "./pages/HostVerifyPin";
 import HostSetup from "./pages/HostSetup";
 import HostControl from "./pages/HostControl";
 import TvDisplay from "./pages/TvDisplay";
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/player/join" element={<PlayerJoin />} />
           <Route path="/player/picks/:code" element={<PlayerPicks />} />
           <Route path="/player/dashboard/:code" element={<PlayerDashboard />} />
+          <Route path="/host/verify-pin/:code" element={<HostVerifyPin />} />
           <Route path="/host/setup/:code" element={<HostSetup />} />
           <Route path="/host/control/:code" element={<HostControl />} />
           <Route path="/tv/:code" element={<TvDisplay />} />

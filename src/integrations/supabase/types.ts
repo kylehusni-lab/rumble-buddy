@@ -51,6 +51,7 @@ export type Database = {
           code: string
           created_at: string
           event_started_at: string | null
+          host_pin: string | null
           host_session_id: string
           mens_rumble_entrants: Json
           status: string
@@ -60,6 +61,7 @@ export type Database = {
           code: string
           created_at?: string
           event_started_at?: string | null
+          host_pin?: string | null
           host_session_id: string
           mens_rumble_entrants?: Json
           status?: string
@@ -69,6 +71,7 @@ export type Database = {
           code?: string
           created_at?: string
           event_started_at?: string | null
+          host_pin?: string | null
           host_session_id?: string
           mens_rumble_entrants?: Json
           status?: string

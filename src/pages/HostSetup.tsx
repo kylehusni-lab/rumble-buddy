@@ -1,18 +1,28 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Copy, Check, Users, Plus, Trash2, Play } from "lucide-react";
+import { Users, Plus, Trash2, Play, ChevronDown, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
-import { getSessionId, isHostSession } from "@/lib/session";
+import { isHostSession } from "@/lib/session";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
+import { HostHeader } from "@/components/host/HostHeader";
+import { QuickActionsSheet } from "@/components/host/QuickActionsSheet";
+import { GuestStatusCard } from "@/components/host/GuestStatusCard";
+import { ConnectionStatus } from "@/components/host/ConnectionStatus";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 interface Player {
   id: string;
   display_name: string;
+  picks_count?: number;
 }
 
 interface PartyData {
@@ -28,17 +38,31 @@ export default function HostSetup() {
 
   const [party, setParty] = useState<PartyData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [playerPicks, setPlayerPicks] = useState<Record<string, number>>({});
   const [mensEntrants, setMensEntrants] = useState<string[]>([]);
   const [womensEntrants, setWomensEntrants] = useState<string[]>([]);
   const [newMensEntrant, setNewMensEntrant] = useState("");
   const [newWomensEntrant, setNewWomensEntrant] = useState("");
-  const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  
+  // Collapsible states
+  const [guestsOpen, setGuestsOpen] = useState(true);
+  const [mensEntrantsOpen, setMensEntrantsOpen] = useState(false);
+  const [womensEntrantsOpen, setWomensEntrantsOpen] = useState(false);
 
   useEffect(() => {
     if (!code) {
       navigate("/");
+      return;
+    }
+
+    // Check PIN verification
+    const storedPin = localStorage.getItem(`party_${code}_pin`);
+    if (!storedPin) {
+      navigate(`/host/verify-pin/${code}`);
       return;
     }
 
@@ -85,9 +109,23 @@ export default function HostSetup() {
           .eq("party_code", code)
           .order("joined_at");
 
-        if (playersData) setPlayers(playersData);
+        if (playersData) {
+          setPlayers(playersData);
+          
+          // Fetch picks counts for each player
+          const picksCountMap: Record<string, number> = {};
+          for (const player of playersData) {
+            const { count } = await supabase
+              .from("picks")
+              .select("*", { count: "exact", head: true })
+              .eq("player_id", player.id);
+            picksCountMap[player.id] = count || 0;
+          }
+          setPlayerPicks(picksCountMap);
+        }
       } catch (err) {
         console.error("Error fetching data:", err);
+        setIsConnected(false);
       } finally {
         setIsLoading(false);
       }
@@ -98,24 +136,47 @@ export default function HostSetup() {
     // Subscribe to realtime updates
     const channel = supabase
       .channel(`host-setup-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, () => {
-        supabase.from("players").select("id, display_name").eq("party_code", code).order("joined_at").then(({ data }) => {
-          if (data) setPlayers(data);
-        });
+      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, async () => {
+        const { data } = await supabase
+          .from("players")
+          .select("id, display_name")
+          .eq("party_code", code)
+          .order("joined_at");
+        
+        if (data) {
+          setPlayers(data);
+          // Update picks counts
+          const picksCountMap: Record<string, number> = {};
+          for (const player of data) {
+            const { count } = await supabase
+              .from("picks")
+              .select("*", { count: "exact", head: true })
+              .eq("player_id", player.id);
+            picksCountMap[player.id] = count || 0;
+          }
+          setPlayerPicks(picksCountMap);
+        }
       })
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "picks" }, async () => {
+        // Refresh picks counts when picks change
+        const picksCountMap: Record<string, number> = {};
+        for (const player of players) {
+          const { count } = await supabase
+            .from("picks")
+            .select("*", { count: "exact", head: true })
+            .eq("player_id", player.id);
+          picksCountMap[player.id] = count || 0;
+        }
+        setPlayerPicks(picksCountMap);
+      })
+      .subscribe((status) => {
+        setIsConnected(status === "SUBSCRIBED");
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [code, navigate]);
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(code!);
-    setCopied(true);
-    toast.success("Code copied!");
-    setTimeout(() => setCopied(false), 2000);
-  };
+  }, [code, navigate, players.length]);
 
   const handleAddEntrant = async (type: "mens" | "womens") => {
     const newName = type === "mens" ? newMensEntrant.trim() : newWomensEntrant.trim();
@@ -243,6 +304,9 @@ export default function HostSetup() {
     }
   };
 
+  const guestsReady = players.filter(p => (playerPicks[p.id] || 0) >= 7).length;
+  const totalGuests = players.length;
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -252,139 +316,186 @@ export default function HostSetup() {
   }
 
   return (
-    <div className="min-h-screen pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
-        <div className="p-4 max-w-lg mx-auto">
-          <Logo size="sm" />
-        </div>
-      </div>
+    <div className="min-h-screen pb-28">
+      <ConnectionStatus isConnected={isConnected} />
+      <HostHeader code={code!} onMenuClick={() => setMenuOpen(true)} />
+      <QuickActionsSheet open={menuOpen} onOpenChange={setMenuOpen} code={code!} />
 
-      <div className="max-w-lg mx-auto p-4 space-y-6">
-        {/* Party Code */}
+      <div className="max-w-lg mx-auto p-4 space-y-4">
+        {/* Status Overview */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-primary/30 rounded-2xl p-6 text-center"
+          className="bg-card border border-primary/30 rounded-2xl p-6"
         >
-          <p className="text-sm text-muted-foreground mb-2">Share this code with your guests</p>
-          <div className="flex items-center justify-center gap-4">
-            <span className="text-4xl font-black tracking-wider text-primary">{code}</span>
-            <Button variant="outline" size="icon" onClick={handleCopyCode}>
-              {copied ? <Check size={20} /> : <Copy size={20} />}
-            </Button>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-lg">Event Status</h2>
+            <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+              Pre-Event
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div>
+              <p className="text-3xl font-black text-primary">{totalGuests}</p>
+              <p className="text-sm text-muted-foreground">Guests Joined</p>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-primary">{guestsReady}/{totalGuests}</p>
+              <p className="text-sm text-muted-foreground">Picks Complete</p>
+            </div>
           </div>
         </motion.div>
 
-        {/* Players Joined */}
-        <motion.section
+        {/* Guests List (Collapsible) */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-card border border-border rounded-xl p-4"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="text-primary" size={20} />
-            <h2 className="font-bold">Guests Joined: {players.length}</h2>
-          </div>
-          {players.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Waiting for guests to join...</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {players.map((player) => (
-                <span
-                  key={player.id}
-                  className="bg-muted px-3 py-1 rounded-full text-sm"
-                >
-                  {player.display_name}
-                </span>
-              ))}
-            </div>
-          )}
-        </motion.section>
+          <Collapsible open={guestsOpen} onOpenChange={setGuestsOpen}>
+            <CollapsibleTrigger className="w-full">
+              <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="text-primary" size={20} />
+                  <span className="font-bold">Guests ({totalGuests})</span>
+                </div>
+                <ChevronDown className={cn(
+                  "text-muted-foreground transition-transform",
+                  guestsOpen && "rotate-180"
+                )} size={20} />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 space-y-2">
+                {players.length === 0 ? (
+                  <div className="p-4 bg-muted/30 rounded-lg text-center text-muted-foreground text-sm">
+                    Waiting for guests to join...
+                  </div>
+                ) : (
+                  players.map((player) => (
+                    <GuestStatusCard
+                      key={player.id}
+                      displayName={player.display_name}
+                      picksCount={playerPicks[player.id] || 0}
+                      picksCompleted={(playerPicks[player.id] || 0) >= 7}
+                    />
+                  ))
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </motion.div>
 
-        {/* Men's Entrants */}
-        <motion.section
+        {/* Men's Entrants (Collapsible) */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-card border border-border rounded-xl p-4 space-y-4"
         >
-          <h2 className="font-bold flex items-center gap-2">
-            🧔 Men's Rumble Entrants ({mensEntrants.length})
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {mensEntrants.map((name) => (
-              <div
-                key={name}
-                className="bg-muted px-3 py-1 rounded-full text-sm flex items-center gap-2"
-              >
-                {name}
-                <button
-                  onClick={() => handleRemoveEntrant("mens", name)}
-                  className="text-destructive hover:text-destructive/80"
-                >
-                  <Trash2 size={14} />
-                </button>
+          <Collapsible open={mensEntrantsOpen} onOpenChange={setMensEntrantsOpen}>
+            <CollapsibleTrigger className="w-full">
+              <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between">
+                <span className="font-bold">🧔 Men's Entrants ({mensEntrants.length})</span>
+                <ChevronDown className={cn(
+                  "text-muted-foreground transition-transform",
+                  mensEntrantsOpen && "rotate-180"
+                )} size={20} />
               </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Add entrant..."
-              value={newMensEntrant}
-              onChange={(e) => setNewMensEntrant(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddEntrant("mens")}
-            />
-            <Button variant="outline" size="icon" onClick={() => handleAddEntrant("mens")}>
-              <Plus size={20} />
-            </Button>
-          </div>
-        </motion.section>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 p-4 bg-card/50 border border-border rounded-xl space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {mensEntrants.map((name) => (
+                    <div
+                      key={name}
+                      className="bg-muted px-3 py-1 rounded-full text-sm flex items-center gap-2"
+                    >
+                      {name}
+                      <button
+                        onClick={() => handleRemoveEntrant("mens", name)}
+                        className="text-destructive hover:text-destructive/80"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add entrant..."
+                    value={newMensEntrant}
+                    onChange={(e) => setNewMensEntrant(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddEntrant("mens")}
+                  />
+                  <Button variant="outline" size="icon" onClick={() => handleAddEntrant("mens")}>
+                    <Plus size={20} />
+                  </Button>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </motion.div>
 
-        {/* Women's Entrants */}
-        <motion.section
+        {/* Women's Entrants (Collapsible) */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-card border border-border rounded-xl p-4 space-y-4"
         >
-          <h2 className="font-bold flex items-center gap-2">
-            👩 Women's Rumble Entrants ({womensEntrants.length})
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {womensEntrants.map((name) => (
-              <div
-                key={name}
-                className="bg-muted px-3 py-1 rounded-full text-sm flex items-center gap-2"
-              >
-                {name}
-                <button
-                  onClick={() => handleRemoveEntrant("womens", name)}
-                  className="text-destructive hover:text-destructive/80"
-                >
-                  <Trash2 size={14} />
-                </button>
+          <Collapsible open={womensEntrantsOpen} onOpenChange={setWomensEntrantsOpen}>
+            <CollapsibleTrigger className="w-full">
+              <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between">
+                <span className="font-bold">👩 Women's Entrants ({womensEntrants.length})</span>
+                <ChevronDown className={cn(
+                  "text-muted-foreground transition-transform",
+                  womensEntrantsOpen && "rotate-180"
+                )} size={20} />
               </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Add entrant..."
-              value={newWomensEntrant}
-              onChange={(e) => setNewWomensEntrant(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddEntrant("womens")}
-            />
-            <Button variant="outline" size="icon" onClick={() => handleAddEntrant("womens")}>
-              <Plus size={20} />
-            </Button>
-          </div>
-        </motion.section>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 p-4 bg-card/50 border border-border rounded-xl space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {womensEntrants.map((name) => (
+                    <div
+                      key={name}
+                      className="bg-muted px-3 py-1 rounded-full text-sm flex items-center gap-2"
+                    >
+                      {name}
+                      <button
+                        onClick={() => handleRemoveEntrant("womens", name)}
+                        className="text-destructive hover:text-destructive/80"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add entrant..."
+                    value={newWomensEntrant}
+                    onChange={(e) => setNewWomensEntrant(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddEntrant("womens")}
+                  />
+                  <Button variant="outline" size="icon" onClick={() => handleAddEntrant("womens")}>
+                    <Plus size={20} />
+                  </Button>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </motion.div>
       </div>
 
-      {/* Start Button */}
+      {/* Start Button - Sticky Footer */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-4">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto space-y-2">
+          {players.length < 2 && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <AlertCircle size={16} />
+              Need at least 2 guests to start
+            </div>
+          )}
           <Button
             variant="gold"
             size="xl"
@@ -395,11 +506,6 @@ export default function HostSetup() {
             <Play className="mr-2" size={24} />
             {isStarting ? "Starting..." : "Start Event & Draw Numbers"}
           </Button>
-          {players.length < 2 && (
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Need at least 2 players to start
-            </p>
-          )}
         </div>
       </div>
     </div>
