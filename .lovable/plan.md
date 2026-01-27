@@ -1,127 +1,171 @@
 
-# TV Display: Rumble Winner Predictions & Enhanced Winner Banner
+# Progress Bar Grouping, Chaos Props Consolidation, Winner Styling & Modal Cleanup
 
 ## Overview
 
-Add two features to the TV display when viewing Rumble grids:
+This plan addresses four improvements to enhance the user experience:
 
-1. **Winner Predictions Panel** - Show a horizontally scrollable grid of all players' Rumble winner picks below the number grid (similar to undercard match picks)
-2. **Enhanced Winner Banner** - Make the winner display more prominent when declared
+1. Group progress bar dots by category (Undercard, Men's, Women's)
+2. Consolidate Chaos Props into Men's/Women's tabs on the dashboard with collapsible sections
+3. Style Rumble Winner picks with a distinct purple color to differentiate from matches
+4. Clean up the wrestler picker modal for better visibility when keyboard is open
 
 ---
 
-## 1. Rumble Winner Predictions Component
+## 1. Progress Bar Grouping
 
-Create a new component to show who each player picked to win the Rumble.
+**File: `src/components/picks/ProgressBar.tsx`**
 
-### File: `src/components/tv/RumbleWinnerPredictions.tsx` (NEW)
+Update the dot indicators to show grouped sections with labels:
 
-**Features:**
-- Horizontally scrollable cards showing each player's winner pick
-- Wrestler photo + wrestler name + player name on each card
-- When winner is declared: green border + checkmark for correct, muted/X for incorrect
-- When no winner yet: locked state with subtle styling
-
-**Visual Design:**
+**Current Layout:**
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  👑 Winner Predictions                            [<] [>]       │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
-│  │ [photo]  │  │ [photo]  │  │ [photo]  │  │ [photo]  │        │
-│  │ CM Punk  │  │ Cody     │  │ CM Punk  │  │ Gunther  │        │
-│  │ Randy S. │  │ Demo     │  │ Steve A. │  │ Hulk H.  │        │
-│  │    🔒    │  │    🔒    │  │    ✓     │  │    ✗     │        │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘        │
-└─────────────────────────────────────────────────────────────────┘
+[1] [2] [3] [4] [5] [6] [7] [8] [9]
 ```
 
-### Props Interface:
+**New Layout:**
+```
+UNDERCARD          MEN'S              WOMEN'S
+[1] [2] [3]     [4] [5] [6]       [7] [8] [9]
+```
+
+Changes:
+- Add section labels above dot groups
+- Group dots into 3 sections with visual separators
+- Use section progress indicators instead of individual dots for a cleaner look
+- Show section completion counts (e.g., "2/3", "3/3")
+
+---
+
+## 2. Consolidate Chaos Props into Men's/Women's Tabs
+
+**Files:**
+- `src/components/dashboard/BottomNavBar.tsx` - Remove "Chaos" tab
+- `src/components/dashboard/RumblePropsSection.tsx` - Add chaos props with collapsible section
+- `src/pages/PlayerDashboard.tsx` - Remove chaos tab logic, update badge calculations
+
+**Current Bottom Nav:**
+```
+Numbers | Matches | Men's | Women's | Chaos
+```
+
+**New Bottom Nav:**
+```
+Numbers | Matches | Men's | Women's
+```
+
+**Dashboard Men's/Women's Sections (with collapsible):**
+```
+┌─────────────────────────────────┐
+│ 🧔 MEN'S RUMBLE PROPS           │
+├─────────────────────────────────┤
+│ First Elimination               │
+│ Most Eliminations               │
+│ ...                             │
+├─────────────────────────────────┤
+│ 🧔 FINAL FOUR PREDICTIONS       │
+│ Final Four #1, #2, #3, #4       │
+├─────────────────────────────────┤
+│ ⚡ CHAOS PROPS      [▼ Collapse]│ <- Collapsible
+│ Kofi/Logan Save                 │
+│ Bushwhacker Exit                │
+│ ...                             │
+└─────────────────────────────────┘
+```
+
+---
+
+## 3. Rumble Winner Pick - Different Color
+
+**File: `src/components/dashboard/MatchesSection.tsx`**
+
+Update the Rumble Winners section to use a distinct purple/violet color scheme:
+
+Changes:
+- Add a purple accent color for Rumble Winner picks
+- Use `bg-purple-500/10` border and `text-purple-400` for winner predictions
+- Add a crown icon next to winner predictions
+- This visually distinguishes them from undercard match picks
+
+Also update the pick card display:
+- **File: `src/components/picks/cards/RumbleWinnerCard.tsx`** - Keep gold theme but ensure selection is prominent
+
+---
+
+## 4. Wrestler Picker Modal Cleanup
+
+**File: `src/components/WrestlerPickerModal.tsx`**
+
+Issues from screenshot:
+- Search input is at the top, pushing content down when keyboard opens
+- Modal appears cramped on mobile
+
+Fixes:
+- Move search input to be sticky and add padding for safe areas
+- Add better backdrop and spacing
+- Reduce grid size for smaller mobile screens
+- Add a "Done" button in the header
+- Ensure modal has proper safe area insets for keyboard
+
+---
+
+## Technical Implementation Details
+
+### Progress Bar Changes
 ```typescript
-interface RumbleWinnerPredictionsProps {
-  gender: "mens" | "womens";
-  players: Player[];
-  picks: Pick[];
-  matchResults: MatchResult[];
-}
+// Group structure
+const CARD_GROUPS = [
+  { name: "Undercard", range: [0, 2], icon: Trophy },
+  { name: "Men's", range: [3, 5], icon: User },
+  { name: "Women's", range: [6, 8], icon: User },
+];
+
+// Render grouped dots with labels
 ```
 
-### Logic:
-- Get winner match ID: `mens_rumble_winner` or `womens_rumble_winner`
-- Filter picks where `match_id === winnerMatchId`
-- Compare each pick's prediction to the result (if exists)
-- Show correct/incorrect indicators after winner is declared
-
----
-
-## 2. Enhanced Winner Banner
-
-Update the existing winner display in `TvViewNavigator.tsx` to be more dramatic.
-
-### File: `src/components/tv/TvViewNavigator.tsx`
-
-**Current (lines 188-211):** Simple banner with Crown icon, photo, and text
-
-**Enhanced Version:**
-- Larger wrestler photo (size "xl" instead of "lg")
-- Animated golden glow effect
-- Trophy icon instead of/in addition to Crown
-- Bigger text for the winner name
-- "WINNER" badge with animation
-- Points earned display (+50 for owner)
-
-**Updated Design:**
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     ✨ GOLDEN GLOW BORDER ✨                    │
-│                                                                 │
-│                         🏆 WINNER 🏆                            │
-│                                                                 │
-│                       ┌─────────────┐                          │
-│                       │             │                          │
-│                       │  [XL photo] │  ← Animated border       │
-│                       │             │                          │
-│                       └─────────────┘                          │
-│                                                                 │
-│                        CM PUNK                                 │
-│                    Entry #17 • Randy Savage                    │
-│                         +50 pts                                │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 3. Integration in TvViewNavigator
-
-Update `renderNumberGrid()` function to:
-1. Keep the enhanced winner banner when declared
-2. Add the predictions panel below the grid (show always when viewing Rumble)
-
-**Updated Structure:**
+### Collapsible Section Component
 ```typescript
-const renderNumberGrid = () => {
-  return (
-    <div className="space-y-4">
-      {/* Title + Active Count */}
-      <div>...</div>
-      
-      {/* 30-Number Grid */}
-      <div className="grid grid-cols-10 gap-2">...</div>
-      
-      {/* Enhanced Winner Display (when declared) */}
-      {winnerNumber && <EnhancedWinnerBanner ... />}
-      
-      {/* Winner Predictions Panel (always shown) */}
-      <RumbleWinnerPredictions 
-        gender={rumbleId}
-        players={players}
-        picks={picks}
-        matchResults={matchResults}
-      />
-    </div>
-  );
-};
+// Use Radix Collapsible for the chaos props
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+// In RumblePropsSection
+<Collapsible defaultOpen={true}>
+  <CollapsibleTrigger className="...">
+    ⚡ Chaos Props <ChevronDown />
+  </CollapsibleTrigger>
+  <CollapsibleContent>
+    {/* Chaos prop rows */}
+  </CollapsibleContent>
+</Collapsible>
+```
+
+### Rumble Winner Color Scheme
+```typescript
+// Add purple variant for winners
+const isWinner = matchId.includes("rumble_winner");
+className={cn(
+  "border",
+  isWinner 
+    ? "border-purple-500/30 bg-purple-500/5" 
+    : "border-border"
+)}
+```
+
+### Modal Improvements
+```typescript
+// Better positioning and safe areas
+<div className="fixed inset-0 z-50 bg-background">
+  {/* Sticky header with safe area */}
+  <div className="sticky top-0 z-10 bg-background" 
+       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+    {/* Title, Close, Done button */}
+  </div>
+  
+  {/* Content area that doesn't shift with keyboard */}
+  <div className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+    {/* Wrestler grid */}
+  </div>
+</div>
 ```
 
 ---
@@ -130,69 +174,32 @@ const renderNumberGrid = () => {
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/components/tv/RumbleWinnerPredictions.tsx` | Create | New component showing player winner picks |
-| `src/components/tv/TvViewNavigator.tsx` | Modify | Enhance winner banner, integrate predictions panel |
+| `src/components/picks/ProgressBar.tsx` | Modify | Group dots by section with labels |
+| `src/components/dashboard/BottomNavBar.tsx` | Modify | Remove "Chaos" tab |
+| `src/components/dashboard/RumblePropsSection.tsx` | Modify | Add collapsible chaos props section |
+| `src/pages/PlayerDashboard.tsx` | Modify | Remove chaos tab, update badge logic |
+| `src/components/dashboard/MatchesSection.tsx` | Modify | Purple color scheme for Rumble Winners |
+| `src/components/WrestlerPickerModal.tsx` | Modify | Better mobile layout, safe areas |
 
 ---
 
-## Technical Details
+## User Experience Improvements
 
-### RumbleWinnerPredictions Component
+**Progress Bar:**
+- Clearer visual grouping shows completion by category
+- Easier to see if you've completed all undercard vs rumble picks
 
-```typescript
-// Key logic for determining correct/incorrect
-const winnerMatchId = gender === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
-const winnerResult = matchResults.find(r => r.match_id === winnerMatchId);
+**Dashboard Navigation:**
+- Simpler 4-tab layout (fewer taps)
+- All rumble-related content in one place per gender
+- Collapsible chaos keeps the view clean but accessible
 
-const winnerPicks = players.map(player => {
-  const pick = picks.find(p => p.player_id === player.id && p.match_id === winnerMatchId);
-  return {
-    player,
-    prediction: pick?.prediction || null,
-    isCorrect: winnerResult && pick?.prediction === winnerResult.result,
-    isIncorrect: winnerResult && pick?.prediction && pick.prediction !== winnerResult.result,
-  };
-}).filter(p => p.prediction); // Only show players who made a pick
-```
+**Winner Styling:**
+- Purple color immediately signals "this is a special pick"
+- Crown icon reinforces importance
+- Distinct from the gold/primary theme of regular picks
 
-### Enhanced Winner Banner
-
-```typescript
-// Animation for the winner banner
-<motion.div 
-  initial={{ opacity: 0, scale: 0.8 }}
-  animate={{ opacity: 1, scale: 1 }}
-  className="relative mt-6 p-8 bg-gradient-to-r from-primary/30 via-primary/20 to-primary/30 rounded-2xl border-4 border-primary"
->
-  {/* Animated glow effect */}
-  <motion.div
-    className="absolute inset-0 rounded-2xl bg-primary/20"
-    animate={{ opacity: [0.2, 0.4, 0.2] }}
-    transition={{ duration: 2, repeat: Infinity }}
-  />
-  
-  <div className="relative z-10 flex flex-col items-center gap-4">
-    <Trophy className="w-12 h-12 text-primary" />
-    <WrestlerImage name={winnerName} size="xl" className="border-4 border-primary" />
-    <div className="text-4xl font-black text-primary">{winnerName}</div>
-    <div className="text-lg text-muted-foreground">
-      Entry #{number} • Owned by {ownerName}
-    </div>
-    <div className="text-2xl font-bold text-success">+{SCORING.RUMBLE_WINNER_NUMBER} pts</div>
-  </div>
-</motion.div>
-```
-
----
-
-## User Experience
-
-**Before Winner Declared:**
-- Number grid displays normally
-- Below grid: "Winner Predictions" panel shows all players' picks with lock icons
-
-**After Winner Declared:**
-- Enhanced winner banner appears prominently below the grid
-- Predictions panel updates: correct picks get green checkmarks, incorrect get red X
-- Dramatic animations draw attention to the winner
-
+**Modal:**
+- No content jump when keyboard appears
+- Better spacing and readability
+- Clear Done/Close action
