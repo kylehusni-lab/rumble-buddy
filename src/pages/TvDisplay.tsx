@@ -1,10 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Trophy } from "lucide-react";
+import { Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
+import { NumberCell } from "@/components/tv/NumberCell";
+import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
+import { MatchProgressBar } from "@/components/tv/MatchProgressBar";
+import { ActiveMatchDisplay } from "@/components/tv/ActiveMatchDisplay";
+import { ParticipantPicksView } from "@/components/tv/ParticipantPicksView";
+import { UNDERCARD_MATCHES } from "@/lib/constants";
 
 interface Player {
   id: string;
@@ -31,6 +37,17 @@ interface CelebrationData {
   data: any;
 }
 
+interface Pick {
+  player_id: string;
+  match_id: string;
+  prediction: string;
+}
+
+interface MatchResult {
+  match_id: string;
+  result: string;
+}
+
 export default function TvDisplay() {
   const { code } = useParams<{ code: string }>();
 
@@ -38,6 +55,8 @@ export default function TvDisplay() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [mensNumbers, setMensNumbers] = useState<RumbleNumber[]>([]);
   const [womensNumbers, setWomensNumbers] = useState<RumbleNumber[]>([]);
+  const [picks, setPicks] = useState<Pick[]>([]);
+  const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
   const [showOverlay, setShowOverlay] = useState<{ type: "entry" | "result"; data: any } | null>(null);
   const [showNumberReveal, setShowNumberReveal] = useState(false);
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
@@ -45,6 +64,11 @@ export default function TvDisplay() {
   
   // Track shown celebrations to avoid duplicates
   const shownCelebrations = useRef<Set<string>>(new Set());
+
+  // Check if we're in undercard phase (any undercard match not yet resolved)
+  const isUndercardPhase = UNDERCARD_MATCHES.some(m => 
+    !matchResults.some(r => r.match_id === m.id)
+  );
 
   useEffect(() => {
     if (!code) return;
@@ -76,6 +100,22 @@ export default function TvDisplay() {
         setMensNumbers(numbersData.filter((n: any) => n.rumble_type === "mens"));
         setWomensNumbers(numbersData.filter((n: any) => n.rumble_type === "womens"));
       }
+
+      // Fetch picks
+      const { data: picksData } = await supabase
+        .from("picks")
+        .select("player_id, match_id, prediction")
+        .in("player_id", playersData?.map(p => p.id) || []);
+      
+      if (picksData) setPicks(picksData);
+
+      // Fetch match results
+      const { data: resultsData } = await supabase
+        .from("match_results")
+        .select("match_id, result")
+        .eq("party_code", code);
+      
+      if (resultsData) setMatchResults(resultsData);
     };
 
     fetchData();
@@ -220,6 +260,15 @@ export default function TvDisplay() {
         const matchResult = payload.new as any;
         if (!matchResult?.match_id) return;
 
+        // Update match results state
+        setMatchResults(prev => {
+          const exists = prev.some(r => r.match_id === matchResult.match_id);
+          if (exists) {
+            return prev.map(r => r.match_id === matchResult.match_id ? matchResult : r);
+          }
+          return [...prev, matchResult];
+        });
+
         // Check for winner celebration
         if (matchResult.match_id === "mens_rumble_winner" || matchResult.match_id === "womens_rumble_winner") {
           const celebrationKey = matchResult.match_id;
@@ -271,6 +320,12 @@ export default function TvDisplay() {
           }
         }
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "picks" }, () => {
+        // Refresh picks when they change
+        supabase.from("picks").select("player_id, match_id, prediction").then(({ data }) => {
+          if (data) setPicks(data);
+        });
+      })
       .subscribe();
 
     return () => {
@@ -278,13 +333,19 @@ export default function TvDisplay() {
     };
   }, [code, players, partyStatus, mensNumbers, womensNumbers]);
 
-  const getPlayerInitial = (playerId: string | null) => {
+  const getPlayerInitials = (playerId: string | null) => {
     if (!playerId) return "V";
     const player = players.find(p => p.id === playerId);
-    return player?.display_name?.charAt(0).toUpperCase() || "?";
+    if (!player?.display_name) return "?";
+    
+    const names = player.display_name.split(" ");
+    if (names.length >= 2) {
+      return (names[0][0] + names[1][0]).toUpperCase();
+    }
+    return player.display_name.slice(0, 2).toUpperCase();
   };
 
-  const getNumberStatus = (num: RumbleNumber) => {
+  const getNumberStatus = (num: RumbleNumber): "pending" | "active" | "eliminated" => {
     if (!num.entry_timestamp) return "pending";
     if (num.elimination_timestamp) return "eliminated";
     return "active";
@@ -297,41 +358,19 @@ export default function TvDisplay() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">{title}</h2>
-          <span className="text-primary text-lg">Active: {activeCount}</span>
+          <span className="text-success text-lg font-semibold">Active: {activeCount}</span>
         </div>
         <div className="grid grid-cols-10 gap-2">
-          {numbers.map((num) => {
-            const status = getNumberStatus(num);
-            return (
-              <motion.div
-                key={num.number}
-                className={`number-cell aspect-square text-sm ${
-                  status === "active"
-                    ? "number-cell-active"
-                    : status === "eliminated"
-                    ? "number-cell-eliminated"
-                    : "number-cell-vacant"
-                }`}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: num.number * 0.02 }}
-              >
-                <div className="text-center">
-                  <div className="font-bold">{num.number}</div>
-                  {status !== "pending" && (
-                    <div className="text-[10px] opacity-75">
-                      {getPlayerInitial(num.assigned_to_player_id)}
-                    </div>
-                  )}
-                </div>
-                {status === "eliminated" && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-full h-0.5 bg-primary rotate-45" />
-                  </div>
-                )}
-              </motion.div>
-            );
-          })}
+          {numbers.map((num) => (
+            <NumberCell
+              key={num.number}
+              number={num.number}
+              wrestlerName={num.wrestler_name}
+              ownerInitials={getPlayerInitials(num.assigned_to_player_id)}
+              status={getNumberStatus(num)}
+              delay={num.number}
+            />
+          ))}
         </div>
       </div>
     );
@@ -371,7 +410,7 @@ export default function TvDisplay() {
 
     <div className="min-h-screen bg-background text-foreground tv-mode p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Crown className="text-primary" size={48} />
           <div>
@@ -381,17 +420,24 @@ export default function TvDisplay() {
             <p className="text-muted-foreground">Party {code}</p>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-sm text-muted-foreground">Status</div>
-          <div className={`text-xl font-bold ${partyStatus === "live" ? "text-success" : "text-muted-foreground"}`}>
-            {partyStatus === "pre_event" ? "PRE-EVENT" : partyStatus === "live" ? "LIVE" : "COMPLETED"}
+        <div className="flex items-center gap-4">
+          {/* Match Progress */}
+          <div className="w-80">
+            <MatchProgressBar matchResults={matchResults} />
+          </div>
+          {/* Status */}
+          <div className="text-right">
+            <div className="text-sm text-muted-foreground">Status</div>
+            <div className={`text-xl font-bold ${partyStatus === "live" ? "text-success" : "text-muted-foreground"}`}>
+              {partyStatus === "pre_event" ? "PRE-EVENT" : partyStatus === "live" ? "LIVE" : "COMPLETED"}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-8">
+      <div className="grid grid-cols-12 gap-6">
         {/* Main Content */}
-        <div className="col-span-9 space-y-8">
+        <div className="col-span-9 space-y-6">
           {partyStatus === "pre_event" ? (
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
@@ -402,43 +448,28 @@ export default function TvDisplay() {
             </div>
           ) : (
             <>
+              {/* Show Active Match Display during undercard phase */}
+              {isUndercardPhase && (
+                <ActiveMatchDisplay matchResults={matchResults} />
+              )}
+
+              {/* Number Grids - always show when live */}
               {renderNumberGrid(mensNumbers, "🧔 Men's Royal Rumble")}
               {renderNumberGrid(womensNumbers, "👩 Women's Royal Rumble")}
+
+              {/* Participant Picks */}
+              <ParticipantPicksView
+                players={players}
+                picks={picks}
+                matchResults={matchResults}
+              />
             </>
           )}
         </div>
 
         {/* Leaderboard */}
         <div className="col-span-3">
-          <div className="bg-card border border-border rounded-2xl p-6 sticky top-8">
-            <div className="flex items-center gap-2 mb-6">
-              <Trophy className="text-primary" size={24} />
-              <h2 className="text-xl font-bold">Leaderboard</h2>
-            </div>
-            <div className="space-y-3">
-              {players.slice(0, 10).map((player, index) => (
-                <motion.div
-                  key={player.id}
-                  className={`flex items-center justify-between p-3 rounded-xl ${
-                    index === 0 ? "bg-primary/20 border border-primary" : "bg-muted"
-                  }`}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`font-bold ${index === 0 ? "text-primary" : "text-muted-foreground"}`}>
-                      {index + 1}
-                    </span>
-                    <span className="font-medium truncate max-w-[120px]">{player.display_name}</span>
-                  </div>
-                  <span className={`font-bold ${index === 0 ? "text-primary" : ""}`}>
-                    {player.points}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-          </div>
+          <LeaderboardPanel players={players} />
         </div>
       </div>
 
