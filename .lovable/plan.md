@@ -1,130 +1,217 @@
 
 
-# Remove Match Progress Bar + Make Number Reveal User-Driven
+# Add Elimination Counts + Final Four Prop Scoring
 
 ## Overview
 
-Two changes to implement:
-1. Remove the MatchProgressBar component from the TV Display header
-2. Make the Number Reveal animation fully user-controlled (no auto-timers)
+Two enhancements to the Host Control panel:
+1. Show elimination count badges on each active wrestler card
+2. Add Final Four prop scoring with auto-detection (4 separate props per rumble)
 
 ---
 
-## Change 1: Remove MatchProgressBar
+## Change 1: Elimination Count Indicators on Active Wrestler Cards
 
 ### Current State
-The TV Display header shows a "Matches: 0 of 9 Complete" progress bar widget with an "UP NEXT" section.
+The `ActiveWrestlerCard` shows:
+- `#number` + wrestler name
+- Owner name + duration timer
+- Eliminate button
 
-### Action
-Remove the MatchProgressBar from the TV Display header entirely.
+### New State
+Add an elimination count badge showing how many wrestlers this person has eliminated.
 
-### File: `src/pages/TvDisplay.tsx`
+### File: `src/components/host/ActiveWrestlerCard.tsx`
 
-| Line(s) | Change |
-|---------|--------|
-| 8 | Remove import for MatchProgressBar |
-| 447-450 | Remove the MatchProgressBar wrapper div |
-
-The header will retain just the Logo, party code, and Status indicator.
-
----
-
-## Change 2: Make Number Reveal User-Driven
-
-### Current Behavior (Automated)
-
-| Phase | Behavior |
-|-------|----------|
-| Instant | Auto-completes after 3 seconds |
-| Dramatic | Auto-advances every 1.5 seconds |
-| Complete | Auto-calls onComplete after 1 second |
-
-### New Behavior (User-Driven)
-
-| Phase | New Behavior | User Action |
-|-------|--------------|-------------|
-| Instant | Shows all players, waits for user | Tap "Continue" button |
-| Dramatic | Shows one player, waits for user | Tap card or "Next" button |
-| Complete | Shows final message, waits for user | Tap "Let's Go!" button |
-
-### File: `src/components/NumberRevealAnimation.tsx`
-
-**Remove these auto-timer effects:**
-- Lines 38-44: Complete phase auto-callback
-- Lines 46-54: Instant mode auto-complete
-- Lines 56-70: Dramatic mode auto-advance
-
-**Add user action handlers:**
+**Add new prop:**
 ```typescript
-const handleNextPlayer = () => {
-  if (currentPlayerIndex < players.length - 1) {
-    setCurrentPlayerIndex(prev => prev + 1);
-  } else {
-    setPhase("complete");
-  }
-};
-
-const handleContinueFromInstant = () => {
-  setPhase("complete");
-};
-
-const handleFinish = () => {
-  onComplete();
-};
+interface ActiveWrestlerCardProps {
+  number: number;
+  wrestlerName: string;
+  ownerName: string | null;
+  duration: number;
+  eliminationCount: number;  // NEW
+  onEliminate: () => void;
+  disabled?: boolean;
+}
 ```
 
-**Update Instant Mode UI** - Add "Continue" button:
+**Add badge to UI:**
 ```tsx
-<Button variant="gold" size="lg" className="mt-6" onClick={handleContinueFromInstant}>
-  Continue
-</Button>
+<div className="flex items-center gap-2">
+  <span className="font-bold text-primary text-lg">#{number}</span>
+  <span className="font-semibold truncate">{wrestlerName}</span>
+  {eliminationCount > 0 && (
+    <Badge variant="secondary" className="ml-1 bg-destructive/20 text-destructive">
+      {eliminationCount} KO{eliminationCount > 1 ? 's' : ''}
+    </Badge>
+  )}
+</div>
 ```
 
-**Update Dramatic Mode UI** - Make clickable + add button:
-```tsx
-<motion.div onClick={handleNextPlayer} className="cursor-pointer ...">
-  {/* Player card */}
-  <Button variant="gold" size="lg" className="mt-6" onClick={...}>
-    {currentPlayerIndex < players.length - 1 ? "Next Player" : "Finish"}
-  </Button>
-  <p className="text-sm text-muted-foreground mt-2">Tap anywhere to continue</p>
-</motion.div>
+### File: `src/pages/HostControl.tsx`
+
+**Add elimination count calculator:**
+```typescript
+const getEliminationCount = useCallback((number: number, type: "mens" | "womens") => {
+  const numbers = type === "mens" ? mensNumbers : womensNumbers;
+  return numbers.filter(n => n.eliminated_by_number === number).length;
+}, [mensNumbers, womensNumbers]);
 ```
 
-**Update Complete Phase UI** - Add "Let's Go!" button:
+**Update ActiveWrestlerCard usage (Men's):**
 ```tsx
-<Button variant="gold" size="xl" onClick={handleFinish} className="mt-6">
-  Let's Go!
-</Button>
+<ActiveWrestlerCard
+  key={wrestler.id}
+  number={wrestler.number}
+  wrestlerName={wrestler.wrestler_name || "Unknown"}
+  ownerName={getPlayerName(wrestler.assigned_to_player_id)}
+  duration={getDuration(wrestler.entry_timestamp)}
+  eliminationCount={getEliminationCount(wrestler.number, "mens")}
+  onEliminate={() => {...}}
+/>
+```
+
+**Update ActiveWrestlerCard usage (Women's):**
+```tsx
+<ActiveWrestlerCard
+  key={wrestler.id}
+  number={wrestler.number}
+  wrestlerName={wrestler.wrestler_name || "Unknown"}
+  ownerName={getPlayerName(wrestler.assigned_to_player_id)}
+  duration={getDuration(wrestler.entry_timestamp)}
+  eliminationCount={getEliminationCount(wrestler.number, "womens")}
+  onEliminate={() => {...}}
+/>
 ```
 
 ---
 
-## User Experience Flow
+## Change 2: Final Four Prop Scoring
 
-**Instant Mode:**
-1. User selects "Instant Reveal"
-2. All player numbers appear
-3. User reviews at their own pace
-4. User taps "Continue"
-5. "LET'S RUMBLE!" screen
-6. User taps "Let's Go!" to exit
+### Current State
+The Props tab includes Rumble Props but is missing the Final Four predictions (4 individual wrestler picks per player).
 
-**Dramatic Mode:**
-1. User selects "Dramatic Reveal"
-2. First player's numbers appear
-3. User taps card or "Next Player"
-4. Repeat for each player
-5. Last player → tap "Finish"
-6. "LET'S RUMBLE!" screen
-7. User taps "Let's Go!" to exit
+### New State
+Add 4 Final Four prop scoring cards that:
+- Auto-detect when exactly 4 wrestlers remain active
+- Allow host to Accept or Override
+- Score each pick individually (+10 points per correct wrestler)
+
+### File: `src/pages/HostControl.tsx`
+
+**Update `getDerivedPropValues` to return array for Final Four:**
+```typescript
+const getDerivedPropValues = (numbers: RumbleNumber[], type: "mens" | "womens") => {
+  // ... existing props ...
+  
+  // Final Four - array of 4 wrestler names when exactly 4 remain
+  const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
+  const finalFourArray = active.length === 4 
+    ? active.map(n => n.wrestler_name).filter(Boolean) as string[]
+    : [];
+  
+  return {
+    // ... existing props ...
+    [`${type}_final_four_1`]: finalFourArray[0] || null,
+    [`${type}_final_four_2`]: finalFourArray[1] || null,
+    [`${type}_final_four_3`]: finalFourArray[2] || null,
+    [`${type}_final_four_4`]: finalFourArray[3] || null,
+  };
+};
+```
+
+**Add Final Four section to Men's Rumble Props:**
+```tsx
+{/* Final Four - 4 individual picks */}
+<div className="border-t border-border pt-4 mt-4">
+  <h4 className="text-sm font-semibold text-muted-foreground mb-3">Final Four Predictions</h4>
+  {[1, 2, 3, 4].map((slot) => (
+    <RumblePropScoringCard
+      key={`mens_final_four_${slot}`}
+      propId={`mens_final_four_${slot}`}
+      title={`Final Four Pick #${slot}`}
+      question={`Player's ${slot === 1 ? '1st' : slot === 2 ? '2nd' : slot === 3 ? '3rd' : '4th'} Final Four pick`}
+      scoredResult={getMatchResult(`mens_final_four_${slot}`)}
+      derivedValue={mensDerivedProps[`mens_final_four_${slot}`]}
+      onScore={handleScoreRumbleProp}
+      onReset={handleResetRumbleProp}
+    />
+  ))}
+</div>
+```
+
+**Add Final Four section to Women's Rumble Props (same pattern):**
+```tsx
+<div className="border-t border-border pt-4 mt-4">
+  <h4 className="text-sm font-semibold text-muted-foreground mb-3">Final Four Predictions</h4>
+  {[1, 2, 3, 4].map((slot) => (
+    <RumblePropScoringCard
+      key={`womens_final_four_${slot}`}
+      propId={`womens_final_four_${slot}`}
+      title={`Final Four Pick #${slot}`}
+      question={`Player's ${slot === 1 ? '1st' : slot === 2 ? '2nd' : slot === 3 ? '3rd' : '4th'} Final Four pick`}
+      scoredResult={getMatchResult(`womens_final_four_${slot}`)}
+      derivedValue={womensDerivedProps[`womens_final_four_${slot}`]}
+      onScore={handleScoreRumbleProp}
+      onReset={handleResetRumbleProp}
+    />
+  ))}
+</div>
+```
 
 ---
 
-## Summary of Files
+## Visual Summary
+
+### Active Wrestler Card (Before → After)
+
+```text
+Before:
+┌─────────────────────────────────────────┐
+│ #5 John Cena                [Eliminate] │
+│ Player1 • 4:32                          │
+└─────────────────────────────────────────┘
+
+After:
+┌─────────────────────────────────────────┐
+│ #5 John Cena  [3 KOs]       [Eliminate] │
+│ Player1 • 4:32                          │
+└─────────────────────────────────────────┘
+```
+
+### Final Four Prop Cards
+
+```text
+┌─────────────────────────────────────────┐
+│ Final Four Pick #1                      │
+│ Player's 1st Final Four pick            │
+│                                         │
+│ ┌─────────────────────────────────────┐ │
+│ │ Auto-detected: Randy Orton          │ │
+│ │          [Accept]  [Override]       │ │
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/TvDisplay.tsx` | Remove MatchProgressBar import and usage |
-| `src/components/NumberRevealAnimation.tsx` | Remove auto-timers, add user control buttons |
+| `src/components/host/ActiveWrestlerCard.tsx` | Add `eliminationCount` prop + badge UI |
+| `src/pages/HostControl.tsx` | Add `getEliminationCount`, update derived props, add Final Four scoring cards |
+
+---
+
+## Auto-Detection Logic
+
+**Final Four triggers when:**
+- Exactly 4 wrestlers have `entry_timestamp` set
+- Those 4 have NO `elimination_timestamp`
+
+At this point, the system shows the 4 remaining wrestlers as "Auto-detected" values for Final Four props. Host can accept or override each one.
+
+**Scoring:** Each correct Final Four pick awards +10 points (uses existing `SCORING.FINAL_FOUR_PICK`).
 
