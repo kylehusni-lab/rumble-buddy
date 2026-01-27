@@ -1,7 +1,7 @@
-import { Copy, Check, Menu } from "lucide-react";
+import { Copy, Check, Menu, ArrowLeft } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 
 interface HostHeaderProps {
@@ -10,6 +10,7 @@ interface HostHeaderProps {
 }
 
 export function HostHeader({ code, onMenuClick }: HostHeaderProps) {
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = () => {
@@ -22,23 +23,28 @@ export function HostHeader({ code, onMenuClick }: HostHeaderProps) {
   return (
     <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
       <div className="flex items-center justify-between p-4 max-w-lg mx-auto">
-        <Logo size="sm" />
+        {/* Back to Home */}
+        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+          <ArrowLeft size={24} />
+        </Button>
         
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCopyCode}
-            className="gap-2"
-          >
-            <span className="font-bold text-primary">{code}</span>
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-          </Button>
-          
-          <Button variant="ghost" size="icon" onClick={onMenuClick}>
-            <Menu size={24} />
-          </Button>
-        </div>
+        {/* Party Code - centered */}
+        <button
+          onClick={handleCopyCode}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
+          <span className="font-bold text-lg">Party #{code}</span>
+          {copied ? (
+            <Check size={16} className="text-success" />
+          ) : (
+            <Copy size={16} className="text-muted-foreground" />
+          )}
+        </button>
+        
+        {/* Menu */}
+        <Button variant="ghost" size="icon" onClick={onMenuClick}>
+          <Menu size={24} />
+        </Button>
       </div>
     </div>
   );

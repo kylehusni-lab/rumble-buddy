@@ -16,8 +16,11 @@ import { RumbleEntryControl } from "@/components/host/RumbleEntryControl";
 import { ActiveWrestlerCard } from "@/components/host/ActiveWrestlerCard";
 import { EliminationModal } from "@/components/host/EliminationModal";
 import { WinnerDeclarationModal } from "@/components/host/WinnerDeclarationModal";
-import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING, RUMBLE_PROPS, MATCH_IDS } from "@/lib/constants";
+import { CollapsibleSection } from "@/components/host/CollapsibleSection";
+import { FixedTabNavigation } from "@/components/host/FixedTabNavigation";
+import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING, MATCH_IDS } from "@/lib/constants";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
+import { Sparkles } from "lucide-react";
 
 interface RumbleNumber {
   id: string;
@@ -44,6 +47,8 @@ interface PartyData {
   host_session_id: string;
   status: string;
 }
+
+const TAB_ORDER = ["matches", "props", "mens", "womens"];
 
 export default function HostControl() {
   const { code } = useParams<{ code: string }>();
@@ -90,6 +95,15 @@ export default function HostControl() {
     const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Tab navigation helpers
+  const currentTabIndex = TAB_ORDER.indexOf(activeTab);
+  const handleTabNavigate = (direction: -1 | 1) => {
+    const newIndex = currentTabIndex + direction;
+    if (newIndex >= 0 && newIndex < TAB_ORDER.length) {
+      setActiveTab(TAB_ORDER[newIndex]);
+    }
+  };
 
   // Fetch data
   useEffect(() => {
@@ -423,6 +437,45 @@ export default function HostControl() {
     } catch (err) {
       console.error("Error bulk scoring props:", err);
       toast.error("Failed to score props");
+    }
+  };
+
+  // Auto-score Final Four predictions
+  const handleScoreFinalFourPredictions = async (type: "mens" | "womens") => {
+    const numbers = type === "mens" ? mensNumbers : womensNumbers;
+    const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
+
+    if (active.length !== 4) {
+      toast.error("Final Four not yet reached - need exactly 4 active wrestlers");
+      return;
+    }
+
+    const finalFourNames = active.map(n => n.wrestler_name).filter(Boolean) as string[];
+
+    // Check if any slot is already scored
+    const alreadyScored = [1, 2, 3, 4].some(slot => 
+      getMatchResult(`${type}_final_four_${slot}`)
+    );
+
+    if (alreadyScored) {
+      toast.error("Final Four predictions already scored");
+      return;
+    }
+
+    try {
+      // Score each slot with the corresponding wrestler
+      for (let slot = 1; slot <= 4; slot++) {
+        const propId = `${type}_final_four_${slot}`;
+        const wrestler = finalFourNames[slot - 1];
+        if (wrestler) {
+          await handleScoreRumbleProp(propId, wrestler);
+        }
+      }
+
+      toast.success(`${type === "mens" ? "Men's" : "Women's"} Final Four predictions scored!`);
+    } catch (err) {
+      console.error("Error scoring Final Four:", err);
+      toast.error("Failed to score Final Four predictions");
     }
   };
 
@@ -854,6 +907,130 @@ export default function HostControl() {
   const mensDerivedProps = useMemo(() => getDerivedPropValues(mensNumbers, "mens"), [mensNumbers]);
   const womensDerivedProps = useMemo(() => getDerivedPropValues(womensNumbers, "womens"), [womensNumbers]);
 
+  // Calculate section stats for collapsible headers
+  const getMatchesSectionStats = () => {
+    let scored = 0;
+    let points = 0;
+    UNDERCARD_MATCHES.forEach(match => {
+      if (getMatchResult(match.id)) {
+        scored++;
+        points += SCORING.UNDERCARD_WINNER;
+      }
+    });
+    return { scored, total: UNDERCARD_MATCHES.length, points };
+  };
+
+  const getMensRumblePropsStats = () => {
+    const propIds = [
+      MATCH_IDS.MENS_ENTRANT_1,
+      MATCH_IDS.MENS_ENTRANT_30,
+      MATCH_IDS.MENS_FIRST_ELIMINATION,
+      MATCH_IDS.MENS_MOST_ELIMINATIONS,
+      MATCH_IDS.MENS_LONGEST_TIME,
+      MATCH_IDS.MENS_NO_SHOW,
+    ];
+    let scored = 0;
+    let points = 0;
+    propIds.forEach(id => {
+      if (getMatchResult(id)) {
+        scored++;
+        points += SCORING.PROP_BET;
+      }
+    });
+    return { scored, total: propIds.length, points };
+  };
+
+  const getMensFinalFourStats = () => {
+    const slots = [1, 2, 3, 4];
+    let scored = 0;
+    let points = 0;
+    slots.forEach(slot => {
+      if (getMatchResult(`mens_final_four_${slot}`)) {
+        scored++;
+        points += SCORING.FINAL_FOUR_PICK;
+      }
+    });
+    return { scored, total: 4, points };
+  };
+
+  const getMensChaosPropsStats = () => {
+    let scored = 0;
+    let points = 0;
+    CHAOS_PROPS.forEach(prop => {
+      if (getMatchResult(`mens_chaos_${prop.id}`)) {
+        scored++;
+        points += SCORING.PROP_BET;
+      }
+    });
+    return { scored, total: CHAOS_PROPS.length, points };
+  };
+
+  const getWomensRumblePropsStats = () => {
+    const propIds = [
+      MATCH_IDS.WOMENS_ENTRANT_1,
+      MATCH_IDS.WOMENS_ENTRANT_30,
+      MATCH_IDS.WOMENS_FIRST_ELIMINATION,
+      MATCH_IDS.WOMENS_MOST_ELIMINATIONS,
+      MATCH_IDS.WOMENS_LONGEST_TIME,
+      MATCH_IDS.WOMENS_NO_SHOW,
+    ];
+    let scored = 0;
+    let points = 0;
+    propIds.forEach(id => {
+      if (getMatchResult(id)) {
+        scored++;
+        points += SCORING.PROP_BET;
+      }
+    });
+    return { scored, total: propIds.length, points };
+  };
+
+  const getWomensFinalFourStats = () => {
+    const slots = [1, 2, 3, 4];
+    let scored = 0;
+    let points = 0;
+    slots.forEach(slot => {
+      if (getMatchResult(`womens_final_four_${slot}`)) {
+        scored++;
+        points += SCORING.FINAL_FOUR_PICK;
+      }
+    });
+    return { scored, total: 4, points };
+  };
+
+  const getWomensChaosPropsStats = () => {
+    let scored = 0;
+    let points = 0;
+    CHAOS_PROPS.forEach(prop => {
+      if (getMatchResult(`womens_chaos_${prop.id}`)) {
+        scored++;
+        points += SCORING.PROP_BET;
+      }
+    });
+    return { scored, total: CHAOS_PROPS.length, points };
+  };
+
+  // Check if Final Four auto-score is available
+  const canAutoScoreMensFinalFour = () => {
+    const active = mensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
+    const alreadyScored = [1, 2, 3, 4].some(slot => getMatchResult(`mens_final_four_${slot}`));
+    return active.length === 4 && !alreadyScored;
+  };
+
+  const canAutoScoreWomensFinalFour = () => {
+    const active = womensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
+    const alreadyScored = [1, 2, 3, 4].some(slot => getMatchResult(`womens_final_four_${slot}`));
+    return active.length === 4 && !alreadyScored;
+  };
+
+  const matchesStats = getMatchesSectionStats();
+  const mensRumbleStats = getMensRumblePropsStats();
+  const mensFinalFourStats = getMensFinalFourStats();
+  const mensChaosStats = getMensChaosPropsStats();
+  const womensRumbleStats = getWomensRumblePropsStats();
+  const womensFinalFourStats = getWomensFinalFourStats();
+  const womensChaosStats = getWomensChaosPropsStats();
+
   if (isLoading || configLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -863,7 +1040,7 @@ export default function HostControl() {
   }
 
   return (
-    <div className="min-h-screen pb-4">
+    <div className="min-h-screen pb-24">
       <ConnectionStatus isConnected={isConnected} />
       <HostHeader code={code!} onMenuClick={() => setMenuOpen(true)} />
       <QuickActionsSheet open={menuOpen} onOpenChange={setMenuOpen} code={code!} />
@@ -888,124 +1065,152 @@ export default function HostControl() {
           </TabsList>
 
           {/* Matches Tab */}
-          <TabsContent value="matches" className="space-y-3">
-            <h2 className="text-lg font-bold mb-4">Undercard Matches</h2>
-            {UNDERCARD_MATCHES.map((match) => (
-              <MatchScoringCard
-                key={match.id}
-                matchId={match.id}
-                title={match.title}
-                options={match.options}
-                scoredResult={getMatchResult(match.id)}
-                onScore={handleScoreMatch}
-                onReset={handleResetMatch}
-              />
-            ))}
+          <TabsContent value="matches" className="space-y-4">
+            <CollapsibleSection
+              title="Undercard Matches"
+              scoredCount={matchesStats.scored}
+              totalCount={matchesStats.total}
+              pointsAwarded={matchesStats.points}
+              defaultOpen={matchesStats.scored < matchesStats.total}
+            >
+              {UNDERCARD_MATCHES.map((match) => (
+                <MatchScoringCard
+                  key={match.id}
+                  matchId={match.id}
+                  title={match.title}
+                  options={match.options}
+                  scoredResult={getMatchResult(match.id)}
+                  onScore={handleScoreMatch}
+                  onReset={handleResetMatch}
+                />
+              ))}
+            </CollapsibleSection>
           </TabsContent>
 
           {/* Props Tab */}
-          <TabsContent value="props" className="space-y-6">
+          <TabsContent value="props" className="space-y-4">
             {/* Men's Rumble Props */}
-            <section>
-              <h3 className="font-bold mb-4">Men's Rumble Props</h3>
-              <div className="space-y-3">
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.MENS_ENTRANT_1}
-                  title="#1 Entrant"
-                  question="Who enters at #1?"
-                  scoredResult={getMatchResult(MATCH_IDS.MENS_ENTRANT_1)}
-                  derivedValue={mensDerivedProps.mens_entrant_1}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.MENS_ENTRANT_30}
-                  title="#30 Entrant"
-                  question="Who enters at #30?"
-                  scoredResult={getMatchResult(MATCH_IDS.MENS_ENTRANT_30)}
-                  derivedValue={mensDerivedProps.mens_entrant_30}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.MENS_FIRST_ELIMINATION}
-                  title="First Eliminated"
-                  question="Who gets eliminated first?"
-                  scoredResult={getMatchResult(MATCH_IDS.MENS_FIRST_ELIMINATION)}
-                  derivedValue={mensDerivedProps.mens_first_elimination}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.MENS_MOST_ELIMINATIONS}
-                  title="Most Eliminations"
-                  question="Who has the most eliminations?"
-                  scoredResult={getMatchResult(MATCH_IDS.MENS_MOST_ELIMINATIONS)}
-                  derivedValue={mensDerivedProps.mens_most_eliminations}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.MENS_LONGEST_TIME}
-                  title="Iron Man"
-                  question="Who lasts longest in the ring?"
-                  scoredResult={getMatchResult(MATCH_IDS.MENS_LONGEST_TIME)}
-                  derivedValue={mensDerivedProps.mens_longest_time}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.MENS_NO_SHOW}
-                  title="No-Show"
-                  question="Will anyone not make it to the ring?"
-                  scoredResult={getMatchResult(MATCH_IDS.MENS_NO_SHOW)}
-                  derivedValue={null}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                  type="yesno"
-                />
+            <CollapsibleSection
+              title="Men's Rumble Props"
+              scoredCount={mensRumbleStats.scored}
+              totalCount={mensRumbleStats.total}
+              pointsAwarded={mensRumbleStats.points}
+              defaultOpen={mensRumbleStats.scored < mensRumbleStats.total}
+            >
+              <RumblePropScoringCard
+                propId={MATCH_IDS.MENS_ENTRANT_1}
+                title="#1 Entrant"
+                question="Who enters at #1?"
+                scoredResult={getMatchResult(MATCH_IDS.MENS_ENTRANT_1)}
+                derivedValue={mensDerivedProps.mens_entrant_1}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.MENS_ENTRANT_30}
+                title="#30 Entrant"
+                question="Who enters at #30?"
+                scoredResult={getMatchResult(MATCH_IDS.MENS_ENTRANT_30)}
+                derivedValue={mensDerivedProps.mens_entrant_30}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.MENS_FIRST_ELIMINATION}
+                title="First Eliminated"
+                question="Who gets eliminated first?"
+                scoredResult={getMatchResult(MATCH_IDS.MENS_FIRST_ELIMINATION)}
+                derivedValue={mensDerivedProps.mens_first_elimination}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.MENS_MOST_ELIMINATIONS}
+                title="Most Eliminations"
+                question="Who has the most eliminations?"
+                scoredResult={getMatchResult(MATCH_IDS.MENS_MOST_ELIMINATIONS)}
+                derivedValue={mensDerivedProps.mens_most_eliminations}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.MENS_LONGEST_TIME}
+                title="Iron Man"
+                question="Who lasts longest in the ring?"
+                scoredResult={getMatchResult(MATCH_IDS.MENS_LONGEST_TIME)}
+                derivedValue={mensDerivedProps.mens_longest_time}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.MENS_NO_SHOW}
+                title="No-Show"
+                question="Will anyone not make it to the ring?"
+                scoredResult={getMatchResult(MATCH_IDS.MENS_NO_SHOW)}
+                derivedValue={null}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+                type="yesno"
+              />
+            </CollapsibleSection>
 
-                {/* Final Four Predictions */}
-                <div className="border-t border-border pt-4 mt-4">
-                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">Final Four Predictions</h4>
-                  {[1, 2, 3, 4].map((slot) => (
-                    <RumblePropScoringCard
-                      key={`mens_final_four_${slot}`}
-                      propId={`mens_final_four_${slot}`}
-                      title={`Final Four Pick #${slot}`}
-                      question={`Player's ${slot === 1 ? '1st' : slot === 2 ? '2nd' : slot === 3 ? '3rd' : '4th'} Final Four pick`}
-                      scoredResult={getMatchResult(`mens_final_four_${slot}`)}
-                      derivedValue={mensDerivedProps[`mens_final_four_${slot}`]}
-                      onScore={handleScoreRumbleProp}
-                      onReset={handleResetRumbleProp}
-                    />
-                  ))}
-                </div>
-              </div>
-            </section>
+            {/* Men's Final Four Predictions */}
+            <CollapsibleSection
+              title="Men's Final Four"
+              scoredCount={mensFinalFourStats.scored}
+              totalCount={mensFinalFourStats.total}
+              pointsAwarded={mensFinalFourStats.points}
+              defaultOpen={mensFinalFourStats.scored < mensFinalFourStats.total}
+            >
+              {canAutoScoreMensFinalFour() && (
+                <Button
+                  variant="gold"
+                  className="w-full mb-3"
+                  onClick={() => handleScoreFinalFourPredictions("mens")}
+                >
+                  <Sparkles size={16} className="mr-2" />
+                  Auto-Score Final Four Predictions
+                </Button>
+              )}
+              {[1, 2, 3, 4].map((slot) => (
+                <RumblePropScoringCard
+                  key={`mens_final_four_${slot}`}
+                  propId={`mens_final_four_${slot}`}
+                  title={`Final Four Pick #${slot}`}
+                  question={`Player's ${slot === 1 ? '1st' : slot === 2 ? '2nd' : slot === 3 ? '3rd' : '4th'} Final Four pick`}
+                  scoredResult={getMatchResult(`mens_final_four_${slot}`)}
+                  derivedValue={mensDerivedProps[`mens_final_four_${slot}`]}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+              ))}
+            </CollapsibleSection>
 
             {/* Men's Chaos Props */}
-            <section>
-              <h3 className="font-bold mb-4">Men's Chaos Props</h3>
-              <div className="space-y-3">
-                {CHAOS_PROPS.map((prop) => {
-                  const matchId = `mens_chaos_${prop.id}`;
-                  const result = getMatchResult(matchId);
-                  return (
-                    <PropScoringCard
-                      key={matchId}
-                      propId={matchId}
-                      title={prop.shortName}
-                      question={prop.question}
-                      scoredResult={result as "YES" | "NO" | null}
-                      onScore={handleScoreProp}
-                    />
-                  );
-                })}
-              </div>
+            <CollapsibleSection
+              title="Men's Chaos Props"
+              scoredCount={mensChaosStats.scored}
+              totalCount={mensChaosStats.total}
+              pointsAwarded={mensChaosStats.points}
+              defaultOpen={mensChaosStats.scored < mensChaosStats.total}
+            >
+              {CHAOS_PROPS.map((prop) => {
+                const matchId = `mens_chaos_${prop.id}`;
+                const result = getMatchResult(matchId);
+                return (
+                  <PropScoringCard
+                    key={matchId}
+                    propId={matchId}
+                    title={prop.shortName}
+                    question={prop.question}
+                    scoredResult={result as "YES" | "NO" | null}
+                    onScore={handleScoreProp}
+                  />
+                );
+              })}
               <Button
                 variant="outline"
-                className="w-full mt-4"
+                className="w-full mt-2"
                 onClick={() => {
                   setBulkPropsType("mens");
                   setBulkPropsOpen(true);
@@ -1013,109 +1218,130 @@ export default function HostControl() {
               >
                 Score All Men's Chaos Props at Once
               </Button>
-            </section>
+            </CollapsibleSection>
 
             {/* Women's Rumble Props */}
-            <section>
-              <h3 className="font-bold mb-4">Women's Rumble Props</h3>
-              <div className="space-y-3">
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.WOMENS_ENTRANT_1}
-                  title="#1 Entrant"
-                  question="Who enters at #1?"
-                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_ENTRANT_1)}
-                  derivedValue={womensDerivedProps.womens_entrant_1}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.WOMENS_ENTRANT_30}
-                  title="#30 Entrant"
-                  question="Who enters at #30?"
-                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_ENTRANT_30)}
-                  derivedValue={womensDerivedProps.womens_entrant_30}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.WOMENS_FIRST_ELIMINATION}
-                  title="First Eliminated"
-                  question="Who gets eliminated first?"
-                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_FIRST_ELIMINATION)}
-                  derivedValue={womensDerivedProps.womens_first_elimination}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.WOMENS_MOST_ELIMINATIONS}
-                  title="Most Eliminations"
-                  question="Who has the most eliminations?"
-                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_MOST_ELIMINATIONS)}
-                  derivedValue={womensDerivedProps.womens_most_eliminations}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.WOMENS_LONGEST_TIME}
-                  title="Iron Woman"
-                  question="Who lasts longest in the ring?"
-                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_LONGEST_TIME)}
-                  derivedValue={womensDerivedProps.womens_longest_time}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                />
-                <RumblePropScoringCard
-                  propId={MATCH_IDS.WOMENS_NO_SHOW}
-                  title="No-Show"
-                  question="Will anyone not make it to the ring?"
-                  scoredResult={getMatchResult(MATCH_IDS.WOMENS_NO_SHOW)}
-                  derivedValue={null}
-                  onScore={handleScoreRumbleProp}
-                  onReset={handleResetRumbleProp}
-                  type="yesno"
-                />
+            <CollapsibleSection
+              title="Women's Rumble Props"
+              scoredCount={womensRumbleStats.scored}
+              totalCount={womensRumbleStats.total}
+              pointsAwarded={womensRumbleStats.points}
+              defaultOpen={womensRumbleStats.scored < womensRumbleStats.total}
+            >
+              <RumblePropScoringCard
+                propId={MATCH_IDS.WOMENS_ENTRANT_1}
+                title="#1 Entrant"
+                question="Who enters at #1?"
+                scoredResult={getMatchResult(MATCH_IDS.WOMENS_ENTRANT_1)}
+                derivedValue={womensDerivedProps.womens_entrant_1}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.WOMENS_ENTRANT_30}
+                title="#30 Entrant"
+                question="Who enters at #30?"
+                scoredResult={getMatchResult(MATCH_IDS.WOMENS_ENTRANT_30)}
+                derivedValue={womensDerivedProps.womens_entrant_30}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.WOMENS_FIRST_ELIMINATION}
+                title="First Eliminated"
+                question="Who gets eliminated first?"
+                scoredResult={getMatchResult(MATCH_IDS.WOMENS_FIRST_ELIMINATION)}
+                derivedValue={womensDerivedProps.womens_first_elimination}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.WOMENS_MOST_ELIMINATIONS}
+                title="Most Eliminations"
+                question="Who has the most eliminations?"
+                scoredResult={getMatchResult(MATCH_IDS.WOMENS_MOST_ELIMINATIONS)}
+                derivedValue={womensDerivedProps.womens_most_eliminations}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.WOMENS_LONGEST_TIME}
+                title="Iron Woman"
+                question="Who lasts longest in the ring?"
+                scoredResult={getMatchResult(MATCH_IDS.WOMENS_LONGEST_TIME)}
+                derivedValue={womensDerivedProps.womens_longest_time}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+              />
+              <RumblePropScoringCard
+                propId={MATCH_IDS.WOMENS_NO_SHOW}
+                title="No-Show"
+                question="Will anyone not make it to the ring?"
+                scoredResult={getMatchResult(MATCH_IDS.WOMENS_NO_SHOW)}
+                derivedValue={null}
+                onScore={handleScoreRumbleProp}
+                onReset={handleResetRumbleProp}
+                type="yesno"
+              />
+            </CollapsibleSection>
 
-                {/* Final Four Predictions */}
-                <div className="border-t border-border pt-4 mt-4">
-                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">Final Four Predictions</h4>
-                  {[1, 2, 3, 4].map((slot) => (
-                    <RumblePropScoringCard
-                      key={`womens_final_four_${slot}`}
-                      propId={`womens_final_four_${slot}`}
-                      title={`Final Four Pick #${slot}`}
-                      question={`Player's ${slot === 1 ? '1st' : slot === 2 ? '2nd' : slot === 3 ? '3rd' : '4th'} Final Four pick`}
-                      scoredResult={getMatchResult(`womens_final_four_${slot}`)}
-                      derivedValue={womensDerivedProps[`womens_final_four_${slot}`]}
-                      onScore={handleScoreRumbleProp}
-                      onReset={handleResetRumbleProp}
-                    />
-                  ))}
-                </div>
-              </div>
-            </section>
+            {/* Women's Final Four Predictions */}
+            <CollapsibleSection
+              title="Women's Final Four"
+              scoredCount={womensFinalFourStats.scored}
+              totalCount={womensFinalFourStats.total}
+              pointsAwarded={womensFinalFourStats.points}
+              defaultOpen={womensFinalFourStats.scored < womensFinalFourStats.total}
+            >
+              {canAutoScoreWomensFinalFour() && (
+                <Button
+                  variant="gold"
+                  className="w-full mb-3"
+                  onClick={() => handleScoreFinalFourPredictions("womens")}
+                >
+                  <Sparkles size={16} className="mr-2" />
+                  Auto-Score Final Four Predictions
+                </Button>
+              )}
+              {[1, 2, 3, 4].map((slot) => (
+                <RumblePropScoringCard
+                  key={`womens_final_four_${slot}`}
+                  propId={`womens_final_four_${slot}`}
+                  title={`Final Four Pick #${slot}`}
+                  question={`Player's ${slot === 1 ? '1st' : slot === 2 ? '2nd' : slot === 3 ? '3rd' : '4th'} Final Four pick`}
+                  scoredResult={getMatchResult(`womens_final_four_${slot}`)}
+                  derivedValue={womensDerivedProps[`womens_final_four_${slot}`]}
+                  onScore={handleScoreRumbleProp}
+                  onReset={handleResetRumbleProp}
+                />
+              ))}
+            </CollapsibleSection>
 
             {/* Women's Chaos Props */}
-            <section>
-              <h3 className="font-bold mb-4">Women's Chaos Props</h3>
-              <div className="space-y-3">
-                {CHAOS_PROPS.map((prop) => {
-                  const matchId = `womens_chaos_${prop.id}`;
-                  const result = getMatchResult(matchId);
-                  return (
-                    <PropScoringCard
-                      key={matchId}
-                      propId={matchId}
-                      title={prop.shortName}
-                      question={prop.question}
-                      scoredResult={result as "YES" | "NO" | null}
-                      onScore={handleScoreProp}
-                    />
-                  );
-                })}
-              </div>
+            <CollapsibleSection
+              title="Women's Chaos Props"
+              scoredCount={womensChaosStats.scored}
+              totalCount={womensChaosStats.total}
+              pointsAwarded={womensChaosStats.points}
+              defaultOpen={womensChaosStats.scored < womensChaosStats.total}
+            >
+              {CHAOS_PROPS.map((prop) => {
+                const matchId = `womens_chaos_${prop.id}`;
+                const result = getMatchResult(matchId);
+                return (
+                  <PropScoringCard
+                    key={matchId}
+                    propId={matchId}
+                    title={prop.shortName}
+                    question={prop.question}
+                    scoredResult={result as "YES" | "NO" | null}
+                    onScore={handleScoreProp}
+                  />
+                );
+              })}
               <Button
                 variant="outline"
-                className="w-full mt-4"
+                className="w-full mt-2"
                 onClick={() => {
                   setBulkPropsType("womens");
                   setBulkPropsOpen(true);
@@ -1123,7 +1349,7 @@ export default function HostControl() {
               >
                 Score All Women's Chaos Props at Once
               </Button>
-            </section>
+            </CollapsibleSection>
           </TabsContent>
 
           {/* Men's Rumble Tab */}
@@ -1213,6 +1439,13 @@ export default function HostControl() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Fixed Bottom Navigation */}
+      <FixedTabNavigation
+        tabs={TAB_ORDER}
+        currentIndex={currentTabIndex}
+        onNavigate={handleTabNavigate}
+      />
 
       {/* Modals */}
       <BulkPropsModal
