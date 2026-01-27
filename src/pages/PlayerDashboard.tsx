@@ -398,16 +398,24 @@ export default function PlayerDashboard() {
   const womensNumbers = numbers.filter(n => n.rumble_type === "womens");
   const showNumbers = partyStatus !== "pre_event" || numbers.length > 0;
 
+  // Check if we can edit picks (only in pre_event status)
+  const canEditPicks = partyStatus === "pre_event";
+
+  const handleEditPick = (matchId: string, currentPick: string) => {
+    // Navigate to picks page - could be enhanced with a modal later
+    navigate(`/player/picks/${code}`);
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "numbers":
         return <NumbersSection mensNumbers={mensNumbers} womensNumbers={womensNumbers} />;
       case "matches":
-        return <MatchesSection picks={picks} results={results} />;
+        return <MatchesSection picks={picks} results={results} onEditPick={handleEditPick} canEdit={canEditPicks} />;
       case "mens":
-        return <RumblePropsSection picks={picks} results={results} gender="mens" />;
+        return <RumblePropsSection picks={picks} results={results} gender="mens" onEditPick={handleEditPick} canEdit={canEditPicks} />;
       case "womens":
-        return <RumblePropsSection picks={picks} results={results} gender="womens" />;
+        return <RumblePropsSection picks={picks} results={results} gender="womens" onEditPick={handleEditPick} canEdit={canEditPicks} />;
       default:
         return null;
     }

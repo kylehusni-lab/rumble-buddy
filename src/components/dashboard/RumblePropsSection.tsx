@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, ChevronDown, Zap, Target } from "lucide-react";
+import { Check, X, ChevronDown, Zap, Target, Users, Pencil } from "lucide-react";
 import { RUMBLE_PROPS, SCORING, FINAL_FOUR_SLOTS, CHAOS_PROPS } from "@/lib/constants";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
@@ -20,18 +20,24 @@ interface RumblePropsSectionProps {
   picks: Pick[];
   results: MatchResult[];
   gender: "mens" | "womens";
+  onEditPick?: (matchId: string, currentPick: string) => void;
+  canEdit?: boolean;
 }
 
 function PickRow({ 
   label, 
   prediction, 
   isCorrect, 
-  points 
+  points,
+  onEdit,
+  canEdit = false,
 }: { 
   label: string; 
   prediction: string; 
   isCorrect: boolean | null; 
   points: number;
+  onEdit?: () => void;
+  canEdit?: boolean;
 }) {
   return (
     <div className={cn(
@@ -54,6 +60,15 @@ function PickRow({
       
       {/* Result indicator */}
       <div className="flex items-center gap-2 flex-shrink-0">
+        {canEdit && isCorrect === null && onEdit && (
+          <button
+            onClick={onEdit}
+            className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors"
+            aria-label="Edit pick"
+          >
+            <Pencil size={14} className="text-muted-foreground" />
+          </button>
+        )}
         {isCorrect === true && (
           <div className="flex items-center gap-1.5 point-badge px-2.5 py-1 rounded-full">
             <Check size={14} className="text-white" />
@@ -65,7 +80,7 @@ function PickRow({
             <X size={16} className="text-destructive" />
           </div>
         )}
-        {isCorrect === null && (
+        {isCorrect === null && !canEdit && (
           <div className="px-2.5 py-1 rounded-full bg-muted/50 text-muted-foreground text-xs font-medium">
             Pending
           </div>
@@ -75,11 +90,12 @@ function PickRow({
   );
 }
 
-export function RumblePropsSection({ picks, results, gender }: RumblePropsSectionProps) {
-  const [chaosOpen, setChaosOpen] = useState(true);
+export function RumblePropsSection({ picks, results, gender, onEditPick, canEdit = false }: RumblePropsSectionProps) {
+  const [propsOpen, setPropsOpen] = useState(true);
+  const [finalFourOpen, setFinalFourOpen] = useState(true);
+  const [chaosOpen, setChaosOpen] = useState(false);
   
   const prefix = gender;
-  const emoji = gender === "mens" ? "🧔" : "👩";
   const title = gender === "mens" ? "Men's" : "Women's";
 
   const getPickResult = (matchId: string): boolean | null => {
@@ -148,54 +164,80 @@ export function RumblePropsSection({ picks, results, gender }: RumblePropsSectio
       animate={{ opacity: 1, y: 0 }}
       className="space-y-4"
     >
-      {/* Main Props */}
-      <div className="card-gradient border border-border/80 rounded-2xl shadow-premium overflow-hidden">
-        <div className="section-header ring-rope-texture">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Target size={14} className="text-primary" />
-            {emoji} {title} Rumble Props
-          </h3>
+      {/* Main Props - Collapsible */}
+      <Collapsible open={propsOpen} onOpenChange={setPropsOpen}>
+        <div className="card-gradient border border-border/80 rounded-2xl shadow-premium overflow-hidden">
+          <CollapsibleTrigger className="w-full section-header ring-rope-texture flex items-center justify-between hover:bg-muted/5 transition-colors">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Target size={14} className="text-primary" />
+              {title} Rumble Props
+            </h3>
+            <ChevronDown 
+              size={16} 
+              className={cn(
+                "text-muted-foreground transition-transform duration-200",
+                propsOpen && "rotate-180"
+              )}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="divide-y divide-border/50">
+              {mainProps.map((prop) => {
+                const matchId = `${prefix}_${prop.id}`;
+                const pick = picks.find(p => p.match_id === matchId);
+                return (
+                  <PickRow
+                    key={matchId}
+                    label={prop.title}
+                    prediction={pick?.prediction || ""}
+                    isCorrect={getPickResult(matchId)}
+                    points={getPropScore(prop.id)}
+                    canEdit={canEdit}
+                    onEdit={() => onEditPick?.(matchId, pick?.prediction || "")}
+                  />
+                );
+              })}
+            </div>
+          </CollapsibleContent>
         </div>
-        <div className="divide-y divide-border/50">
-          {mainProps.map((prop) => {
-            const matchId = `${prefix}_${prop.id}`;
-            const pick = picks.find(p => p.match_id === matchId);
-            return (
-              <PickRow
-                key={matchId}
-                label={prop.title}
-                prediction={pick?.prediction || ""}
-                isCorrect={getPickResult(matchId)}
-                points={getPropScore(prop.id)}
-              />
-            );
-          })}
-        </div>
-      </div>
+      </Collapsible>
 
-      {/* Final Four */}
-      <div className="card-gradient-purple border border-secondary/30 rounded-2xl shadow-premium overflow-hidden">
-        <div className="section-header border-secondary/20">
-          <h3 className="text-sm font-bold text-secondary-foreground flex items-center gap-2">
-            <span className="text-base">🏅</span>
-            {emoji} Final Four Predictions
-          </h3>
+      {/* Final Four - Collapsible */}
+      <Collapsible open={finalFourOpen} onOpenChange={setFinalFourOpen}>
+        <div className="card-gradient-purple border border-secondary/30 rounded-2xl shadow-premium overflow-hidden">
+          <CollapsibleTrigger className="w-full section-header border-secondary/20 flex items-center justify-between hover:bg-secondary/5 transition-colors">
+            <h3 className="text-sm font-bold text-secondary-foreground flex items-center gap-2">
+              <Users size={14} className="text-secondary" />
+              {title} Final Four
+            </h3>
+            <ChevronDown 
+              size={16} 
+              className={cn(
+                "text-secondary/60 transition-transform duration-200",
+                finalFourOpen && "rotate-180"
+              )}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="divide-y divide-secondary/20">
+              {finalFourPicks.map((pick, i) => {
+                const matchId = `${prefix}_final_four_${i + 1}`;
+                return (
+                  <PickRow
+                    key={matchId}
+                    label={`Final Four #${i + 1}`}
+                    prediction={pick?.prediction || ""}
+                    isCorrect={getPickResult(matchId)}
+                    points={SCORING.FINAL_FOUR_PICK}
+                    canEdit={canEdit}
+                    onEdit={() => onEditPick?.(matchId, pick?.prediction || "")}
+                  />
+                );
+              })}
+            </div>
+          </CollapsibleContent>
         </div>
-        <div className="divide-y divide-secondary/20">
-          {finalFourPicks.map((pick, i) => {
-            const matchId = `${prefix}_final_four_${i + 1}`;
-            return (
-              <PickRow
-                key={matchId}
-                label={`Final Four #${i + 1}`}
-                prediction={pick?.prediction || ""}
-                isCorrect={getPickResult(matchId)}
-                points={SCORING.FINAL_FOUR_PICK}
-              />
-            );
-          })}
-        </div>
-      </div>
+      </Collapsible>
 
       {/* Chaos Props - Collapsible */}
       <Collapsible open={chaosOpen} onOpenChange={setChaosOpen}>
@@ -204,7 +246,7 @@ export function RumblePropsSection({ picks, results, gender }: RumblePropsSectio
             <div className="flex items-center gap-2">
               <Zap size={14} className="text-amber-400" />
               <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
-                {emoji} Chaos Props
+                {title} Chaos Props
               </h3>
               {chaosStats.correct > 0 && (
                 <span className="flex items-center gap-0.5 text-[10px] font-bold text-white point-badge px-1.5 py-0.5 rounded-full">
@@ -235,6 +277,8 @@ export function RumblePropsSection({ picks, results, gender }: RumblePropsSectio
                   prediction={pick?.prediction || ""}
                   isCorrect={getPickResult(matchId)}
                   points={SCORING.PROP_BET}
+                  canEdit={canEdit}
+                  onEdit={() => onEditPick?.(matchId, pick?.prediction || "")}
                 />
               ))}
             </div>

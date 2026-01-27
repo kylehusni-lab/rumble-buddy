@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { X } from "lucide-react";
+import { X, ChevronDown, Hash } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
 interface RumbleNumber {
@@ -74,6 +76,9 @@ function NumberCard({ num }: { num: RumbleNumber }) {
 }
 
 export function NumbersSection({ mensNumbers, womensNumbers }: NumbersSectionProps) {
+  const [mensOpen, setMensOpen] = useState(true);
+  const [womensOpen, setWomensOpen] = useState(true);
+
   if (mensNumbers.length === 0 && womensNumbers.length === 0) {
     return (
       <div className="card-gradient border border-border rounded-2xl shadow-premium p-8 text-center ring-rope-texture">
@@ -82,44 +87,81 @@ export function NumbersSection({ mensNumbers, womensNumbers }: NumbersSectionPro
     );
   }
 
+  const mensActiveCount = mensNumbers.filter(n => getNumberStatus(n) === "active").length;
+  const womensActiveCount = womensNumbers.filter(n => getNumberStatus(n) === "active").length;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-4"
     >
       {mensNumbers.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2 px-1">
-            <span className="text-base">🧔</span> 
-            <span className="uppercase tracking-wide">Men's Rumble</span>
-            <span className="text-xs text-muted-foreground font-normal ml-auto">
-              {mensNumbers.filter(n => getNumberStatus(n) === "active").length} active
-            </span>
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            {mensNumbers.map((num) => (
-              <NumberCard key={`mens-${num.number}`} num={num} />
-            ))}
+        <Collapsible open={mensOpen} onOpenChange={setMensOpen}>
+          <div className="card-gradient border border-border/80 rounded-2xl shadow-premium overflow-hidden">
+            <CollapsibleTrigger className="w-full section-header ring-rope-texture flex items-center justify-between hover:bg-muted/5 transition-colors">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Hash size={14} className="text-primary" />
+                Men's Rumble
+              </h3>
+              <div className="flex items-center gap-2">
+                {mensActiveCount > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {mensActiveCount} active
+                  </span>
+                )}
+                <ChevronDown 
+                  size={16} 
+                  className={cn(
+                    "text-muted-foreground transition-transform duration-200",
+                    mensOpen && "rotate-180"
+                  )}
+                />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-3 grid grid-cols-2 gap-3">
+                {mensNumbers.map((num) => (
+                  <NumberCard key={`mens-${num.number}`} num={num} />
+                ))}
+              </div>
+            </CollapsibleContent>
           </div>
-        </div>
+        </Collapsible>
       )}
 
       {womensNumbers.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2 px-1">
-            <span className="text-base">👩</span> 
-            <span className="uppercase tracking-wide">Women's Rumble</span>
-            <span className="text-xs text-muted-foreground font-normal ml-auto">
-              {womensNumbers.filter(n => getNumberStatus(n) === "active").length} active
-            </span>
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            {womensNumbers.map((num) => (
-              <NumberCard key={`womens-${num.number}`} num={num} />
-            ))}
+        <Collapsible open={womensOpen} onOpenChange={setWomensOpen}>
+          <div className="card-gradient border border-border/80 rounded-2xl shadow-premium overflow-hidden">
+            <CollapsibleTrigger className="w-full section-header ring-rope-texture flex items-center justify-between hover:bg-muted/5 transition-colors">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Hash size={14} className="text-primary" />
+                Women's Rumble
+              </h3>
+              <div className="flex items-center gap-2">
+                {womensActiveCount > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {womensActiveCount} active
+                  </span>
+                )}
+                <ChevronDown 
+                  size={16} 
+                  className={cn(
+                    "text-muted-foreground transition-transform duration-200",
+                    womensOpen && "rotate-180"
+                  )}
+                />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-3 grid grid-cols-2 gap-3">
+                {womensNumbers.map((num) => (
+                  <NumberCard key={`womens-${num.number}`} num={num} />
+                ))}
+              </div>
+            </CollapsibleContent>
           </div>
-        </div>
+        </Collapsible>
       )}
     </motion.div>
   );
