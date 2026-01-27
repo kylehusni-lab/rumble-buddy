@@ -362,38 +362,44 @@ export function PickCardStack({
           {currentCardIndex + 1} / {TOTAL_CARDS}
         </div>
 
-        {!isLastCard ? (
+      <div className="flex items-center gap-2">
+          {!isLastCard ? (
+            <Button
+              variant="ghost"
+              onClick={() => handleSwipe("right")}
+              className="flex items-center gap-2"
+            >
+              Next
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSubmit}
+              disabled={!allPicksComplete || isSubmitting || isLocked}
+              className={allPicksComplete && !isLocked ? "gold-shimmer" : ""}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : isLocked ? (
+                "Locked 🔒"
+              ) : (
+                "Save"
+              )}
+            </Button>
+          )}
           <Button
-            variant="ghost"
-            onClick={() => handleSwipe("right")}
-            className="flex items-center gap-2"
-          >
-            Skip
-            <ChevronRight className="w-5 h-5" />
-          </Button>
-        ) : (
-          <Button
+            variant="outline"
             onClick={handleSubmit}
-            disabled={!allPicksComplete || isSubmitting || isLocked}
-            className={allPicksComplete && !isLocked ? "gold-shimmer" : ""}
+            disabled={isSubmitting || isLocked}
+            className="flex items-center gap-1"
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : isLocked ? (
-              "Locked 🔒"
-            ) : hasSubmitted ? (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                Update
-              </>
-            ) : (
-              "Submit All"
-            )}
+            <Check className="w-4 h-4" />
+            Done
           </Button>
-        )}
+        </div>
       </div>
 
       {/* Back to Dashboard */}
