@@ -12,6 +12,16 @@ import ajStylesImage from '@/assets/wrestlers/aj-styles.png';
 import jeyUsoImage from '@/assets/wrestlers/jey-uso.png';
 import dominikMysterioImage from '@/assets/wrestlers/dominik-mysterio.png';
 import carmeloHayesImage from '@/assets/wrestlers/carmelo-hayes.png';
+import aleisterBlackImage from '@/assets/wrestlers/aleister-black.png';
+import alexaBlissImage from '@/assets/wrestlers/alexa-bliss.png';
+import asukaImage from '@/assets/wrestlers/asuka.png';
+import bFabImage from '@/assets/wrestlers/b-fab.png';
+import bayleyImage from '@/assets/wrestlers/bayley.png';
+import beckyLynchImage from '@/assets/wrestlers/becky-lynch.png';
+import biancaBelairImage from '@/assets/wrestlers/bianca-belair.png';
+import candiceLeRaeImage from '@/assets/wrestlers/candice-lerae.png';
+import chelseaGreenImage from '@/assets/wrestlers/chelsea-green.png';
+import charlotteFlairImage from '@/assets/wrestlers/charlotte-flair.png';
 
 export interface WrestlerData {
   name: string;
@@ -52,6 +62,7 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'AJ Styles', imageUrl: ajStylesImage, gender: 'male' },
   { name: 'Dominik Mysterio', imageUrl: dominikMysterioImage, gender: 'male' },
   { name: 'Carmelo Hayes', imageUrl: carmeloHayesImage, gender: 'male' },
+  { name: 'Aleister Black', imageUrl: aleisterBlackImage, gender: 'male' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'male' },
 ];
 
@@ -60,18 +71,22 @@ export const DEFAULT_FEMALE_WRESTLERS: WrestlerData[] = [
   { name: 'Liv Morgan', imageUrl: `${WWE_CDN}/2025/11/Liv_Morgan_Profile.png`, gender: 'female' },
   { name: 'Rhea Ripley', imageUrl: `${WWE_CDN}/2025/11/Rhea_Ripley_Profile.png`, gender: 'female' },
   { name: 'IYO SKY', imageUrl: `${WWE_CDN}/2025/11/IYO_SKY_Profile.png`, gender: 'female' },
-  { name: 'Charlotte Flair', imageUrl: `${WWE_CDN}/2025/11/Charlotte_Flair_Profile.png`, gender: 'female' },
-  { name: 'Bayley', imageUrl: `${WWE_CDN}/2025/11/Bayley_Profile.png`, gender: 'female' },
-  { name: 'Asuka', imageUrl: `${WWE_CDN}/2025/04/Asuka_Profile.png`, gender: 'female' },
+  { name: 'Charlotte Flair', imageUrl: charlotteFlairImage, gender: 'female' },
+  { name: 'Bayley', imageUrl: bayleyImage, gender: 'female' },
+  { name: 'Asuka', imageUrl: asukaImage, gender: 'female' },
   { name: 'Giulia', imageUrl: `${WWE_CDN}/2026/01/guilia_PROFILE.png`, gender: 'female' },
   { name: 'Jordynne Grace', imageUrl: getPlaceholderImageUrl('Jordynne Grace'), gender: 'female' },
-  { name: 'Alexa Bliss', imageUrl: `${WWE_CDN}/2025/11/Alexa_Bliss_Profile.png`, gender: 'female' },
+  { name: 'Alexa Bliss', imageUrl: alexaBlissImage, gender: 'female' },
   { name: 'Nia Jax', imageUrl: `${WWE_CDN}/2025/11/Nia_Jax_Profile.png`, gender: 'female' },
   { name: 'Roxanne Perez', imageUrl: `${WWE_CDN}/2025/11/Roxanne_Perez_Profile.png`, gender: 'female' },
   { name: 'Raquel Rodriguez', imageUrl: `${WWE_CDN}/2025/11/Raquel_Rodriguez_Profile.png`, gender: 'female' },
   { name: 'Lyra Valkyria', imageUrl: `${WWE_CDN}/2025/11/Lyra_Valkyria_Profile.png`, gender: 'female' },
   { name: 'Lash Legend', imageUrl: `${WWE_CDN}/2025/11/Lash_Legend_Profile.png`, gender: 'female' },
-  { name: 'Chelsea Green', imageUrl: `${WWE_CDN}/2025/11/Chelsea_Green_Profile.png`, gender: 'female' },
+  { name: 'Chelsea Green', imageUrl: chelseaGreenImage, gender: 'female' },
+  { name: 'Becky Lynch', imageUrl: beckyLynchImage, gender: 'female' },
+  { name: 'Bianca Belair', imageUrl: biancaBelairImage, gender: 'female' },
+  { name: 'Candice LeRae', imageUrl: candiceLeRaeImage, gender: 'female' },
+  { name: 'B-Fab', imageUrl: bFabImage, gender: 'female' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'female' },
 ];
 
