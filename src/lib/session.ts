@@ -10,6 +10,7 @@ export interface PlayerSession {
   displayName?: string;
   email?: string;
   isHost?: boolean;
+  isSolo?: boolean;
 }
 
 export function generateSessionId(): string {
