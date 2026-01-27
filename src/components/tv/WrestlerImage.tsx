@@ -5,13 +5,14 @@ import { cn } from "@/lib/utils";
 
 interface WrestlerImageProps {
   name: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
   showFallbackIcon?: boolean;
   eliminated?: boolean;
 }
 
 const sizeClasses = {
+  xs: "w-8 h-8",     // 32px
   sm: "w-12 h-12",   // 48px
   md: "w-20 h-20",   // 80px
   lg: "w-44 h-44",   // 176px
