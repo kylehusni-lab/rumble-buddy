@@ -94,18 +94,6 @@ export function ChaosPropsCard({ title, gender, values, onChange, disabled }: Ch
           })}
         </div>
       </ScrollArea>
-
-      {/* Completion Indicator */}
-      {allAnswered && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary text-center"
-        >
-          <Check className="w-5 h-5 text-primary inline-block mr-2" />
-          <span className="text-sm font-bold text-primary">All props answered!</span>
-        </motion.div>
-      )}
     </div>
   );
 }
