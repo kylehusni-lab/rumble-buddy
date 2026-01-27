@@ -28,6 +28,7 @@ interface RumbleNumber {
 interface Player {
   id: string;
   display_name: string;
+  points: number;
 }
 
 interface Pick {
@@ -48,6 +49,8 @@ interface TvViewNavigatorProps {
 
 type ViewType = "undercard" | "rumble" | "rumble-props";
 
+export type { ViewType };
+
 interface View {
   type: ViewType;
   id: string;
@@ -66,6 +69,10 @@ const VIEWS: View[] = [
   { type: "rumble-props", id: "womens_props", title: "Women's Rumble Props", gender: "womens" },
 ];
 
+interface TvViewNavigatorWithCallback extends TvViewNavigatorProps {
+  onViewChange?: (viewType: ViewType) => void;
+}
+
 export function TvViewNavigator({
   matchResults,
   mensNumbers,
@@ -74,7 +81,8 @@ export function TvViewNavigator({
   picks,
   getPlayerInitials,
   getNumberStatus,
-}: TvViewNavigatorProps) {
+  onViewChange,
+}: TvViewNavigatorWithCallback) {
   const [currentViewIndex, setCurrentViewIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   
@@ -124,6 +132,11 @@ export function TvViewNavigator({
       return () => clearTimeout(timer);
     }
   }, [matchResults, isViewComplete]);
+
+  // Notify parent of view changes
+  useEffect(() => {
+    onViewChange?.(currentView.type);
+  }, [currentViewIndex, onViewChange]);
 
   // Helper to get player name
   const getPlayerName = useCallback((playerId: string | null): string => {
