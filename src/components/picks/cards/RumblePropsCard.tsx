@@ -97,7 +97,7 @@ export function RumblePropsCard({
       </div>
 
       <ScrollArea className="flex-1 -mx-2 px-2">
-        <div className="space-y-4 pb-4">
+        <div className="space-y-4 pb-8">
           {/* Wrestler Select Props */}
           {wrestlerProps.map((prop) => {
             const matchId = getMatchId(prop.id);

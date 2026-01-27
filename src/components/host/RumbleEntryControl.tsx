@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Bell, Sparkles } from "lucide-react";
-import { AddSurpriseEntrantModal } from "./AddSurpriseEntrantModal";
 
 interface RumbleEntryControlProps {
   nextNumber: number;
@@ -33,13 +32,12 @@ export function RumbleEntryControl({
   const [selectedWrestler, setSelectedWrestler] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSurpriseModal, setShowSurpriseModal] = useState(false);
 
   const progress = (enteredCount / 30) * 100;
   const isComplete = enteredCount >= 30;
 
-  // Show match start UI only for entries #1 and #2 when match hasn't started
-  const showMatchStartUI = nextNumber <= 2 && !matchStarted;
+  // Show match start UI until match is started (button enabled only when 2+ entrants)
+  const showMatchStartUI = !matchStarted;
 
   // Alphabetize and filter entrants
   const filteredEntrants = useMemo(() => {
@@ -116,7 +114,7 @@ export function RumbleEntryControl({
               variant="secondary"
               className="w-full min-h-[48px]"
               onClick={onStartMatch}
-              disabled={disabled || enteredCount === 0}
+              disabled={disabled || enteredCount < 2}
             >
               <Bell size={18} className="mr-2" />
               Start Match
@@ -161,11 +159,16 @@ export function RumbleEntryControl({
                 </p>
                 <Button
                   variant="outline"
-                  className="w-full min-h-[44px]"
-                  onClick={() => setShowSurpriseModal(true)}
+                  className="w-full min-h-[44px] border-primary text-primary"
+                  onClick={() => {
+                    onAddSurprise(searchQuery.trim());
+                    setSelectedWrestler(searchQuery.trim());
+                    setSearchQuery("");
+                  }}
+                  disabled={!searchQuery.trim()}
                 >
                   <Sparkles size={16} className="mr-2" />
-                  Add "{searchQuery}" as Surprise
+                  Add "{searchQuery}" as Entry
                 </Button>
               </div>
             ) : (
@@ -174,20 +177,6 @@ export function RumbleEntryControl({
               </p>
             )}
 
-            {/* Always show surprise option at bottom when there are results */}
-            {filteredEntrants.length > 0 && (
-              <>
-                <div className="border-t border-border my-2" />
-                <button
-                  onClick={() => setShowSurpriseModal(true)}
-                  disabled={disabled || isSubmitting}
-                  className="w-full text-left px-3 py-2.5 rounded-md transition-colors min-h-[44px] text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-2"
-                >
-                  <Sparkles size={16} />
-                  Add Surprise Entrant
-                </button>
-              </>
-            )}
           </div>
         </ScrollArea>
 
@@ -213,15 +202,6 @@ export function RumbleEntryControl({
           {isSubmitting ? "Entering..." : `Confirm #${nextNumber} Entry`}
         </Button>
       </div>
-
-      {/* Surprise Entrant Modal */}
-      <AddSurpriseEntrantModal
-        open={showSurpriseModal}
-        onOpenChange={setShowSurpriseModal}
-        initialName={searchQuery}
-        existingEntrants={entrants}
-        onAdd={handleAddSurprise}
-      />
     </div>
   );
 }
