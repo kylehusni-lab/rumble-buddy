@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
 import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
-import { MatchProgressBar } from "@/components/tv/MatchProgressBar";
+
 import { TvViewNavigator } from "@/components/tv/TvViewNavigator";
 import { Logo } from "@/components/Logo";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
@@ -444,10 +444,6 @@ export default function TvDisplay() {
           <p className="text-muted-foreground text-lg">Party {code}</p>
         </div>
         <div className="flex items-center gap-4">
-          {/* Match Progress */}
-          <div className="w-80">
-            <MatchProgressBar matchResults={matchResults} />
-          </div>
           {/* Status */}
           <div className="text-right">
             <div className="text-sm text-muted-foreground">Status</div>

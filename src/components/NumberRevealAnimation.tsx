@@ -35,39 +35,22 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
     setPhase("dramatic");
   };
 
-  // Dedicated effect for completion callback
-  useEffect(() => {
-    if (phase === "complete") {
-      const timer = setTimeout(onComplete, 1000);
-      return () => clearTimeout(timer);
+  // User-driven handlers (no auto-timers)
+  const handleNextPlayer = () => {
+    if (currentPlayerIndex < players.length - 1) {
+      setCurrentPlayerIndex(prev => prev + 1);
+    } else {
+      setPhase("complete");
     }
-  }, [phase, onComplete]);
+  };
 
-  // Instant mode: auto-complete after display
-  useEffect(() => {
-    if (phase === "instant") {
-      const timer = setTimeout(() => {
-        setPhase("complete");
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [phase]);
+  const handleContinueFromInstant = () => {
+    setPhase("complete");
+  };
 
-  // Dramatic mode: advance through players
-  useEffect(() => {
-    if (phase === "dramatic") {
-      if (currentPlayerIndex < players.length) {
-        const timer = setTimeout(() => {
-          if (currentPlayerIndex < players.length - 1) {
-            setCurrentPlayerIndex(prev => prev + 1);
-          } else {
-            setPhase("complete");
-          }
-        }, 1500);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [phase, currentPlayerIndex, players.length]);
+  const handleFinish = () => {
+    onComplete();
+  };
 
   return (
     <motion.div
@@ -156,7 +139,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
               <span className="text-gradient-gold">YOUR NUMBERS ARE IN!</span>
             </motion.h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[50vh] overflow-y-auto py-4">
               {players.map((player, index) => (
                 <motion.div
                   key={player.playerName}
@@ -199,6 +182,16 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
                 </motion.div>
               ))}
             </div>
+
+            {/* Continue button */}
+            <Button
+              variant="gold"
+              size="lg"
+              className="mt-6"
+              onClick={handleContinueFromInstant}
+            >
+              Continue
+            </Button>
           </motion.div>
         )}
 
@@ -206,11 +199,12 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
         {phase === "dramatic" && players[currentPlayerIndex] && (
           <motion.div
             key={`dramatic-${currentPlayerIndex}`}
-            className="text-center w-full max-w-lg px-6"
+            className="text-center w-full max-w-lg px-6 cursor-pointer"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
+            onClick={handleNextPlayer}
           >
             <motion.div
               className="bg-card border-2 border-primary rounded-2xl p-8"
@@ -258,7 +252,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
             </motion.div>
 
             {/* Progress dots */}
-            <div className="mt-8 flex justify-center gap-2">
+            <div className="mt-6 flex justify-center gap-2">
               {players.map((_, idx) => (
                 <div
                   key={idx}
@@ -272,6 +266,20 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
                 />
               ))}
             </div>
+
+            {/* Next/Finish button */}
+            <Button
+              variant="gold"
+              size="lg"
+              className="mt-6"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNextPlayer();
+              }}
+            >
+              {currentPlayerIndex < players.length - 1 ? "Next Player" : "Finish"}
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2">Tap anywhere to continue</p>
           </motion.div>
         )}
 
@@ -288,9 +296,16 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
             <h2 className="text-4xl md:text-5xl font-black text-gradient-gold mb-2">
               LET'S RUMBLE!
             </h2>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-lg text-muted-foreground mb-6">
               Good luck to all players!
             </p>
+            <Button
+              variant="gold"
+              size="xl"
+              onClick={handleFinish}
+            >
+              Let's Go!
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>
