@@ -23,147 +23,219 @@ interface RumblePropsDisplayProps {
   matchResults: MatchResult[];
 }
 
+interface PropConfig {
+  id: string;
+  label: string;
+  type: "wrestler" | "yes_no";
+}
+
 export function RumblePropsDisplay({ gender, players, picks, matchResults }: RumblePropsDisplayProps) {
-  // Get all picks for a specific prop
-  const getPicksForProp = (propId: string) => {
-    const matchId = `${gender}_${propId}`;
-    return players.map(player => {
-      const pick = picks.find(p => p.player_id === player.id && p.match_id === matchId);
-      return { player, prediction: pick?.prediction || null };
-    }).filter(p => p.prediction);
-  };
-
-  // Render a row of wrestler picks for a prop
-  const renderPropRow = (title: string, propId: string) => {
-    const propPicks = getPicksForProp(propId);
-    const result = matchResults.find(r => r.match_id === `${gender}_${propId}`);
-    
-    if (propPicks.length === 0) return null;
-
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold">{title}</h3>
-          {result && (
-            <span className="text-sm text-success font-semibold">✓ {result.result}</span>
-          )}
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {propPicks.map(({ player, prediction }) => (
-            <div key={player.id} className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-              <WrestlerImage 
-                name={prediction!} 
-                size="sm" 
-                className={prediction === result?.result ? "ring-2 ring-success" : ""} 
-              />
-              <span className="text-xs font-medium mt-1 text-center truncate w-full">{prediction}</span>
-              <span className="text-[10px] text-muted-foreground truncate w-full text-center">{player.display_name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  // Render Final Four section
-  const renderFinalFour = () => {
-    const playerFinalFours = players.map(player => {
-      const fourPicks = [1, 2, 3, 4].map(i => {
-        const pick = picks.find(p => 
-          p.player_id === player.id && 
-          p.match_id === `${gender}_final_four_${i}`
-        );
-        return pick?.prediction || null;
-      }).filter(Boolean) as string[];
-      return { player, picks: fourPicks };
-    }).filter(p => p.picks.length > 0);
-
-    if (playerFinalFours.length === 0) return null;
-
-    return (
-      <div className="space-y-2">
-        <h3 className="text-lg font-bold">Final Four Picks</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {playerFinalFours.map(({ player, picks: playerPicks }) => (
-            <div key={player.id} className="bg-card/50 rounded-lg p-3 border border-border/50">
-              <div className="text-sm font-semibold text-primary mb-2">{player.display_name}</div>
-              <div className="flex gap-2">
-                {playerPicks.map((name, i) => (
-                  <div key={i} className="flex flex-col items-center">
-                    <WrestlerImage name={name} size="sm" />
-                    <span className="text-[10px] text-muted-foreground mt-1 truncate max-w-[48px] text-center">{name.split(' ')[0]}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  // Render No-Show prop (YES/NO)
-  const renderNoShow = () => {
-    const propPicks = getPicksForProp("no_show");
-    const result = matchResults.find(r => r.match_id === `${gender}_no_show`);
-    
-    if (propPicks.length === 0) return null;
-
-    const yesPicks = propPicks.filter(p => p.prediction === "YES");
-    const noPicks = propPicks.filter(p => p.prediction === "NO");
-    
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold">No-Show?</h3>
-          {result && (
-            <span className="text-sm text-success font-semibold">✓ {result.result}</span>
-          )}
-        </div>
-        <div className="flex gap-4">
-          <div className={`flex-1 rounded-lg p-3 text-center border ${
-            result?.result === "YES" ? "bg-success/20 border-success" : "bg-success/10 border-border/50"
-          }`}>
-            <div className="text-success font-bold">YES ({yesPicks.length})</div>
-            <div className="text-xs text-muted-foreground">
-              {yesPicks.map(p => p.player.display_name).join(", ") || "—"}
-            </div>
-          </div>
-          <div className={`flex-1 rounded-lg p-3 text-center border ${
-            result?.result === "NO" ? "bg-destructive/20 border-destructive" : "bg-destructive/10 border-border/50"
-          }`}>
-            <div className="text-destructive font-bold">NO ({noPicks.length})</div>
-            <div className="text-xs text-muted-foreground">
-              {noPicks.map(p => p.player.display_name).join(", ") || "—"}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const title = gender === "mens" ? "Men's" : "Women's";
+  
+  // Define props to display
+  const wrestlerProps: PropConfig[] = [
+    { id: "first_elimination", label: "First Elimination", type: "wrestler" },
+    { id: "most_eliminations", label: "Most Eliminations", type: "wrestler" },
+    { id: "longest_time", label: gender === "mens" ? "Iron Man" : "Iron Woman", type: "wrestler" },
+    { id: "entrant_1", label: "#1 Entrant", type: "wrestler" },
+    { id: "entrant_30", label: "#30 Entrant", type: "wrestler" },
+  ];
 
-  return (
-    <div className="bg-card/50 border border-border rounded-2xl p-6 space-y-6">
-      <h2 className="text-2xl font-bold text-center">{title} Rumble Predictions</h2>
-      
-      {renderPropRow("First Elimination", "first_elimination")}
-      {renderPropRow("Most Eliminations", "most_eliminations")}
-      {renderPropRow(gender === "mens" ? "Iron Man" : "Iron Woman", "longest_time")}
-      {renderPropRow("#1 Entrant", "entrant_1")}
-      {renderPropRow("#30 Entrant", "entrant_30")}
-      {renderFinalFour()}
-      {renderNoShow()}
-      
-      {/* Empty state */}
-      {getPicksForProp("first_elimination").length === 0 && 
-       getPicksForProp("most_eliminations").length === 0 &&
-       getPicksForProp("longest_time").length === 0 && (
+  // Get pick for a specific player and prop
+  const getPlayerPick = (playerId: string, propId: string): string | null => {
+    const matchId = `${gender}_${propId}`;
+    const pick = picks.find(p => p.player_id === playerId && p.match_id === matchId);
+    return pick?.prediction || null;
+  };
+
+  // Get result for a prop
+  const getResult = (propId: string): string | null => {
+    const matchId = `${gender}_${propId}`;
+    const result = matchResults.find(r => r.match_id === matchId);
+    return result?.result || null;
+  };
+
+  // Get cell background based on correctness
+  const getCellBg = (prediction: string | null, result: string | null): string => {
+    if (!prediction || !result) return "bg-card/30";
+    if (prediction === result) return "bg-success/30";
+    return "bg-destructive/30";
+  };
+
+  // Get Final Four picks for a player
+  const getFinalFourPicks = (playerId: string): string[] => {
+    return [1, 2, 3, 4].map(i => {
+      const pick = picks.find(p => 
+        p.player_id === playerId && 
+        p.match_id === `${gender}_final_four_${i}`
+      );
+      return pick?.prediction || "";
+    }).filter(Boolean);
+  };
+
+  // Get No-Show pick for a player
+  const getNoShowPick = (playerId: string): string | null => {
+    const pick = picks.find(p => 
+      p.player_id === playerId && 
+      p.match_id === `${gender}_no_show`
+    );
+    return pick?.prediction || null;
+  };
+
+  // Check if any player has picks
+  const hasAnyPicks = players.some(player => 
+    wrestlerProps.some(prop => getPlayerPick(player.id, prop.id))
+  );
+
+  if (!hasAnyPicks && players.length === 0) {
+    return (
+      <div className="bg-card/50 border border-border rounded-2xl p-6">
+        <h2 className="text-2xl font-bold text-center mb-4">{title} Rumble Predictions</h2>
         <div className="text-center text-muted-foreground py-8">
           No predictions submitted yet
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card/50 border border-border rounded-2xl p-4 space-y-4 overflow-x-auto">
+      <h2 className="text-2xl font-bold text-center">{title} Rumble Predictions</h2>
+      
+      {/* Grid Table */}
+      <div className="min-w-[600px]">
+        <table className="w-full border-collapse">
+          {/* Header Row - Player Names */}
+          <thead>
+            <tr>
+              <th className="p-2 text-left text-sm font-semibold text-muted-foreground border-b border-border/50 w-36">
+                Prop
+              </th>
+              {players.map(player => (
+                <th 
+                  key={player.id} 
+                  className="p-2 text-center text-sm font-semibold text-primary border-b border-border/50 min-w-[100px]"
+                >
+                  {player.display_name}
+                </th>
+              ))}
+              <th className="p-2 text-center text-sm font-semibold text-success border-b border-border/50 min-w-[100px]">
+                Result
+              </th>
+            </tr>
+          </thead>
+          
+          <tbody>
+            {/* Wrestler Props Rows */}
+            {wrestlerProps.map(prop => {
+              const result = getResult(prop.id);
+              return (
+                <tr key={prop.id} className="border-b border-border/30">
+                  <td className="p-2 text-sm font-medium text-foreground">
+                    {prop.label}
+                  </td>
+                  {players.map(player => {
+                    const prediction = getPlayerPick(player.id, prop.id);
+                    return (
+                      <td 
+                        key={player.id} 
+                        className={`p-2 text-center ${getCellBg(prediction, result)} transition-colors`}
+                      >
+                        {prediction ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <WrestlerImage name={prediction} size="xs" />
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">
+                              {prediction.split(' ')[0]}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="p-2 text-center bg-card/50">
+                    {result ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <WrestlerImage name={result} size="xs" />
+                        <span className="text-[10px] text-success font-semibold truncate max-w-[80px]">
+                          {result.split(' ')[0]}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground/50">TBD</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+
+            {/* Final Four Row */}
+            <tr className="border-b border-border/30">
+              <td className="p-2 text-sm font-medium text-foreground">
+                Final Four
+              </td>
+              {players.map(player => {
+                const fourPicks = getFinalFourPicks(player.id);
+                return (
+                  <td key={player.id} className="p-2 bg-card/30">
+                    {fourPicks.length > 0 ? (
+                      <div className="flex justify-center gap-1 flex-wrap">
+                        {fourPicks.map((name, i) => (
+                          <WrestlerImage key={i} name={name} size="xs" />
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground/50 text-center block">—</span>
+                    )}
+                  </td>
+                );
+              })}
+              <td className="p-2 text-center bg-card/50">
+                <span className="text-muted-foreground/50">—</span>
+              </td>
+            </tr>
+
+            {/* No-Show Row */}
+            <tr>
+              <td className="p-2 text-sm font-medium text-foreground">
+                No-Show?
+              </td>
+              {players.map(player => {
+                const prediction = getNoShowPick(player.id);
+                const result = getResult("no_show");
+                return (
+                  <td 
+                    key={player.id} 
+                    className={`p-2 text-center ${getCellBg(prediction, result)} transition-colors`}
+                  >
+                    {prediction ? (
+                      <span className={`text-sm font-bold ${
+                        prediction === "YES" ? "text-success" : "text-destructive"
+                      }`}>
+                        {prediction}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </td>
+                );
+              })}
+              <td className="p-2 text-center bg-card/50">
+                {getResult("no_show") ? (
+                  <span className={`text-sm font-bold ${
+                    getResult("no_show") === "YES" ? "text-success" : "text-destructive"
+                  }`}>
+                    {getResult("no_show")}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground/50">TBD</span>
+                )}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
