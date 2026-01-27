@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Users, Crown, Tv, Calendar, FlaskConical, User } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Users, Crown, Tv, Calendar, FlaskConical, User, ArrowRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { JoinPartyModal } from "@/components/JoinPartyModal";
@@ -19,13 +19,15 @@ interface TimeRemaining {
   seconds: number;
 }
 
+type Step = "initial" | "group-choice" | "solo";
+
 function CountdownUnit({ value, label }: { value: number; label: string }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-3 min-w-[65px] text-center">
-      <div className="text-2xl md:text-3xl font-black tabular-nums text-primary">
+    <div className="bg-card border border-border rounded-xl p-2 sm:p-3 min-w-[55px] sm:min-w-[65px] text-center">
+      <div className="text-xl sm:text-2xl md:text-3xl font-black tabular-nums text-primary">
         {String(value).padStart(2, '0')}
       </div>
-      <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wide">
+      <div className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground uppercase tracking-wide">
         {label}
       </div>
     </div>
@@ -37,6 +39,7 @@ export default function Index() {
   const [isCreating, setIsCreating] = useState(false);
   const [isCreatingDemo, setIsCreatingDemo] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
+  const [step, setStep] = useState<Step>("initial");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export default function Index() {
     return () => clearInterval(interval);
   }, []);
 
-  const generatePartyCode = async (): Promise<string> => {
+  const generateGroupCode = async (): Promise<string> => {
     let attempts = 0;
     const maxAttempts = 10;
 
@@ -81,18 +84,18 @@ export default function Index() {
       attempts++;
     }
 
-    throw new Error("Could not generate unique party code");
+    throw new Error("Could not generate unique group code");
   };
 
-  const handleCreateParty = async () => {
+  const handleCreateGroup = async () => {
     setIsCreating(true);
 
     try {
       const sessionId = getSessionId();
-      const partyCode = await generatePartyCode();
+      const groupCode = await generateGroupCode();
 
       const { error } = await supabase.from("parties").insert({
-        code: partyCode,
+        code: groupCode,
         host_session_id: sessionId,
         status: "pre_event",
       });
@@ -101,15 +104,15 @@ export default function Index() {
 
       setPlayerSession({
         sessionId,
-        partyCode,
+        partyCode: groupCode,
         isHost: true,
       });
 
-      toast.success(`Party ${partyCode} created!`);
-      navigate(`/player/join?code=${partyCode}&host=true`);
+      toast.success(`Group ${groupCode} created!`);
+      navigate(`/player/join?code=${groupCode}&host=true`);
     } catch (err) {
-      console.error("Error creating party:", err);
-      toast.error("Failed to create party. Please try again.");
+      console.error("Error creating group:", err);
+      toast.error("Failed to create group. Please try again.");
     } finally {
       setIsCreating(false);
     }
@@ -120,9 +123,8 @@ export default function Index() {
 
     try {
       const sessionId = getSessionId();
-      const demoCode = await generatePartyCode();
+      const demoCode = await generateGroupCode();
 
-      // Create demo party with auto-set PIN
       const { error: partyError } = await supabase.from("parties").insert({
         code: demoCode,
         host_session_id: sessionId,
@@ -132,10 +134,8 @@ export default function Index() {
 
       if (partyError) throw partyError;
 
-      // Seed players and picks
       const { hostPlayerId } = await seedDemoParty(demoCode, sessionId);
 
-      // Set session (as Kyle)
       setPlayerSession({
         sessionId,
         playerId: hostPlayerId,
@@ -145,16 +145,122 @@ export default function Index() {
         isHost: true,
       });
 
-      // Store PIN for instant access
       localStorage.setItem(`party_${demoCode}_pin`, "0000");
 
-      toast.success(`Demo party ${demoCode} created with 6 players!`);
+      toast.success(`Demo group ${demoCode} created with 6 players!`);
       navigate(`/host/setup/${demoCode}`);
     } catch (err) {
       console.error("Error creating demo:", err);
-      toast.error("Failed to create demo party");
+      toast.error("Failed to create demo group");
     } finally {
       setIsCreatingDemo(false);
+    }
+  };
+
+  const renderStep = () => {
+    switch (step) {
+      case "initial":
+        return (
+          <motion.div
+            key="initial"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="space-y-4"
+          >
+            <p className="text-center text-muted-foreground mb-6">
+              How do you want to play?
+            </p>
+
+            <Button
+              variant="hero"
+              size="xl"
+              className="w-full"
+              onClick={() => setStep("group-choice")}
+            >
+              <Users className="mr-2" size={24} />
+              Watch with Friends
+              <ArrowRight className="ml-auto" size={20} />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="xl"
+              className="w-full"
+              onClick={() => navigate("/solo/setup")}
+            >
+              <User className="mr-2" size={24} />
+              Play Solo
+              <ArrowRight className="ml-auto" size={20} />
+            </Button>
+
+            <div className="pt-4 border-t border-border">
+              <Button
+                variant="ghost"
+                size="default"
+                className="w-full text-muted-foreground hover:text-foreground"
+                onClick={handleDemoMode}
+                disabled={isCreatingDemo}
+              >
+                <FlaskConical className="mr-2" size={18} />
+                {isCreatingDemo ? "Creating Demo..." : "Try Demo Mode"}
+              </Button>
+            </div>
+          </motion.div>
+        );
+
+      case "group-choice":
+        return (
+          <motion.div
+            key="group-choice"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+          >
+            <button
+              onClick={() => setStep("initial")}
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm mb-2"
+            >
+              <ChevronLeft size={16} />
+              Back
+            </button>
+
+            <p className="text-center text-muted-foreground mb-6">
+              Are you hosting or joining a group?
+            </p>
+
+            <Button
+              variant="hero"
+              size="xl"
+              className="w-full"
+              onClick={handleCreateGroup}
+              disabled={isCreating}
+            >
+              <Crown className="mr-2" size={24} />
+              {isCreating ? "Creating..." : "I'm Hosting"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center -mt-2 mb-2">
+              Start a new group and invite friends
+            </p>
+
+            <Button
+              variant="purple"
+              size="xl"
+              className="w-full"
+              onClick={() => setIsJoinModalOpen(true)}
+            >
+              <Users className="mr-2" size={24} />
+              Join a Group
+            </Button>
+            <p className="text-xs text-muted-foreground text-center -mt-2">
+              Enter a 4-digit code from your host
+            </p>
+          </motion.div>
+        );
+
+      default:
+        return null;
     }
   };
 
@@ -170,19 +276,19 @@ export default function Index() {
 
         {/* Event Badge */}
         <motion.div
-          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          <Calendar size={16} className="text-primary" />
-          <span>{EVENT_CONFIG.DATE.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} • {EVENT_CONFIG.VENUE}, {EVENT_CONFIG.LOCATION.split(',')[0]}</span>
+          <Calendar size={16} className="text-primary flex-shrink-0" />
+          <span className="text-center">{EVENT_CONFIG.DATE.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} • {EVENT_CONFIG.VENUE}</span>
         </motion.div>
 
         {/* Countdown Timer */}
         {timeRemaining && (
           <motion.div
-            className="flex justify-center gap-2 md:gap-3"
+            className="flex justify-center gap-1.5 sm:gap-2 md:gap-3"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
@@ -194,54 +300,9 @@ export default function Index() {
           </motion.div>
         )}
 
-        <motion.div
-          className="space-y-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Button
-            variant="hero"
-            size="xl"
-            className="w-full"
-            onClick={handleCreateParty}
-            disabled={isCreating}
-          >
-            <Crown className="mr-2" size={24} />
-            {isCreating ? "Creating..." : "Create Party"}
-          </Button>
-
-          <Button
-            variant="purple"
-            size="xl"
-            className="w-full"
-            onClick={() => setIsJoinModalOpen(true)}
-          >
-            <Users className="mr-2" size={24} />
-            Join Party
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="default"
-            className="w-full text-muted-foreground hover:text-foreground"
-            onClick={handleDemoMode}
-            disabled={isCreatingDemo}
-          >
-            <FlaskConical className="mr-2" size={18} />
-            {isCreatingDemo ? "Creating Demo..." : "Try Demo Mode"}
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="default"
-            className="w-full text-muted-foreground/70 hover:text-foreground"
-            onClick={() => navigate("/solo/setup")}
-          >
-            <User className="mr-2" size={18} />
-            Go Solo
-          </Button>
-        </motion.div>
+        <AnimatePresence mode="wait">
+          {renderStep()}
+        </AnimatePresence>
 
         <motion.div
           className="text-center space-y-4"
@@ -249,11 +310,7 @@ export default function Index() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          <p className="text-muted-foreground text-sm">
-            Track picks, prop bets & Rumble numbers in real-time
-          </p>
-
-          <div className="flex items-center justify-center gap-6 text-muted-foreground text-xs">
+          <div className="flex items-center justify-center gap-4 sm:gap-6 text-muted-foreground text-xs">
             <div className="flex items-center gap-2">
               <Users size={16} className="text-primary" />
               <span>No signup required</span>
