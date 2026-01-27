@@ -12,10 +12,10 @@ interface WrestlerImageProps {
 }
 
 const sizeClasses = {
-  xs: "w-8 h-8",     // 32px
-  sm: "w-12 h-12",   // 48px
-  md: "w-20 h-20",   // 80px
-  lg: "w-44 h-44",   // 176px
+  xs: "w-8 h-8",       // 32px
+  sm: "w-12 h-12",     // 48px
+  md: "w-20 h-20",     // 80px
+  lg: "w-32 h-32",     // 128px - TV optimized
   xl: "w-[400px] h-[400px]", // 400px
 };
 

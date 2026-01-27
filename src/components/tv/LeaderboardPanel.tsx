@@ -49,8 +49,8 @@ export function LeaderboardPanel({ players }: LeaderboardPanelProps) {
   return (
     <motion.div
       className={cn(
-        "bg-card border border-border rounded-2xl p-6 sticky top-8 transition-all duration-300",
-        state === "collapsed" && "p-4"
+        "bg-card border border-border rounded-2xl sticky top-8 transition-all duration-300",
+        state === "collapsed" ? "p-3" : "p-4"
       )}
       layout
     >
@@ -111,8 +111,8 @@ export function LeaderboardPanel({ players }: LeaderboardPanelProps) {
                   {index + 1}
                 </div>
                 <span className={cn(
-                  "font-medium truncate",
-                  state === "collapsed" ? "max-w-[100px]" : "max-w-[120px]"
+                  "font-medium truncate max-w-[80px] text-sm",
+                  state === "collapsed" && "max-w-[60px]"
                 )}>
                   {player.display_name}
                 </span>
