@@ -15,6 +15,9 @@ import TvDisplay from "./pages/TvDisplay";
 import PlatformAdmin from "./pages/PlatformAdmin";
 import PlatformAdminVerify from "./pages/PlatformAdminVerify";
 import Legal from "./pages/Legal";
+import SoloSetup from "./pages/SoloSetup";
+import SoloPicks from "./pages/SoloPicks";
+import SoloDashboard from "./pages/SoloDashboard";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +39,9 @@ const App = () => (
           <Route path="/platform-admin" element={<PlatformAdmin />} />
           <Route path="/platform-admin/verify" element={<PlatformAdminVerify />} />
           <Route path="/legal" element={<Legal />} />
+          <Route path="/solo/setup" element={<SoloSetup />} />
+          <Route path="/solo/picks" element={<SoloPicks />} />
+          <Route path="/solo/dashboard" element={<SoloDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

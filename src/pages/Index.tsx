@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, Crown, Tv, Calendar, FlaskConical } from "lucide-react";
+import { Users, Crown, Tv, Calendar, FlaskConical, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { JoinPartyModal } from "@/components/JoinPartyModal";
@@ -230,6 +230,16 @@ export default function Index() {
           >
             <FlaskConical className="mr-2" size={18} />
             {isCreatingDemo ? "Creating Demo..." : "Try Demo Mode"}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="default"
+            className="w-full text-muted-foreground/70 hover:text-foreground"
+            onClick={() => navigate("/solo/setup")}
+          >
+            <User className="mr-2" size={18} />
+            Go Solo
           </Button>
         </motion.div>
 
