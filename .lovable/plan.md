@@ -1,201 +1,344 @@
 
-# Add Rumble Prediction Props
+
+# TV Display Enhancements: Rumble Winners + Props Views
 
 ## Overview
 
-Add new Rumble-specific prediction props where players can guess wrestlers for key milestones. These are different from the existing YES/NO "Chaos Props" - most require selecting wrestlers from the entrant list.
+Two main changes to the TV display:
+1. **Show Rumble winners underneath the number grid** when declared
+2. **Add new views for Rumble Props** showing participant predictions for First Elimination, Most Eliminations, Iron Man/Woman, Final Four, and other props
 
 ---
 
-## New Props Structure
+## Change 1: Display Rumble Winner Under Number Grid
 
-### Per Rumble (Men's & Women's)
+### Current Behavior
 
-| Prop ID | Name | Type | Description |
-|---------|------|------|-------------|
-| `{gender}_first_elimination` | First Eliminated | Wrestler Select | Who gets eliminated first? |
-| `{gender}_most_eliminations` | Most Eliminations | Wrestler Select | Who will have the most eliminations? |
-| `{gender}_longest_time` | Iron Man/Woman | Wrestler Select | Who lasts the longest in the ring? |
-| `{gender}_final_four_1-4` | Final Four | 4x Wrestler Select | Pick 4 wrestlers in Final Four |
-| `{gender}_entrant_1` | #1 Entrant | Wrestler Select | Who enters at #1? |
-| `{gender}_entrant_30` | #30 Entrant | Wrestler Select | Who enters at #30? |
-| `{gender}_no_show` | No-Show | YES/NO | Will anyone not make it to the ring? |
+When viewing a Rumble grid, the winner result is only shown in a small text above the navigation ("Winner: [name]").
 
-**Total: 10 new predictions per Rumble = 20 new picks overall**
+### New Behavior
 
----
+When a Rumble winner is declared, display a prominent winner banner underneath the 30-number grid with:
+- Winner's photo (large)
+- Winner's name
+- Entry number
+- Owner name (player who had that number)
 
-## Scoring
+### File Changes
 
-| Prediction | Points |
-|------------|--------|
-| First Elimination | +10 |
-| Most Eliminations | +20 |
-| Longest Time | +20 |
-| Final Four (each correct) | +10 |
-| #1 Entrant | +15 |
-| #30 Entrant | +15 |
-| No-Show Prop | +10 |
+| File | Change |
+|------|--------|
+| `src/components/tv/TvViewNavigator.tsx` | Add winner display section below number grid |
 
----
+### Implementation
 
-## File Changes
-
-### 1. Constants Update (`src/lib/constants.ts`)
-
-Add new prop definitions and scoring values:
+Add a new section after the number grid in `renderNumberGrid`:
 
 ```typescript
-export const RUMBLE_PROPS = [
-  { id: 'first_elimination', title: 'First Eliminated', question: 'Who gets eliminated first?', type: 'wrestler' },
-  { id: 'most_eliminations', title: 'Most Eliminations', question: 'Who has the most eliminations?', type: 'wrestler' },
-  { id: 'longest_time', title: 'Iron Man/Woman', question: 'Who lasts longest in the ring?', type: 'wrestler' },
-  { id: 'entrant_1', title: '#1 Entrant', question: 'Who enters at #1?', type: 'wrestler' },
-  { id: 'entrant_30', title: '#30 Entrant', question: 'Who enters at #30?', type: 'wrestler' },
-  { id: 'no_show', title: 'No-Show', question: 'Will anyone not make it to the ring?', type: 'yesno' },
-] as const;
+const renderNumberGrid = (numbers: RumbleNumber[], title: string, rumbleId: string) => {
+  const activeCount = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length;
+  const winnerMatchId = rumbleId === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
+  const winnerResult = matchResults.find(r => r.match_id === winnerMatchId);
+  const winnerNumber = winnerResult 
+    ? numbers.find(n => n.wrestler_name === winnerResult.result)
+    : null;
 
-export const FINAL_FOUR_SLOTS = 4;
+  return (
+    <div className="space-y-4">
+      {/* Existing header and grid */}
+      ...
+      
+      {/* Winner Display - show when declared */}
+      {winnerNumber && (
+        <motion.div className="mt-6 p-6 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-xl border-2 border-primary">
+          <div className="flex items-center justify-center gap-6">
+            <Crown className="w-10 h-10 text-primary" />
+            <WrestlerImage name={winnerNumber.wrestler_name!} size="lg" className="border-4 border-primary" />
+            <div className="text-left">
+              <div className="text-sm text-muted-foreground uppercase">Winner</div>
+              <div className="text-3xl font-bold text-primary">{winnerNumber.wrestler_name}</div>
+              <div className="text-lg text-muted-foreground">
+                Entry #{winnerNumber.number} - Owned by {getPlayerName(winnerNumber.assigned_to_player_id)}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
 ```
 
-Update MATCH_IDS:
+---
+
+## Change 2: Add Rumble Props View
+
+### New View Type
+
+Add 2 new views to the navigator (one per Rumble) showing participant predictions for the Rumble Props.
+
+### Updated VIEWS Array
 
 ```typescript
-// Men's Rumble Props
-MENS_FIRST_ELIMINATION: 'mens_first_elimination',
-MENS_MOST_ELIMINATIONS: 'mens_most_eliminations',
-MENS_LONGEST_TIME: 'mens_longest_time',
-MENS_FINAL_FOUR_1: 'mens_final_four_1',
-// ... etc
+const VIEWS: View[] = [
+  { type: "undercard", id: "undercard_1", ... },
+  { type: "undercard", id: "undercard_2", ... },
+  { type: "undercard", id: "undercard_3", ... },
+  { type: "rumble", id: "mens", title: "Men's Royal Rumble" },
+  { type: "rumble-props", id: "mens_props", title: "Men's Rumble Props", gender: "mens" },  // NEW
+  { type: "rumble", id: "womens", title: "Women's Royal Rumble" },
+  { type: "rumble-props", id: "womens_props", title: "Women's Rumble Props", gender: "womens" },  // NEW
+];
 ```
 
-Update SCORING:
+**Total views: 7 (was 5)**
+
+### New Component: RumblePropsDisplay
+
+Create a new component to show participant predictions for Rumble props:
+
+```text
++--------------------------------------------------+
+|          MEN'S RUMBLE PREDICTIONS                |
++--------------------------------------------------+
+|                                                  |
+|  FIRST ELIMINATION                               |
+|  +----------+  +----------+  +----------+        |
+|  |  Photo   |  |  Photo   |  |  Photo   |        |
+|  | CM Punk  |  | Rey M.   |  |  Gunther |        |
+|  |  John    |  |  Sarah   |  |   Mike   |        |
+|  +----------+  +----------+  +----------+        |
+|                                                  |
+|  MOST ELIMINATIONS                               |
+|  +----------+  +----------+  +----------+        |
+|  |  Photo   |  |  Photo   |  |  Photo   |        |
+|  | Bron B.  |  | Roman    |  |  Solo    |        |
+|  |  John    |  |  Sarah   |  |   Mike   |        |
+|  +----------+  +----------+  +----------+        |
+|                                                  |
+|  IRON MAN (Longest Time)                         |
+|  +----------+  +----------+  +----------+        |
+|  ...                                             |
+|                                                  |
+|  FINAL FOUR PICKS                                |
+|  Row showing each player's 4 picks               |
+|                                                  |
++--------------------------------------------------+
+```
+
+### Props to Display
+
+| Prop | Match ID Pattern | Type |
+|------|------------------|------|
+| First Elimination | `{gender}_first_elimination` | Wrestler picks |
+| Most Eliminations | `{gender}_most_eliminations` | Wrestler picks |
+| Iron Man/Woman | `{gender}_longest_time` | Wrestler picks |
+| #1 Entrant | `{gender}_entrant_1` | Wrestler picks |
+| #30 Entrant | `{gender}_entrant_30` | Wrestler picks |
+| Final Four | `{gender}_final_four_1` through `_4` | 4 wrestlers per player |
+| No-Show | `{gender}_no_show` | YES/NO answers |
+
+### File Changes
+
+| File | Change |
+|------|--------|
+| `src/components/tv/RumblePropsDisplay.tsx` | **NEW** - Component showing prop predictions |
+| `src/components/tv/TvViewNavigator.tsx` | Add new view type, import and render RumblePropsDisplay |
+
+---
+
+## Implementation Details
+
+### File 1: `src/components/tv/RumblePropsDisplay.tsx` (NEW)
 
 ```typescript
-FIRST_ELIMINATION: 10,
-MOST_ELIMINATIONS: 20,
-LONGEST_TIME: 20,
-FINAL_FOUR_PICK: 10,
-ENTRANT_GUESS: 15,
-NO_SHOW_PROP: 10,
+interface RumblePropsDisplayProps {
+  gender: "mens" | "womens";
+  players: Player[];
+  picks: Pick[];
+  matchResults: MatchResult[];
+}
+
+export function RumblePropsDisplay({ gender, players, picks, matchResults }: RumblePropsDisplayProps) {
+  // Get all picks for a specific prop
+  const getPicksForProp = (propId: string) => {
+    const matchId = `${gender}_${propId}`;
+    return players.map(player => {
+      const pick = picks.find(p => p.player_id === player.id && p.match_id === matchId);
+      return { player, prediction: pick?.prediction || null };
+    }).filter(p => p.prediction);
+  };
+
+  // Render a row of wrestler picks for a prop
+  const renderPropRow = (title: string, propId: string) => {
+    const propPicks = getPicksForProp(propId);
+    const result = matchResults.find(r => r.match_id === `${gender}_${propId}`);
+    
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold">{title}</h3>
+          {result && (
+            <span className="text-sm text-success">Winner: {result.result}</span>
+          )}
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {propPicks.map(({ player, prediction }) => (
+            <div key={player.id} className="flex-shrink-0 flex flex-col items-center">
+              <WrestlerImage name={prediction!} size="sm" 
+                className={prediction === result?.result ? "ring-2 ring-success" : ""} />
+              <span className="text-xs font-medium mt-1">{prediction}</span>
+              <span className="text-[10px] text-muted-foreground">{player.display_name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render Final Four section
+  const renderFinalFour = () => {
+    // Get all 4 final four picks per player
+    const playerFinalFours = players.map(player => {
+      const fourPicks = [1, 2, 3, 4].map(i => {
+        const pick = picks.find(p => 
+          p.player_id === player.id && 
+          p.match_id === `${gender}_final_four_${i}`
+        );
+        return pick?.prediction || null;
+      }).filter(Boolean);
+      return { player, picks: fourPicks };
+    }).filter(p => p.picks.length > 0);
+
+    return (
+      <div className="space-y-2">
+        <h3 className="text-lg font-bold">Final Four Picks</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {playerFinalFours.map(({ player, picks }) => (
+            <div key={player.id} className="bg-card/50 rounded-lg p-3">
+              <div className="text-sm font-semibold text-primary mb-2">{player.display_name}</div>
+              <div className="flex gap-2">
+                {picks.map((name, i) => (
+                  <WrestlerImage key={i} name={name} size="sm" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render No-Show prop (YES/NO)
+  const renderNoShow = () => {
+    const propPicks = getPicksForProp("no_show");
+    const result = matchResults.find(r => r.match_id === `${gender}_no_show`);
+    
+    const yesPicks = propPicks.filter(p => p.prediction === "YES");
+    const noPicks = propPicks.filter(p => p.prediction === "NO");
+    
+    return (
+      <div className="space-y-2">
+        <h3 className="text-lg font-bold">No-Show?</h3>
+        <div className="flex gap-4">
+          <div className="flex-1 bg-success/10 rounded-lg p-3 text-center">
+            <div className="text-success font-bold">YES ({yesPicks.length})</div>
+            <div className="text-xs text-muted-foreground">
+              {yesPicks.map(p => p.player.display_name).join(", ") || "No picks"}
+            </div>
+          </div>
+          <div className="flex-1 bg-destructive/10 rounded-lg p-3 text-center">
+            <div className="text-destructive font-bold">NO ({noPicks.length})</div>
+            <div className="text-xs text-muted-foreground">
+              {noPicks.map(p => p.player.display_name).join(", ") || "No picks"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const title = gender === "mens" ? "Men's" : "Women's";
+
+  return (
+    <div className="bg-card/50 border border-border rounded-2xl p-6 space-y-6">
+      <h2 className="text-2xl font-bold text-center">{title} Rumble Predictions</h2>
+      
+      {renderPropRow("First Elimination", "first_elimination")}
+      {renderPropRow("Most Eliminations", "most_eliminations")}
+      {renderPropRow("Iron " + (gender === "mens" ? "Man" : "Woman"), "longest_time")}
+      {renderPropRow("#1 Entrant", "entrant_1")}
+      {renderPropRow("#30 Entrant", "entrant_30")}
+      {renderFinalFour()}
+      {renderNoShow()}
+    </div>
+  );
+}
 ```
 
-Update CARD_CONFIG to include new card types.
+### File 2: `src/components/tv/TvViewNavigator.tsx` Updates
 
----
+**Changes:**
 
-### 2. New Card Component (`src/components/picks/cards/RumblePropsCard.tsx`)
+1. Update View interface and VIEWS array to include `rumble-props` type
+2. Add `getPlayerName` helper (needs players prop)
+3. Update `renderNumberGrid` to accept rumble ID and show winner
+4. Add rendering for `rumble-props` view type
+5. Import Crown icon and RumblePropsDisplay component
 
-Create a new card that handles both wrestler-select and YES/NO props for Rumble predictions:
-
-- Header with icon and progress indicator
-- List of props with:
-  - Wrestler selector button (opens picker modal) for wrestler-type props
-  - YES/NO buttons for no_show prop
-- "Final Four" section with 4 wrestler slots
-- Completion indicator when all filled
-
----
-
-### 3. Update Pick Card Stack (`src/components/picks/PickCardStack.tsx`)
-
-- Import and render new `RumblePropsCard` component
-- Add new card type handler: `rumble-props`
-- Update submission logic to include new prop types
-- Update completion calculation for the new card type
-
----
-
-### 4. Update CARD_CONFIG Flow
-
-Change the card flow to:
+**Key additions:**
 
 ```typescript
-export const CARD_CONFIG = [
-  // Undercard matches
-  { type: 'match', id: 'undercard_1', ... },
-  { type: 'match', id: 'undercard_2', ... },
-  { type: 'match', id: 'undercard_3', ... },
-  
-  // Men's Rumble
-  { type: 'rumble-winner', id: 'mens_rumble_winner', ... },
-  { type: 'rumble-props', id: 'mens_rumble_props', title: "Men's Rumble Props", gender: 'mens' },
-  { type: 'chaos-props', id: 'mens_chaos_props', ... },
-  
-  // Women's Rumble  
-  { type: 'rumble-winner', id: 'womens_rumble_winner', ... },
-  { type: 'rumble-props', id: 'womens_rumble_props', title: "Women's Rumble Props", gender: 'womens' },
-  { type: 'chaos-props', id: 'womens_chaos_props', ... },
-] as const;
+// Update VIEWS array
+const VIEWS: View[] = [
+  { type: "undercard", id: "undercard_1", title: UNDERCARD_MATCHES[0].title, ... },
+  { type: "undercard", id: "undercard_2", title: UNDERCARD_MATCHES[1].title, ... },
+  { type: "undercard", id: "undercard_3", title: UNDERCARD_MATCHES[2].title, ... },
+  { type: "rumble", id: "mens", title: "Men's Royal Rumble" },
+  { type: "rumble-props", id: "mens_props", title: "Men's Rumble Props", gender: "mens" },
+  { type: "rumble", id: "womens", title: "Women's Royal Rumble" },
+  { type: "rumble-props", id: "womens_props", title: "Women's Rumble Props", gender: "womens" },
+];
+
+// Update keyboard navigation range (1-7 instead of 1-5)
+} else if (e.key >= "1" && e.key <= "7") {
+
+// Add renderCurrentView case
+if (currentView.type === "rumble-props") {
+  return (
+    <RumblePropsDisplay
+      gender={currentView.gender as "mens" | "womens"}
+      players={players}
+      picks={picks}
+      matchResults={matchResults}
+    />
+  );
+}
 ```
 
-**Total cards: 9 (was 7)**
+---
+
+## Summary of Changes
+
+| File | Type | Description |
+|------|------|-------------|
+| `src/components/tv/RumblePropsDisplay.tsx` | NEW | Component showing all player predictions for Rumble props |
+| `src/components/tv/TvViewNavigator.tsx` | EDIT | Add props views, winner display under grid, update navigation |
 
 ---
 
-### 5. Host Scoring Updates (`src/pages/HostControl.tsx`)
+## Visual Result
 
-Add scoring for new prop types:
+**TV Navigator Views (7 total):**
+1. Undercard 1 (Drew vs Sami)
+2. Undercard 2 (Punk vs Seth)
+3. Undercard 3 (AJ vs Gunther)
+4. Men's Rumble Grid + Winner Banner
+5. Men's Rumble Props Predictions (NEW)
+6. Women's Rumble Grid + Winner Banner
+7. Women's Rumble Props Predictions (NEW)
 
-- **First Elimination**: Auto-score when first wrestler is eliminated
-- **Most Eliminations**: Calculate at Rumble end from elimination data
-- **Longest Time**: Already tracked, score at winner declaration
-- **Final Four**: Score when Final Four milestone is reached
-- **#1/#30 Entrants**: Score when those wrestlers are confirmed
-- **No-Show**: Manual YES/NO button (like chaos props)
+**Winner Display:** When a Rumble winner is declared, a prominent banner appears below the 30-number grid showing the winner's photo, name, entry number, and owner.
 
-Add a new "Rumble Props" section in the Rumble tabs with:
-- Auto-scored props shown with green checkmarks
-- Manual score button for No-Show prop
+**Props View:** Shows horizontally scrollable rows of participant predictions for each prop category, with wrestler photos and player names.
 
----
-
-### 6. New Prop Scoring Card (`src/components/host/RumblePropScoringCard.tsx`)
-
-Create component to display Rumble prop status:
-
-- Show predicted wrestler with player's guess
-- Display actual result when scored
-- Indicate auto-scored vs pending
-
----
-
-## Database Considerations
-
-No schema changes needed - picks are stored with:
-- `match_id`: e.g., `mens_first_elimination`, `mens_final_four_1`
-- `prediction`: wrestler name or "YES"/"NO"
-
-Results stored in `match_results` the same way.
-
----
-
-## UI Flow Summary
-
-**Player Experience:**
-1. Swipe through undercard matches (3 cards)
-2. Pick Men's Rumble winner
-3. Pick Men's Rumble props (new card with wrestler pickers + Final Four)
-4. Answer Men's Chaos Props (YES/NO questions)
-5. Pick Women's Rumble winner  
-6. Pick Women's Rumble props (new card)
-7. Answer Women's Chaos Props
-8. Submit all picks
-
-**Host Experience:**
-- First Elimination, #1/#30 entrants auto-score when entries/eliminations happen
-- Most Eliminations and Iron Man/Woman calculated at Rumble end
-- Final Four auto-scores when 4 wrestlers remain
-- No-Show has manual YES/NO buttons
-
----
-
-## Summary
-
-| Change | Files |
-|--------|-------|
-| Add prop definitions | `src/lib/constants.ts` |
-| New Rumble Props card | `src/components/picks/cards/RumblePropsCard.tsx` |
-| Update card stack | `src/components/picks/PickCardStack.tsx` |
-| Host scoring logic | `src/pages/HostControl.tsx` |
-| Scoring display component | `src/components/host/RumblePropScoringCard.tsx` |
