@@ -82,9 +82,9 @@ export function RumblePropsCard({
   };
 
   return (
-    <div className="bg-card rounded-2xl p-5 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-220px)]">
+    <div className="bg-card rounded-2xl p-5 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-180px)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <Target className="w-6 h-6 text-primary" />
           <div>
@@ -97,8 +97,8 @@ export function RumblePropsCard({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 -mx-2 px-2">
-        <div className="space-y-4 pb-8">
+      <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
+        <div className="space-y-4 pb-24">
           {/* Wrestler Select Props */}
           {wrestlerProps.map((prop) => {
             const matchId = getMatchId(prop.id);
