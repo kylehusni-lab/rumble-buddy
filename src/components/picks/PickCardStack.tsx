@@ -273,20 +273,17 @@ export function PickCardStack({
             custom={swipeDirection}
             initial={{ 
               x: swipeDirection === "left" ? -300 : 300,
-              opacity: 0,
-              scale: 0.8
+              opacity: 0
             }}
             animate={{ 
               x: 0,
-              opacity: 1,
-              scale: 1
+              opacity: 1
             }}
             exit={{ 
               x: swipeDirection === "left" ? 300 : -300,
-              opacity: 0,
-              scale: 0.8
+              opacity: 0
             }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
