@@ -2,6 +2,7 @@
 // Note: URLs may change if WWE updates their website
 
 import samiZaynImage from '@/assets/wrestlers/sami-zayn.webp';
+import romanReignsImage from '@/assets/wrestlers/roman-reigns.png';
 
 export interface WrestlerData {
   name: string;
@@ -20,7 +21,7 @@ export function getPlaceholderImageUrl(name: string): string {
 
 // Default male wrestlers with WWE profile images
 export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
-  { name: 'Roman Reigns', imageUrl: `${WWE_CDN}/2025/12/Roman_Reigns_Profile.png`, gender: 'male' },
+  { name: 'Roman Reigns', imageUrl: romanReignsImage, gender: 'male' },
   { name: 'Cody Rhodes', imageUrl: `${WWE_CDN}/2025/04/Cody_Rhodes_Profile.png`, gender: 'male' },
   { name: 'Gunther', imageUrl: `${WWE_CDN}/2025/08/GUNTHER_Profile.png`, gender: 'male' },
   { name: 'Jey Uso', imageUrl: `${WWE_CDN}/2025/12/20251229_usos_worldtag.png`, gender: 'male' },
