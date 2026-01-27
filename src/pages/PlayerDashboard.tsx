@@ -7,11 +7,44 @@ import { supabase } from "@/integrations/supabase/client";
 import { getPlayerSession } from "@/lib/session";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
-import { BottomNavBar, TabId } from "@/components/dashboard/BottomNavBar";
+import { BottomNavBar, TabId, TabBadge } from "@/components/dashboard/BottomNavBar";
 import { NumbersSection } from "@/components/dashboard/NumbersSection";
 import { MatchesSection } from "@/components/dashboard/MatchesSection";
 import { RumblePropsSection } from "@/components/dashboard/RumblePropsSection";
 import { ChaosPropsSection } from "@/components/dashboard/ChaosPropsSection";
+
+// Match ID groupings for each tab
+const TAB_MATCH_IDS: Record<Exclude<TabId, "numbers">, string[]> = {
+  matches: ['undercard_1', 'undercard_2', 'undercard_3', 'mens_rumble_winner', 'womens_rumble_winner'],
+  mens: ['mens_first_elimination', 'mens_most_eliminations', 'mens_longest_time', 'mens_entrant_1', 'mens_entrant_30', 'mens_final_four_1', 'mens_final_four_2', 'mens_final_four_3', 'mens_final_four_4', 'mens_no_show'],
+  womens: ['womens_first_elimination', 'womens_most_eliminations', 'womens_longest_time', 'womens_entrant_1', 'womens_entrant_30', 'womens_final_four_1', 'womens_final_four_2', 'womens_final_four_3', 'womens_final_four_4', 'womens_no_show'],
+  chaos: ['mens_chaos_prop_1', 'mens_chaos_prop_2', 'mens_chaos_prop_3', 'mens_chaos_prop_4', 'mens_chaos_prop_5', 'mens_chaos_prop_6', 'womens_chaos_prop_1', 'womens_chaos_prop_2', 'womens_chaos_prop_3', 'womens_chaos_prop_4', 'womens_chaos_prop_5', 'womens_chaos_prop_6'],
+};
+
+function calculateBadges(picks: Pick[], results: MatchResult[]): Partial<Record<TabId, TabBadge>> {
+  const badges: Partial<Record<TabId, TabBadge>> = {};
+  
+  for (const [tabId, matchIds] of Object.entries(TAB_MATCH_IDS)) {
+    let correct = 0;
+    let pending = 0;
+    
+    for (const matchId of matchIds) {
+      const pick = picks.find(p => p.match_id === matchId);
+      const result = results.find(r => r.match_id === matchId);
+      
+      if (!pick) continue;
+      if (!result) {
+        pending++;
+      } else if (pick.prediction === result.result) {
+        correct++;
+      }
+    }
+    
+    badges[tabId as TabId] = { correct, pending };
+  }
+  
+  return badges;
+}
 
 interface Pick {
   match_id: string;
@@ -474,6 +507,7 @@ export default function PlayerDashboard() {
           activeTab={activeTab} 
           onTabChange={setActiveTab}
           showNumbers={showNumbers}
+          badges={calculateBadges(picks, results)}
         />
       </div>
     </>

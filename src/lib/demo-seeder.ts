@@ -130,13 +130,13 @@ export async function seedDemoParty(
   partyCode: string,
   hostSessionId: string
 ): Promise<{ hostPlayerId: string; guestIds: string[] }> {
-  // 1. Create demo host as player
+  // 1. Create demo host as player (Kyle)
   const { data: hostPlayer, error: hostError } = await supabase
     .from("players")
     .insert({
       party_code: partyCode,
-      email: "demo-host@demo.local",
-      display_name: "Demo Host",
+      email: "kyle.husni@gmail.com",
+      display_name: "Kyle",
       session_id: hostSessionId,
     })
     .select("id")

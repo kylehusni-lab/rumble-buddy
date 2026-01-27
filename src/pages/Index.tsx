@@ -134,13 +134,13 @@ export default function Index() {
       // Seed players and picks
       const { hostPlayerId } = await seedDemoParty(demoCode, sessionId);
 
-      // Set session
+      // Set session (as Kyle)
       setPlayerSession({
         sessionId,
         playerId: hostPlayerId,
         partyCode: demoCode,
-        displayName: "Demo Host",
-        email: "demo-host@demo.local",
+        displayName: "Kyle",
+        email: "kyle.husni@gmail.com",
         isHost: true,
       });
 

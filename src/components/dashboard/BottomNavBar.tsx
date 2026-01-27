@@ -1,4 +1,4 @@
-import { LucideIcon, Hash, Trophy, User, Zap } from "lucide-react";
+import { LucideIcon, Hash, Trophy, User, Zap, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type TabId = "numbers" | "matches" | "mens" | "womens" | "chaos";
@@ -17,13 +17,19 @@ const TABS: NavTab[] = [
   { id: "chaos", icon: Zap, label: "Chaos" },
 ];
 
+export interface TabBadge {
+  correct: number;
+  pending: number;
+}
+
 interface BottomNavBarProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   showNumbers?: boolean;
+  badges?: Partial<Record<TabId, TabBadge>>;
 }
 
-export function BottomNavBar({ activeTab, onTabChange, showNumbers = false }: BottomNavBarProps) {
+export function BottomNavBar({ activeTab, onTabChange, showNumbers = false, badges }: BottomNavBarProps) {
   const visibleTabs = showNumbers ? TABS : TABS.filter(t => t.id !== "numbers");
 
   return (
@@ -35,6 +41,7 @@ export function BottomNavBar({ activeTab, onTabChange, showNumbers = false }: Bo
         {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
+          const badge = badges?.[tab.id];
           
           return (
             <button
@@ -49,10 +56,23 @@ export function BottomNavBar({ activeTab, onTabChange, showNumbers = false }: Bo
               )}
             >
               <div className={cn(
-                "flex items-center justify-center w-10 h-10 rounded-xl transition-colors",
+                "relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors",
                 isActive && "bg-primary/10"
               )}>
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                
+                {/* Badge indicator */}
+                {badge && badge.correct > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-success text-success-foreground text-[10px] font-bold">
+                    <Check size={10} className="mr-0.5" />
+                    {badge.correct}
+                  </span>
+                )}
+                {badge && badge.correct === 0 && badge.pending > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-muted text-muted-foreground text-[10px] font-bold">
+                    {badge.pending}
+                  </span>
+                )}
               </div>
               <span className={cn(
                 "text-[10px] mt-0.5 font-medium",
