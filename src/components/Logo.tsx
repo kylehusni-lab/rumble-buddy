@@ -4,9 +4,10 @@ import royalRumbleLogo from "@/assets/royal-rumble-logo.jpeg";
 interface LogoProps {
   size?: "sm" | "md" | "lg";
   showTagline?: boolean;
+  className?: string;
 }
 
-export function Logo({ size = "md", showTagline = false }: LogoProps) {
+export function Logo({ size = "md", showTagline = false, className }: LogoProps) {
   const sizes = {
     sm: { width: 120, title: "text-sm" },
     md: { width: 180, title: "text-sm" },
@@ -15,7 +16,7 @@ export function Logo({ size = "md", showTagline = false }: LogoProps) {
 
   return (
     <motion.div 
-      className="flex flex-col items-center gap-2"
+      className={`flex flex-col items-center gap-2 ${className || ""}`}
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}

@@ -1,16 +1,22 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Trophy, Zap, Crown, Check, Tv, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { isHostSession } from "@/lib/session";
-import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING } from "@/lib/constants";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { HostHeader } from "@/components/host/HostHeader";
+import { QuickActionsSheet } from "@/components/host/QuickActionsSheet";
+import { ConnectionStatus } from "@/components/host/ConnectionStatus";
+import { MatchScoringCard } from "@/components/host/MatchScoringCard";
+import { PropScoringCard } from "@/components/host/PropScoringCard";
+import { BulkPropsModal } from "@/components/host/BulkPropsModal";
+import { RumbleEntryControl } from "@/components/host/RumbleEntryControl";
+import { ActiveWrestlerCard } from "@/components/host/ActiveWrestlerCard";
+import { EliminationModal } from "@/components/host/EliminationModal";
+import { WinnerDeclarationModal } from "@/components/host/WinnerDeclarationModal";
+import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING } from "@/lib/constants";
 
 interface RumbleNumber {
   id: string;
@@ -19,6 +25,7 @@ interface RumbleNumber {
   assigned_to_player_id: string | null;
   entry_timestamp: string | null;
   elimination_timestamp: string | null;
+  eliminated_by_number: number | null;
 }
 
 interface Player {
@@ -27,40 +34,72 @@ interface Player {
   points: number;
 }
 
+interface MatchResult {
+  match_id: string;
+  result: string;
+}
+
+interface PartyData {
+  host_session_id: string;
+  status: string;
+  mens_rumble_entrants: Json;
+  womens_rumble_entrants: Json;
+}
+
 export default function HostControl() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
 
-  const [partyStatus, setPartyStatus] = useState<string>("live");
-  const [entrants, setEntrants] = useState<{ mens: string[]; womens: string[] }>({ mens: [], womens: [] });
-  const [matchResults, setMatchResults] = useState<Record<string, string>>({});
+  const [party, setParty] = useState<PartyData | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
   const [mensNumbers, setMensNumbers] = useState<RumbleNumber[]>([]);
   const [womensNumbers, setWomensNumbers] = useState<RumbleNumber[]>([]);
-  const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("matches");
 
-  // Track Final Four awarded status
-  const [finalFourAwarded, setFinalFourAwarded] = useState<{ mens: boolean; womens: boolean }>({ mens: false, womens: false });
+  // Modals
+  const [bulkPropsOpen, setBulkPropsOpen] = useState(false);
+  const [bulkPropsType, setBulkPropsType] = useState<"mens" | "womens">("mens");
+  const [eliminationTarget, setEliminationTarget] = useState<RumbleNumber | null>(null);
+  const [eliminationType, setEliminationType] = useState<"mens" | "womens">("mens");
+  const [winnerData, setWinnerData] = useState<{
+    type: "mens" | "womens";
+    number: RumbleNumber;
+    ironPerson: RumbleNumber | null;
+    correctPredictionCount: number;
+  } | null>(null);
 
-  // Elimination modal state
-  const [eliminateModal, setEliminateModal] = useState<{ number: RumbleNumber; type: "mens" | "womens" } | null>(null);
-  const [eliminatedBy, setEliminatedBy] = useState<string>("");
+  // Bonus tracking
+  const [mensFinalFourAwarded, setMensFinalFourAwarded] = useState(false);
+  const [womensFinalFourAwarded, setWomensFinalFourAwarded] = useState(false);
 
-  // Entry modal state
-  const [entryModal, setEntryModal] = useState<{ type: "mens" | "womens"; nextNumber: number } | null>(null);
-  const [selectedWrestler, setSelectedWrestler] = useState("");
+  // Duration update timer
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-  // Winner declaration modal
-  const [winnerModal, setWinnerModal] = useState<{ type: "mens" | "womens"; winner: RumbleNumber } | null>(null);
-
+  // Fetch data
   useEffect(() => {
     if (!code) {
       navigate("/");
       return;
     }
 
+    // Check PIN verification
+    const storedPin = localStorage.getItem(`party_${code}_pin`);
+    if (!storedPin) {
+      navigate(`/host/verify-pin/${code}`);
+      return;
+    }
+
     const fetchData = async () => {
       try {
+        // Fetch party data
         const { data: partyData, error } = await supabase
           .from("parties")
           .select("host_session_id, status, mens_rumble_entrants, womens_rumble_entrants")
@@ -79,51 +118,52 @@ export default function HostControl() {
           return;
         }
 
-        setPartyStatus(partyData.status);
-        setEntrants({
-          mens: Array.isArray(partyData.mens_rumble_entrants) ? partyData.mens_rumble_entrants as string[] : [],
-          womens: Array.isArray(partyData.womens_rumble_entrants) ? partyData.womens_rumble_entrants as string[] : [],
-        });
-
-        // Fetch match results
-        const { data: resultsData } = await supabase
-          .from("match_results")
-          .select("match_id, result")
-          .eq("party_code", code);
-
-        if (resultsData) {
-          const results: Record<string, string> = {};
-          resultsData.forEach(r => { results[r.match_id] = r.result; });
-          setMatchResults(results);
-          
-          // Check if Final Four was already awarded (by looking for the match result)
-          setFinalFourAwarded({
-            mens: !!results["mens_final_four"],
-            womens: !!results["womens_final_four"],
-          });
+        if (partyData.status === "pre_event") {
+          navigate(`/host/setup/${code}`);
+          return;
         }
 
-        // Fetch rumble numbers
-        const { data: numbersData } = await supabase
-          .from("rumble_numbers")
-          .select("*")
-          .eq("party_code", code)
-          .order("number");
-
-        if (numbersData) {
-          setMensNumbers(numbersData.filter(n => n.rumble_type === "mens"));
-          setWomensNumbers(numbersData.filter(n => n.rumble_type === "womens"));
-        }
+        setParty(partyData);
 
         // Fetch players
         const { data: playersData } = await supabase
           .from("players")
           .select("id, display_name, points")
           .eq("party_code", code);
-
         if (playersData) setPlayers(playersData);
+
+        // Fetch match results
+        const { data: resultsData } = await supabase
+          .from("match_results")
+          .select("match_id, result")
+          .eq("party_code", code);
+        if (resultsData) setMatchResults(resultsData);
+
+        // Fetch rumble numbers
+        const { data: mensData } = await supabase
+          .from("rumble_numbers")
+          .select("*")
+          .eq("party_code", code)
+          .eq("rumble_type", "mens")
+          .order("number");
+        if (mensData) setMensNumbers(mensData);
+
+        const { data: womensData } = await supabase
+          .from("rumble_numbers")
+          .select("*")
+          .eq("party_code", code)
+          .eq("rumble_type", "womens")
+          .order("number");
+        if (womensData) setWomensNumbers(womensData);
+
+        // Check if Final Four was already awarded
+        if (resultsData) {
+          setMensFinalFourAwarded(resultsData.some(r => r.match_id === "mens_final_four"));
+          setWomensFinalFourAwarded(resultsData.some(r => r.match_id === "womens_final_four"));
+        }
       } catch (err) {
         console.error("Error fetching data:", err);
+        setIsConnected(false);
       } finally {
         setIsLoading(false);
       }
@@ -131,287 +171,401 @@ export default function HostControl() {
 
     fetchData();
 
-    // Subscribe to realtime updates
+    // Realtime subscriptions
     const channel = supabase
       .channel(`host-control-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, () => {
-        supabase.from("rumble_numbers").select("*").eq("party_code", code).order("number").then(({ data }) => {
-          if (data) {
-            setMensNumbers(data.filter(n => n.rumble_type === "mens"));
-            setWomensNumbers(data.filter(n => n.rumble_type === "womens"));
-          }
-        });
+      .on("postgres_changes", { event: "*", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, async () => {
+        const { data } = await supabase
+          .from("match_results")
+          .select("match_id, result")
+          .eq("party_code", code);
+        if (data) setMatchResults(data);
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, () => {
-        supabase.from("match_results").select("match_id, result").eq("party_code", code).then(({ data }) => {
-          if (data) {
-            const results: Record<string, string> = {};
-            data.forEach(r => { results[r.match_id] = r.result; });
-            setMatchResults(results);
-          }
-        });
+      .on("postgres_changes", { event: "*", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, async () => {
+        const { data: mensData } = await supabase
+          .from("rumble_numbers")
+          .select("*")
+          .eq("party_code", code)
+          .eq("rumble_type", "mens")
+          .order("number");
+        if (mensData) setMensNumbers(mensData);
+
+        const { data: womensData } = await supabase
+          .from("rumble_numbers")
+          .select("*")
+          .eq("party_code", code)
+          .eq("rumble_type", "womens")
+          .order("number");
+        if (womensData) setWomensNumbers(womensData);
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, () => {
-        supabase.from("players").select("id, display_name, points").eq("party_code", code).then(({ data }) => {
-          if (data) setPlayers(data);
-        });
+      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, async () => {
+        const { data } = await supabase
+          .from("players")
+          .select("id, display_name, points")
+          .eq("party_code", code);
+        if (data) setPlayers(data);
       })
-      .subscribe();
+      .subscribe((status) => {
+        setIsConnected(status === "SUBSCRIBED");
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [code, navigate]);
 
-  const handleScoreMatch = async (matchId: string, result: string, points: number) => {
+  // Helper to get player name by ID
+  const getPlayerName = useCallback((playerId: string | null) => {
+    if (!playerId) return null;
+    return players.find(p => p.id === playerId)?.display_name || null;
+  }, [players]);
+
+  // Helper to get player by ID
+  const getPlayer = useCallback((playerId: string | null) => {
+    if (!playerId) return null;
+    return players.find(p => p.id === playerId) || null;
+  }, [players]);
+
+  // Helper to get match result
+  const getMatchResult = useCallback((matchId: string) => {
+    return matchResults.find(r => r.match_id === matchId)?.result || null;
+  }, [matchResults]);
+
+  // Score a match
+  const handleScoreMatch = async (matchId: string, winner: string) => {
     try {
-      // Insert/update result
-      const { error: resultError } = await supabase
-        .from("match_results")
-        .upsert({ party_code: code!, match_id: matchId, result }, { onConflict: "party_code,match_id" });
+      await supabase.from("match_results").insert({
+        party_code: code!,
+        match_id: matchId,
+        result: winner,
+      });
 
-      if (resultError) throw resultError;
-
-      // Award points to correct picks
-      const { data: correctPicks, error: picksError } = await supabase
+      // Award points to correct predictions
+      const { data: correctPicks } = await supabase
         .from("picks")
-        .select("id, player_id")
+        .select("player_id")
         .eq("match_id", matchId)
-        .eq("prediction", result);
+        .eq("prediction", winner);
 
-      if (picksError) throw picksError;
-
-      if (correctPicks && correctPicks.length > 0) {
-        // Update picks with points
-        await supabase
-          .from("picks")
-          .update({ points_awarded: points })
-          .in("id", correctPicks.map(p => p.id));
-
-        // Update player scores
+      if (correctPicks) {
         for (const pick of correctPicks) {
-          const player = players.find(p => p.id === pick.player_id);
+          const player = getPlayer(pick.player_id);
           if (player) {
             await supabase
               .from("players")
-              .update({ points: player.points + points })
+              .update({ points: player.points + SCORING.UNDERCARD_WINNER })
               .eq("id", pick.player_id);
           }
         }
       }
 
-      setMatchResults(prev => ({ ...prev, [matchId]: result }));
-      toast.success(`${result} wins! Points awarded.`);
+      toast.success(`${winner} wins! Points awarded.`);
     } catch (err) {
       console.error("Error scoring match:", err);
       toast.error("Failed to score match");
     }
   };
 
-  const handleConfirmEntry = async () => {
-    if (!entryModal || !selectedWrestler) return;
+  // Reset a match result
+  const handleResetMatch = async (matchId: string) => {
+    try {
+      await supabase
+        .from("match_results")
+        .delete()
+        .eq("party_code", code)
+        .eq("match_id", matchId);
+      toast.success("Match result reset");
+    } catch (err) {
+      console.error("Error resetting match:", err);
+      toast.error("Failed to reset match");
+    }
+  };
 
-    const numbers = entryModal.type === "mens" ? mensNumbers : womensNumbers;
-    const numRecord = numbers.find(n => n.number === entryModal.nextNumber);
-    if (!numRecord) return;
+  // Score a prop
+  const handleScoreProp = async (propId: string, answer: "YES" | "NO") => {
+    try {
+      await supabase.from("match_results").insert({
+        party_code: code!,
+        match_id: propId,
+        result: answer,
+      });
+
+      // Award points to correct predictions
+      const { data: correctPicks } = await supabase
+        .from("picks")
+        .select("player_id")
+        .eq("match_id", propId)
+        .eq("prediction", answer);
+
+      if (correctPicks) {
+        for (const pick of correctPicks) {
+          const player = getPlayer(pick.player_id);
+          if (player) {
+            await supabase
+              .from("players")
+              .update({ points: player.points + SCORING.PROP_BET })
+              .eq("id", pick.player_id);
+          }
+        }
+      }
+
+      toast.success(`Prop scored: ${answer}`);
+    } catch (err) {
+      console.error("Error scoring prop:", err);
+      toast.error("Failed to score prop");
+    }
+  };
+
+  // Bulk score props
+  const handleBulkScoreProps = async (answers: Record<string, "YES" | "NO">) => {
+    try {
+      const prefix = bulkPropsType === "mens" ? "mens_chaos_" : "womens_chaos_";
+      
+      for (const [propId, answer] of Object.entries(answers)) {
+        const matchId = `${prefix}${propId}`;
+        await supabase.from("match_results").insert({
+          party_code: code!,
+          match_id: matchId,
+          result: answer,
+        });
+
+        // Award points
+        const { data: correctPicks } = await supabase
+          .from("picks")
+          .select("player_id")
+          .eq("match_id", matchId)
+          .eq("prediction", answer);
+
+        if (correctPicks) {
+          for (const pick of correctPicks) {
+            const player = getPlayer(pick.player_id);
+            if (player) {
+              await supabase
+                .from("players")
+                .update({ points: player.points + SCORING.PROP_BET })
+                .eq("id", pick.player_id);
+            }
+          }
+        }
+      }
+
+      toast.success("All props scored!");
+    } catch (err) {
+      console.error("Error bulk scoring props:", err);
+      toast.error("Failed to score props");
+    }
+  };
+
+  // Confirm wrestler entry
+  const handleConfirmEntry = async (type: "mens" | "womens", wrestlerName: string) => {
+    const numbers = type === "mens" ? mensNumbers : womensNumbers;
+    const nextNumber = numbers.filter(n => n.entry_timestamp).length + 1;
+    const numberRecord = numbers.find(n => n.number === nextNumber);
+
+    if (!numberRecord) {
+      toast.error("Invalid number");
+      return;
+    }
 
     try {
       await supabase
         .from("rumble_numbers")
         .update({
-          wrestler_name: selectedWrestler,
+          wrestler_name: wrestlerName,
           entry_timestamp: new Date().toISOString(),
         })
-        .eq("id", numRecord.id);
+        .eq("id", numberRecord.id);
 
-      toast.success(`#${entryModal.nextNumber} ${selectedWrestler} enters!`);
-      setEntryModal(null);
-      setSelectedWrestler("");
+      toast.success(`#${nextNumber} ${wrestlerName} has entered!`);
     } catch (err) {
       console.error("Error confirming entry:", err);
       toast.error("Failed to confirm entry");
     }
   };
 
-  const checkFinalFour = async (type: "mens" | "womens", numbersAfterElimination: RumbleNumber[]) => {
-    const isAwarded = type === "mens" ? finalFourAwarded.mens : finalFourAwarded.womens;
-    if (isAwarded) return;
+  // Handle elimination
+  const handleElimination = async (eliminatedByNumber: number) => {
+    if (!eliminationTarget) return;
 
-    const active = numbersAfterElimination.filter(n => n.entry_timestamp && !n.elimination_timestamp);
-    
-    if (active.length === 4) {
-      // Award Final Four bonus to each owner
-      const awardedPlayers: string[] = [];
-      
-      for (const num of active) {
-        if (num.assigned_to_player_id) {
-          const player = players.find(p => p.id === num.assigned_to_player_id);
-          if (player) {
-            await supabase
-              .from("players")
-              .update({ points: player.points + SCORING.FINAL_FOUR })
-              .eq("id", player.id);
-            awardedPlayers.push(player.display_name);
-          }
-        }
-      }
-
-      // Record the Final Four event
-      await supabase.from("match_results").upsert({
-        party_code: code!,
-        match_id: `${type}_final_four`,
-        result: active.map(n => `#${n.number}`).join(","),
-      }, { onConflict: "party_code,match_id" });
-
-      setFinalFourAwarded(prev => ({ ...prev, [type]: true }));
-      
-      if (awardedPlayers.length > 0) {
-        toast.success(`🏆 Final Four! +${SCORING.FINAL_FOUR} pts to ${awardedPlayers.join(", ")}`);
-      }
-    }
-  };
-
-  const handleConfirmElimination = async () => {
-    if (!eliminateModal || !eliminatedBy) return;
+    const type = eliminationType;
+    const numbers = type === "mens" ? mensNumbers : womensNumbers;
 
     try {
-      // Update eliminated wrestler
+      const now = new Date();
+      
+      // Update the eliminated wrestler
       await supabase
         .from("rumble_numbers")
         .update({
-          elimination_timestamp: new Date().toISOString(),
-          eliminated_by_number: parseInt(eliminatedBy),
+          elimination_timestamp: now.toISOString(),
+          eliminated_by_number: eliminatedByNumber,
         })
-        .eq("id", eliminateModal.number.id);
+        .eq("id", eliminationTarget.id);
 
-      // Award points to eliminator's owner
-      const numbers = eliminateModal.type === "mens" ? mensNumbers : womensNumbers;
-      const eliminatorNum = numbers.find(n => n.number === parseInt(eliminatedBy));
+      // Calculate duration for Jobber Penalty
+      const entryTime = new Date(eliminationTarget.entry_timestamp!).getTime();
+      const durationSeconds = (now.getTime() - entryTime) / 1000;
 
-      if (eliminatorNum?.assigned_to_player_id) {
-        const player = players.find(p => p.id === eliminatorNum.assigned_to_player_id);
+      // Award elimination points to eliminator's owner
+      const eliminator = numbers.find(n => n.number === eliminatedByNumber);
+      if (eliminator?.assigned_to_player_id) {
+        const player = getPlayer(eliminator.assigned_to_player_id);
         if (player) {
           await supabase
             .from("players")
             .update({ points: player.points + SCORING.ELIMINATION })
             .eq("id", player.id);
+          toast.success(`+${SCORING.ELIMINATION} pts for elimination!`);
         }
       }
 
-      // Check for jobber penalty (< 60 seconds)
-      if (eliminateModal.number.entry_timestamp && eliminateModal.number.assigned_to_player_id) {
-        const entryTime = new Date(eliminateModal.number.entry_timestamp).getTime();
-        const now = Date.now();
-        const durationSecs = (now - entryTime) / 1000;
+      // Check for Jobber Penalty (eliminated in under 60 seconds)
+      if (durationSeconds < 60 && eliminationTarget.assigned_to_player_id) {
+        const player = getPlayer(eliminationTarget.assigned_to_player_id);
+        if (player) {
+          await supabase
+            .from("players")
+            .update({ points: player.points + SCORING.JOBBER_PENALTY })
+            .eq("id", player.id);
+          toast.warning(`Jobber Penalty! ${player.display_name} loses 10 pts (under 60s)`);
+        }
+      }
 
-        if (durationSecs < 60) {
-          const player = players.find(p => p.id === eliminateModal.number.assigned_to_player_id);
-          if (player) {
-            await supabase
-              .from("players")
-              .update({ points: player.points + SCORING.JOBBER_PENALTY })
-              .eq("id", eliminateModal.number.assigned_to_player_id);
-            
-            toast.warning("Jobber penalty applied! (-10 pts)");
+      // Check for Final Four
+      const activeAfterElimination = numbers.filter(n => 
+        n.entry_timestamp && 
+        !n.elimination_timestamp && 
+        n.id !== eliminationTarget.id
+      ).length;
+
+      const finalFourAwarded = type === "mens" ? mensFinalFourAwarded : womensFinalFourAwarded;
+      
+      if (activeAfterElimination === 4 && !finalFourAwarded) {
+        const finalFourNumbers = numbers.filter(n => 
+          n.entry_timestamp && 
+          !n.elimination_timestamp && 
+          n.id !== eliminationTarget.id
+        );
+
+        for (const num of finalFourNumbers) {
+          if (num.assigned_to_player_id) {
+            const player = getPlayer(num.assigned_to_player_id);
+            if (player) {
+              await supabase
+                .from("players")
+                .update({ points: player.points + SCORING.FINAL_FOUR })
+                .eq("id", player.id);
+            }
           }
         }
+
+        // Record Final Four event
+        await supabase.from("match_results").insert({
+          party_code: code!,
+          match_id: `${type}_final_four`,
+          result: finalFourNumbers.map(n => `#${n.number}`).join(","),
+        });
+
+        if (type === "mens") setMensFinalFourAwarded(true);
+        else setWomensFinalFourAwarded(true);
+
+        toast.success("Final Four! +10 pts to each remaining owner!");
       }
 
-      toast.success(`#${eliminateModal.number.number} eliminated by #${eliminatedBy}!`);
-      
-      // Simulate updated numbers for Final Four check
-      const updatedNumbers = numbers.map(n => 
-        n.id === eliminateModal.number.id 
-          ? { ...n, elimination_timestamp: new Date().toISOString() }
-          : n
-      );
-      
-      await checkFinalFour(eliminateModal.type, updatedNumbers);
-      
-      setEliminateModal(null);
-      setEliminatedBy("");
+      // Check for winner (last one standing)
+      if (activeAfterElimination === 1) {
+        const winner = numbers.find(n => 
+          n.entry_timestamp && 
+          !n.elimination_timestamp && 
+          n.id !== eliminationTarget.id
+        );
+
+        if (winner) {
+          // Calculate Iron Man/Woman
+          const durationsWithEntries = numbers
+            .filter(n => n.entry_timestamp)
+            .map(n => ({
+              ...n,
+              duration: n.elimination_timestamp
+                ? new Date(n.elimination_timestamp).getTime() - new Date(n.entry_timestamp!).getTime()
+                : now.getTime() - new Date(n.entry_timestamp!).getTime(),
+            }));
+
+          const ironPerson = durationsWithEntries.reduce((max, n) => 
+            n.duration > (max?.duration || 0) ? n : max
+          , null as (RumbleNumber & { duration: number }) | null);
+
+          // Count correct predictions
+          const { count: correctPredictionCount } = await supabase
+            .from("picks")
+            .select("*", { count: "exact", head: true })
+            .eq("match_id", type === "mens" ? "mens_rumble_winner" : "womens_rumble_winner")
+            .eq("prediction", winner.wrestler_name);
+
+          setWinnerData({
+            type,
+            number: winner,
+            ironPerson: ironPerson as RumbleNumber | null,
+            correctPredictionCount: correctPredictionCount || 0,
+          });
+        }
+      }
+
+      setEliminationTarget(null);
     } catch (err) {
-      console.error("Error confirming elimination:", err);
-      toast.error("Failed to confirm elimination");
+      console.error("Error handling elimination:", err);
+      toast.error("Failed to record elimination");
     }
   };
 
-  const formatDuration = (ms: number): string => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
-
-  const handleDeclareWinner = async () => {
-    if (!winnerModal) return;
-
-    const { type, winner } = winnerModal;
-    const numbers = type === "mens" ? mensNumbers : womensNumbers;
+  // Confirm winner and award points
+  const handleConfirmWinner = async () => {
+    if (!winnerData) return;
 
     try {
-      // Calculate Iron Man/Woman - longest time in the ring
-      const now = Date.now();
-      let ironManNumber: RumbleNumber | null = null;
-      let maxDuration = 0;
+      const { type, number: winner, ironPerson } = winnerData;
 
-      for (const num of numbers) {
-        if (num.entry_timestamp) {
-          const entryTime = new Date(num.entry_timestamp).getTime();
-          const endTime = num.elimination_timestamp 
-            ? new Date(num.elimination_timestamp).getTime() 
-            : now;
-          const duration = endTime - entryTime;
-
-          if (duration > maxDuration) {
-            maxDuration = duration;
-            ironManNumber = num;
-          }
-        }
-      }
-
-      // Award Iron Man/Woman bonus
-      if (ironManNumber?.assigned_to_player_id) {
-        const ironPlayer = players.find(p => p.id === ironManNumber!.assigned_to_player_id);
-        if (ironPlayer) {
+      // Award points to number owner
+      if (winner.assigned_to_player_id) {
+        const { data: freshPlayer } = await supabase
+          .from("players")
+          .select("points")
+          .eq("id", winner.assigned_to_player_id)
+          .single();
+        
+        if (freshPlayer) {
           await supabase
             .from("players")
-            .update({ points: ironPlayer.points + SCORING.IRON_MAN })
-            .eq("id", ironPlayer.id);
-          
-          toast.success(`⏱️ Iron ${type === "mens" ? "Man" : "Woman"}: ${ironManNumber.wrestler_name} (${formatDuration(maxDuration)}) - +${SCORING.IRON_MAN} pts to ${ironPlayer.display_name}!`);
+            .update({ points: freshPlayer.points + SCORING.RUMBLE_WINNER_NUMBER })
+            .eq("id", winner.assigned_to_player_id);
         }
       }
 
-      // Award winner's number owner
-      if (winner.assigned_to_player_id) {
-        const winnerOwner = players.find(p => p.id === winner.assigned_to_player_id);
-        if (winnerOwner) {
-          // Add to current points (need fresh fetch to avoid race condition)
-          const { data: freshPlayer } = await supabase
+      // Award Iron Man/Woman points
+      if (ironPerson?.assigned_to_player_id) {
+        const { data: freshPlayer } = await supabase
+          .from("players")
+          .select("points")
+          .eq("id", ironPerson.assigned_to_player_id)
+          .single();
+        
+        if (freshPlayer) {
+          await supabase
             .from("players")
-            .select("points")
-            .eq("id", winner.assigned_to_player_id)
-            .single();
-          
-          if (freshPlayer) {
-            await supabase
-              .from("players")
-              .update({ points: freshPlayer.points + SCORING.RUMBLE_WINNER_NUMBER })
-              .eq("id", winner.assigned_to_player_id);
-          }
+            .update({ points: freshPlayer.points + SCORING.IRON_MAN })
+            .eq("id", ironPerson.assigned_to_player_id);
         }
       }
 
-      // Award players who picked this winner
-      const matchId = `${type}_rumble_winner`;
+      // Award correct prediction points
+      const matchId = type === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
       const { data: correctPicks } = await supabase
         .from("picks")
-        .select("id, player_id")
+        .select("player_id")
         .eq("match_id", matchId)
-        .eq("prediction", winner.wrestler_name!);
+        .eq("prediction", winner.wrestler_name);
 
-      if (correctPicks && correctPicks.length > 0) {
+      if (correctPicks) {
         for (const pick of correctPicks) {
           const { data: freshPlayer } = await supabase
             .from("players")
@@ -424,73 +578,53 @@ export default function HostControl() {
               .from("players")
               .update({ points: freshPlayer.points + SCORING.RUMBLE_WINNER_PICK })
               .eq("id", pick.player_id);
-            
-            await supabase
-              .from("picks")
-              .update({ points_awarded: SCORING.RUMBLE_WINNER_PICK })
-              .eq("id", pick.id);
           }
         }
       }
 
-      // Record winner result
-      await supabase.from("match_results").upsert({
+      // Record the result
+      await supabase.from("match_results").insert({
         party_code: code!,
         match_id: matchId,
         result: winner.wrestler_name!,
-      }, { onConflict: "party_code,match_id" });
+      });
 
-      // Record Iron Man result
-      if (ironManNumber) {
-        await supabase.from("match_results").upsert({
-          party_code: code!,
-          match_id: `${type}_iron_${type === "mens" ? "man" : "woman"}`,
-          result: JSON.stringify({
-            number: ironManNumber.number,
-            wrestler: ironManNumber.wrestler_name,
-            duration: formatDuration(maxDuration),
-            owner: ironManNumber.assigned_to_player_id,
-          }),
-        }, { onConflict: "party_code,match_id" });
-      }
-
-      toast.success(`🏆 ${winner.wrestler_name} wins the ${type === "mens" ? "Men's" : "Women's"} Rumble!`);
-      setMatchResults(prev => ({ ...prev, [matchId]: winner.wrestler_name! }));
-      setWinnerModal(null);
+      toast.success(`${winner.wrestler_name} is the ${type === "mens" ? "Men's" : "Women's"} Royal Rumble Winner! 🏆`);
+      setWinnerData(null);
     } catch (err) {
-      console.error("Error declaring winner:", err);
-      toast.error("Failed to declare winner");
+      console.error("Error confirming winner:", err);
+      toast.error("Failed to award winner points");
     }
   };
 
-  const getPlayerName = (playerId: string | null) => {
-    if (!playerId) return "Vacant";
-    const player = players.find(p => p.id === playerId);
-    return player?.display_name || "Unknown";
-  };
+  // Computed values
+  const mensActiveWrestlers = useMemo(() => {
+    return mensNumbers
+      .filter(n => n.entry_timestamp && !n.elimination_timestamp)
+      .sort((a, b) => new Date(b.entry_timestamp!).getTime() - new Date(a.entry_timestamp!).getTime());
+  }, [mensNumbers]);
 
-  const getNextEntryNumber = (numbers: RumbleNumber[]) => {
-    const entered = numbers.filter(n => n.entry_timestamp).map(n => n.number);
-    for (let i = 1; i <= 30; i++) {
-      if (!entered.includes(i)) return i;
-    }
-    return null;
-  };
+  const womensActiveWrestlers = useMemo(() => {
+    return womensNumbers
+      .filter(n => n.entry_timestamp && !n.elimination_timestamp)
+      .sort((a, b) => new Date(b.entry_timestamp!).getTime() - new Date(a.entry_timestamp!).getTime());
+  }, [womensNumbers]);
 
-  const getActiveWrestlers = (numbers: RumbleNumber[]) => {
-    return numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
-  };
+  const mensEnteredCount = mensNumbers.filter(n => n.entry_timestamp).length;
+  const womensEnteredCount = womensNumbers.filter(n => n.entry_timestamp).length;
 
-  const checkForWinnerState = (numbers: RumbleNumber[], type: "mens" | "womens") => {
-    const active = getActiveWrestlers(numbers);
-    const allEntered = numbers.every(n => n.entry_timestamp);
-    const matchId = `${type}_rumble_winner`;
-    
-    // Show winner button if exactly 1 active, all have entered, and winner not declared yet
-    if (active.length === 1 && allEntered && !matchResults[matchId]) {
-      return active[0];
-    }
-    return null;
+  const mensNextNumber = mensEnteredCount + 1;
+  const womensNextNumber = womensEnteredCount + 1;
+
+  const mensNextOwner = getPlayerName(mensNumbers.find(n => n.number === mensNextNumber)?.assigned_to_player_id || null);
+  const womensNextOwner = getPlayerName(womensNumbers.find(n => n.number === womensNextNumber)?.assigned_to_player_id || null);
+
+  const mensEntrants = Array.isArray(party?.mens_rumble_entrants) ? party.mens_rumble_entrants as string[] : [];
+  const womensEntrants = Array.isArray(party?.womens_rumble_entrants) ? party.womens_rumble_entrants as string[] : [];
+
+  // Calculate durations for active wrestlers
+  const getDuration = (entryTimestamp: string) => {
+    return Math.floor((Date.now() - new Date(entryTimestamp).getTime()) / 1000);
   };
 
   if (isLoading) {
@@ -501,331 +635,226 @@ export default function HostControl() {
     );
   }
 
-  const mensWinnerCandidate = checkForWinnerState(mensNumbers, "mens");
-  const womensWinnerCandidate = checkForWinnerState(womensNumbers, "womens");
-
   return (
-    <div className="min-h-screen pb-8">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
-        <div className="flex items-center justify-between p-4 max-w-lg mx-auto">
-          <div>
-            <div className="text-sm text-muted-foreground">Host Control</div>
-            <div className="font-bold text-primary">Party {code}</div>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`/tv/${code}`, "_blank")}
-            >
-              <Tv size={16} className="mr-1" />
-              TV View
-            </Button>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen pb-4">
+      <ConnectionStatus isConnected={isConnected} />
+      <HostHeader code={code!} onMenuClick={() => setMenuOpen(true)} />
+      <QuickActionsSheet open={menuOpen} onOpenChange={setMenuOpen} code={code!} />
 
       <div className="max-w-lg mx-auto p-4">
-        <Tabs defaultValue="matches" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="matches">
-              <Trophy size={16} />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full grid grid-cols-4 mb-4">
+            <TabsTrigger value="matches">Matches</TabsTrigger>
+            <TabsTrigger value="props">Props</TabsTrigger>
+            <TabsTrigger value="mens" className="relative">
+              Men's
+              {mensActiveWrestlers.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive" />
+              )}
             </TabsTrigger>
-            <TabsTrigger value="props">
-              <Zap size={16} />
+            <TabsTrigger value="womens" className="relative">
+              Women's
+              {womensActiveWrestlers.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive" />
+              )}
             </TabsTrigger>
-            <TabsTrigger value="mens">🧔</TabsTrigger>
-            <TabsTrigger value="womens">👩</TabsTrigger>
           </TabsList>
 
           {/* Matches Tab */}
-          <TabsContent value="matches" className="space-y-4">
-            <h2 className="font-bold flex items-center gap-2">
-              <Trophy className="text-primary" size={20} />
-              Match Results
-            </h2>
-
+          <TabsContent value="matches" className="space-y-3">
+            <h2 className="text-lg font-bold mb-4">Undercard Matches</h2>
             {UNDERCARD_MATCHES.map((match) => (
-              <div key={match.id} className="bg-card border border-border rounded-xl p-4 space-y-3">
-                <h3 className="font-semibold">{match.title}</h3>
-                <div className="flex gap-2">
-                  {match.options.map((option) => (
-                    <Button
-                      key={option}
-                      variant={matchResults[match.id] === option ? "gold" : "outline"}
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleScoreMatch(match.id, option, SCORING.UNDERCARD_WINNER)}
-                      disabled={!!matchResults[match.id]}
-                    >
-                      {matchResults[match.id] === option && <Check size={16} className="mr-1" />}
-                      {option}
-                    </Button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {matchResults[match.id] ? `✓ ${matchResults[match.id]} wins` : "Not scored"}
-                </p>
-              </div>
+              <MatchScoringCard
+                key={match.id}
+                matchId={match.id}
+                title={match.title}
+                options={match.options}
+                scoredResult={getMatchResult(match.id)}
+                onScore={handleScoreMatch}
+                onReset={handleResetMatch}
+              />
             ))}
           </TabsContent>
 
           {/* Props Tab */}
-          <TabsContent value="props" className="space-y-4">
-            <h2 className="font-bold flex items-center gap-2">
-              <Zap className="text-primary" size={20} />
-              Chaos Props
-            </h2>
-
-            {CHAOS_PROPS.map((prop) => (
-              <div key={prop.id} className="bg-card border border-border rounded-xl p-4 space-y-3">
-                <h3 className="font-semibold text-sm">{prop.shortName}</h3>
-                <div className="flex gap-2">
-                  {["YES", "NO"].map((option) => (
-                    <Button
-                      key={option}
-                      variant={matchResults[prop.id] === option ? "gold" : "outline"}
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleScoreMatch(prop.id, option, SCORING.PROP_BET)}
-                      disabled={!!matchResults[prop.id]}
-                    >
-                      {matchResults[prop.id] === option && <Check size={16} className="mr-1" />}
-                      {option}
-                    </Button>
-                  ))}
-                </div>
+          <TabsContent value="props" className="space-y-6">
+            {/* Men's Props */}
+            <section>
+              <h3 className="font-bold mb-4">Men's Rumble Props</h3>
+              <div className="space-y-3">
+                {CHAOS_PROPS.map((prop) => {
+                  const matchId = `mens_chaos_${prop.id}`;
+                  const result = getMatchResult(matchId);
+                  return (
+                    <PropScoringCard
+                      key={matchId}
+                      propId={matchId}
+                      title={prop.shortName}
+                      question={prop.question}
+                      scoredResult={result as "YES" | "NO" | null}
+                      onScore={handleScoreProp}
+                    />
+                  );
+                })}
               </div>
-            ))}
+              <Button
+                variant="outline"
+                className="w-full mt-4"
+                onClick={() => {
+                  setBulkPropsType("mens");
+                  setBulkPropsOpen(true);
+                }}
+              >
+                Score All Men's Props at Once
+              </Button>
+            </section>
+
+            {/* Women's Props */}
+            <section>
+              <h3 className="font-bold mb-4">Women's Rumble Props</h3>
+              <div className="space-y-3">
+                {CHAOS_PROPS.map((prop) => {
+                  const matchId = `womens_chaos_${prop.id}`;
+                  const result = getMatchResult(matchId);
+                  return (
+                    <PropScoringCard
+                      key={matchId}
+                      propId={matchId}
+                      title={prop.shortName}
+                      question={prop.question}
+                      scoredResult={result as "YES" | "NO" | null}
+                      onScore={handleScoreProp}
+                    />
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                className="w-full mt-4"
+                onClick={() => {
+                  setBulkPropsType("womens");
+                  setBulkPropsOpen(true);
+                }}
+              >
+                Score All Women's Props at Once
+              </Button>
+            </section>
           </TabsContent>
 
           {/* Men's Rumble Tab */}
           <TabsContent value="mens" className="space-y-4">
-            <h2 className="font-bold flex items-center gap-2">
-              🧔 Men's Rumble Control
-            </h2>
+            <RumbleEntryControl
+              nextNumber={mensNextNumber}
+              ownerName={mensNextOwner}
+              entrants={mensEntrants}
+              enteredCount={mensEnteredCount}
+              onConfirmEntry={(wrestler) => handleConfirmEntry("mens", wrestler)}
+            />
 
-            {/* Winner Declaration */}
-            {mensWinnerCandidate && (
-              <motion.div 
-                className="bg-primary/20 border-2 border-primary rounded-xl p-4 space-y-3"
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-              >
-                <div className="flex items-center gap-2">
-                  <Crown className="text-primary" size={24} />
-                  <h3 className="font-bold text-lg">Declare Winner!</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  #{mensWinnerCandidate.number} {mensWinnerCandidate.wrestler_name} is the last one standing!
-                </p>
-                <Button
-                  variant="gold"
-                  className="w-full"
-                  onClick={() => setWinnerModal({ type: "mens", winner: mensWinnerCandidate })}
-                >
-                  <Trophy size={18} className="mr-2" />
-                  Declare Winner
-                </Button>
-              </motion.div>
-            )}
-
-            {/* Next Entry */}
-            {getNextEntryNumber(mensNumbers) && (
-              <div className="bg-primary/20 border border-primary rounded-xl p-4 space-y-3">
-                <h3 className="font-semibold">Next Entrant: #{getNextEntryNumber(mensNumbers)}</h3>
-                <Button
-                  variant="gold"
-                  className="w-full"
-                  onClick={() => setEntryModal({ type: "mens", nextNumber: getNextEntryNumber(mensNumbers)! })}
-                >
-                  Confirm Entry
-                </Button>
-              </div>
-            )}
-
-            {/* Active Wrestlers */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-muted-foreground">
-                Active Wrestlers ({getActiveWrestlers(mensNumbers).length})
+              <h3 className="font-bold flex items-center justify-between">
+                Active Wrestlers
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({mensActiveWrestlers.length})
+                </span>
               </h3>
-              {getActiveWrestlers(mensNumbers).map((num) => (
-                <div key={num.id} className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-primary">#{num.number}</span>
-                    <span className="mx-2">•</span>
-                    <span>{num.wrestler_name}</span>
-                    <span className="text-muted-foreground text-sm ml-2">({getPlayerName(num.assigned_to_player_id)})</span>
-                  </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setEliminateModal({ number: num, type: "mens" })}
-                  >
-                    Eliminate
-                  </Button>
-                </div>
-              ))}
+              {mensActiveWrestlers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No wrestlers in the ring yet
+                </p>
+              ) : (
+                mensActiveWrestlers.map((wrestler) => (
+                  <ActiveWrestlerCard
+                    key={wrestler.id}
+                    number={wrestler.number}
+                    wrestlerName={wrestler.wrestler_name || "Unknown"}
+                    ownerName={getPlayerName(wrestler.assigned_to_player_id)}
+                    duration={getDuration(wrestler.entry_timestamp!)}
+                    onEliminate={() => {
+                      setEliminationTarget(wrestler);
+                      setEliminationType("mens");
+                    }}
+                  />
+                ))
+              )}
             </div>
           </TabsContent>
 
           {/* Women's Rumble Tab */}
           <TabsContent value="womens" className="space-y-4">
-            <h2 className="font-bold flex items-center gap-2">
-              👩 Women's Rumble Control
-            </h2>
+            <RumbleEntryControl
+              nextNumber={womensNextNumber}
+              ownerName={womensNextOwner}
+              entrants={womensEntrants}
+              enteredCount={womensEnteredCount}
+              onConfirmEntry={(wrestler) => handleConfirmEntry("womens", wrestler)}
+            />
 
-            {/* Winner Declaration */}
-            {womensWinnerCandidate && (
-              <motion.div 
-                className="bg-primary/20 border-2 border-primary rounded-xl p-4 space-y-3"
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-              >
-                <div className="flex items-center gap-2">
-                  <Crown className="text-primary" size={24} />
-                  <h3 className="font-bold text-lg">Declare Winner!</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  #{womensWinnerCandidate.number} {womensWinnerCandidate.wrestler_name} is the last one standing!
-                </p>
-                <Button
-                  variant="gold"
-                  className="w-full"
-                  onClick={() => setWinnerModal({ type: "womens", winner: womensWinnerCandidate })}
-                >
-                  <Trophy size={18} className="mr-2" />
-                  Declare Winner
-                </Button>
-              </motion.div>
-            )}
-
-            {/* Next Entry */}
-            {getNextEntryNumber(womensNumbers) && (
-              <div className="bg-primary/20 border border-primary rounded-xl p-4 space-y-3">
-                <h3 className="font-semibold">Next Entrant: #{getNextEntryNumber(womensNumbers)}</h3>
-                <Button
-                  variant="gold"
-                  className="w-full"
-                  onClick={() => setEntryModal({ type: "womens", nextNumber: getNextEntryNumber(womensNumbers)! })}
-                >
-                  Confirm Entry
-                </Button>
-              </div>
-            )}
-
-            {/* Active Wrestlers */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-muted-foreground">
-                Active Wrestlers ({getActiveWrestlers(womensNumbers).length})
+              <h3 className="font-bold flex items-center justify-between">
+                Active Wrestlers
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({womensActiveWrestlers.length})
+                </span>
               </h3>
-              {getActiveWrestlers(womensNumbers).map((num) => (
-                <div key={num.id} className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-primary">#{num.number}</span>
-                    <span className="mx-2">•</span>
-                    <span>{num.wrestler_name}</span>
-                    <span className="text-muted-foreground text-sm ml-2">({getPlayerName(num.assigned_to_player_id)})</span>
-                  </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setEliminateModal({ number: num, type: "womens" })}
-                  >
-                    Eliminate
-                  </Button>
-                </div>
-              ))}
+              {womensActiveWrestlers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No wrestlers in the ring yet
+                </p>
+              ) : (
+                womensActiveWrestlers.map((wrestler) => (
+                  <ActiveWrestlerCard
+                    key={wrestler.id}
+                    number={wrestler.number}
+                    wrestlerName={wrestler.wrestler_name || "Unknown"}
+                    ownerName={getPlayerName(wrestler.assigned_to_player_id)}
+                    duration={getDuration(wrestler.entry_timestamp!)}
+                    onEliminate={() => {
+                      setEliminationTarget(wrestler);
+                      setEliminationType("womens");
+                    }}
+                  />
+                ))
+              )}
             </div>
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Entry Modal */}
-      <Dialog open={!!entryModal} onOpenChange={() => { setEntryModal(null); setSelectedWrestler(""); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Entry #{entryModal?.nextNumber}</DialogTitle>
-          </DialogHeader>
-          <Select value={selectedWrestler} onValueChange={setSelectedWrestler}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select wrestler" />
-            </SelectTrigger>
-            <SelectContent>
-              {(entryModal?.type === "mens" ? entrants.mens : entrants.womens).map((name) => (
-                <SelectItem key={name} value={name}>{name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEntryModal(null)}>Cancel</Button>
-            <Button variant="gold" onClick={handleConfirmEntry} disabled={!selectedWrestler}>
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Modals */}
+      <BulkPropsModal
+        open={bulkPropsOpen}
+        onOpenChange={setBulkPropsOpen}
+        type={bulkPropsType}
+        onSubmit={handleBulkScoreProps}
+      />
 
-      {/* Elimination Modal */}
-      <Dialog open={!!eliminateModal} onOpenChange={() => { setEliminateModal(null); setEliminatedBy(""); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Eliminate #{eliminateModal?.number.number} {eliminateModal?.number.wrestler_name}?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Eliminated by:</label>
-            <Select value={eliminatedBy} onValueChange={setEliminatedBy}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select number" />
-              </SelectTrigger>
-              <SelectContent>
-                {getActiveWrestlers(eliminateModal?.type === "mens" ? mensNumbers : womensNumbers)
-                  .filter(n => n.number !== eliminateModal?.number.number)
-                  .map((num) => (
-                    <SelectItem key={num.number} value={num.number.toString()}>
-                      #{num.number} {num.wrestler_name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEliminateModal(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleConfirmElimination} disabled={!eliminatedBy}>
-              Confirm Elimination
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EliminationModal
+        open={!!eliminationTarget}
+        onOpenChange={(open) => !open && setEliminationTarget(null)}
+        targetNumber={eliminationTarget?.number || 0}
+        targetWrestler={eliminationTarget?.wrestler_name || ""}
+        activeWrestlers={(eliminationType === "mens" ? mensActiveWrestlers : womensActiveWrestlers).map(w => ({
+          number: w.number,
+          wrestler_name: w.wrestler_name || "",
+          ownerName: getPlayerName(w.assigned_to_player_id),
+        }))}
+        onConfirm={handleElimination}
+      />
 
-      {/* Winner Confirmation Modal */}
-      <Dialog open={!!winnerModal} onOpenChange={() => setWinnerModal(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Crown className="text-primary" size={24} />
-              Confirm Winner
-            </DialogTitle>
-          </DialogHeader>
-          <div className="text-center py-4">
-            <div className="text-4xl font-black text-primary mb-2">
-              #{winnerModal?.winner.number}
-            </div>
-            <div className="text-2xl font-bold mb-4">{winnerModal?.winner.wrestler_name}</div>
-            <p className="text-muted-foreground text-sm">
-              This will award points for Winner (+50), Iron {winnerModal?.type === "mens" ? "Man" : "Woman"} (+20), and correct predictions (+50).
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setWinnerModal(null)}>Cancel</Button>
-            <Button variant="gold" onClick={handleDeclareWinner}>
-              <Trophy size={18} className="mr-2" />
-              Confirm Winner
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {winnerData && (
+        <WinnerDeclarationModal
+          open={!!winnerData}
+          onOpenChange={(open) => !open && setWinnerData(null)}
+          type={winnerData.type}
+          winnerNumber={winnerData.number.number}
+          winnerName={winnerData.number.wrestler_name || ""}
+          ownerName={getPlayerName(winnerData.number.assigned_to_player_id)}
+          ironPersonName={winnerData.ironPerson ? getPlayerName(winnerData.ironPerson.assigned_to_player_id) : null}
+          correctPredictionCount={winnerData.correctPredictionCount}
+          onConfirm={handleConfirmWinner}
+        />
+      )}
     </div>
   );
 }
