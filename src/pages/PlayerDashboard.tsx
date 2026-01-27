@@ -190,32 +190,26 @@ export default function PlayerDashboard() {
 
     fetchData();
 
-    // Function to load reveal data
+    // Function to load reveal data - only current player's numbers for personal reveal
     const loadRevealData = async () => {
-      // Fetch all players with their numbers for the reveal
-      const { data: allPlayersData } = await supabase
-        .from("players")
-        .select("id, display_name")
-        .eq("party_code", code)
-        .order("joined_at");
-
-      const { data: allNumbersData } = await supabase
+      const { data: myNumbersData } = await supabase
         .from("rumble_numbers")
-        .select("number, assigned_to_player_id, rumble_type")
-        .eq("party_code", code);
+        .select("number, rumble_type")
+        .eq("party_code", code)
+        .eq("assigned_to_player_id", session.playerId);
 
-      if (allPlayersData && allNumbersData) {
-        const playerData: PlayerWithNumbers[] = allPlayersData.map(p => ({
-          playerName: p.display_name,
-          mensNumbers: allNumbersData
-            .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
+      if (myNumbersData && myNumbersData.length > 0) {
+        const playerData: PlayerWithNumbers[] = [{
+          playerName: session.displayName || "You",
+          mensNumbers: myNumbersData
+            .filter(n => n.rumble_type === "mens")
             .map(n => n.number)
             .sort((a, b) => a - b),
-          womensNumbers: allNumbersData
-            .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
+          womensNumbers: myNumbersData
+            .filter(n => n.rumble_type === "womens")
             .map(n => n.number)
             .sort((a, b) => a - b),
-        }));
+        }];
         
         setRevealPlayers(playerData);
         setShowNumberReveal(true);
