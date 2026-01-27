@@ -314,8 +314,9 @@ export function RumblePropsCard({
           </div>
 
           {/* Wrestler Grid */}
-          <ScrollArea className="flex-1 mt-4">
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3 pb-4">
+          <div className="flex-1 mt-4 min-h-0 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3 pb-4">
               {filteredEntrants.map((wrestler) => {
                 const isSelected = activePickerId ? values[activePickerId] === wrestler : false;
                 const isBlocked = blockedWrestlers.has(wrestler);
@@ -400,8 +401,9 @@ export function RumblePropsCard({
                 
                 return wrestlerButton;
               })}
-            </div>
-          </ScrollArea>
+              </div>
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 
