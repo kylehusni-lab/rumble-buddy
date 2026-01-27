@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { Radio } from "lucide-react";
 import { WrestlerImage } from "./WrestlerImage";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
+import { Check } from "lucide-react";
 
 interface MatchResult {
   match_id: string;
@@ -10,22 +10,17 @@ interface MatchResult {
 }
 
 interface ActiveMatchDisplayProps {
+  match: typeof UNDERCARD_MATCHES[number];
   matchResults: MatchResult[];
 }
 
-export function ActiveMatchDisplay({ matchResults }: ActiveMatchDisplayProps) {
-  // Find the current active undercard match (one without a result yet)
-  const activeMatch = useMemo(() => {
-    const completedMatchIds = new Set(matchResults.map(r => r.match_id));
-    return UNDERCARD_MATCHES.find(m => !completedMatchIds.has(m.id));
-  }, [matchResults]);
+export function ActiveMatchDisplay({ match, matchResults }: ActiveMatchDisplayProps) {
+  const result = useMemo(() => {
+    return matchResults.find(r => r.match_id === match.id)?.result || null;
+  }, [match.id, matchResults]);
 
-  // If no active undercard match, show nothing (Rumble will take over)
-  if (!activeMatch) {
-    return null;
-  }
-
-  const [wrestler1, wrestler2] = activeMatch.options;
+  const [wrestler1, wrestler2] = match.options;
+  const isComplete = !!result;
 
   return (
     <motion.div
@@ -36,12 +31,21 @@ export function ActiveMatchDisplay({ matchResults }: ActiveMatchDisplayProps) {
       {/* Status bar */}
       <div className="flex items-center justify-between px-6 py-3 bg-card border-b border-border">
         <div className="flex items-center gap-2">
-          <motion.div
-            className="w-3 h-3 rounded-full bg-destructive"
-            animate={{ opacity: [1, 0.5, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          />
-          <span className="text-sm font-bold uppercase tracking-wider">Live</span>
+          {isComplete ? (
+            <>
+              <Check className="w-4 h-4 text-success" />
+              <span className="text-sm font-bold uppercase tracking-wider text-success">Complete</span>
+            </>
+          ) : (
+            <>
+              <motion.div
+                className="w-3 h-3 rounded-full bg-destructive"
+                animate={{ opacity: [1, 0.5, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+              <span className="text-sm font-bold uppercase tracking-wider">Live</span>
+            </>
+          )}
         </div>
         <span className="text-sm text-muted-foreground">Undercard Match</span>
       </div>
@@ -56,12 +60,27 @@ export function ActiveMatchDisplay({ matchResults }: ActiveMatchDisplayProps) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <WrestlerImage
-              name={wrestler1}
-              size="lg"
-              className="border-4 border-primary/50 shadow-lg shadow-primary/20"
-            />
-            <span className="text-2xl font-bold text-center">{wrestler1}</span>
+            <div className="relative">
+              <WrestlerImage
+                name={wrestler1}
+                size="lg"
+                className={`border-4 shadow-lg ${
+                  result === wrestler1
+                    ? "border-success shadow-success/30"
+                    : result
+                      ? "border-muted opacity-50"
+                      : "border-primary/50 shadow-primary/20"
+                }`}
+              />
+              {result === wrestler1 && (
+                <div className="absolute -top-2 -right-2 bg-success rounded-full p-1">
+                  <Check className="w-5 h-5 text-success-foreground" />
+                </div>
+              )}
+            </div>
+            <span className={`text-2xl font-bold text-center ${result && result !== wrestler1 ? "opacity-50" : ""}`}>
+              {wrestler1}
+            </span>
           </motion.div>
 
           {/* VS graphic */}
@@ -81,12 +100,27 @@ export function ActiveMatchDisplay({ matchResults }: ActiveMatchDisplayProps) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <WrestlerImage
-              name={wrestler2}
-              size="lg"
-              className="border-4 border-primary/50 shadow-lg shadow-primary/20"
-            />
-            <span className="text-2xl font-bold text-center">{wrestler2}</span>
+            <div className="relative">
+              <WrestlerImage
+                name={wrestler2}
+                size="lg"
+                className={`border-4 shadow-lg ${
+                  result === wrestler2
+                    ? "border-success shadow-success/30"
+                    : result
+                      ? "border-muted opacity-50"
+                      : "border-primary/50 shadow-primary/20"
+                }`}
+              />
+              {result === wrestler2 && (
+                <div className="absolute -top-2 -right-2 bg-success rounded-full p-1">
+                  <Check className="w-5 h-5 text-success-foreground" />
+                </div>
+              )}
+            </div>
+            <span className={`text-2xl font-bold text-center ${result && result !== wrestler2 ? "opacity-50" : ""}`}>
+              {wrestler2}
+            </span>
           </motion.div>
         </div>
 
@@ -97,7 +131,7 @@ export function ActiveMatchDisplay({ matchResults }: ActiveMatchDisplayProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <h3 className="text-xl font-semibold text-muted-foreground">{activeMatch.title}</h3>
+          <h3 className="text-xl font-semibold text-muted-foreground">{match.title}</h3>
         </motion.div>
       </div>
     </motion.div>

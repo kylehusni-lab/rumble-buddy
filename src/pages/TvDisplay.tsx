@@ -8,7 +8,7 @@ import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOve
 import { NumberCell } from "@/components/tv/NumberCell";
 import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
 import { MatchProgressBar } from "@/components/tv/MatchProgressBar";
-import { ActiveMatchDisplay } from "@/components/tv/ActiveMatchDisplay";
+import { TvViewNavigator } from "@/components/tv/TvViewNavigator";
 import { ParticipantPicksView } from "@/components/tv/ParticipantPicksView";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 
@@ -448,14 +448,14 @@ export default function TvDisplay() {
             </div>
           ) : (
             <>
-              {/* Show Active Match Display during undercard phase */}
-              {isUndercardPhase && (
-                <ActiveMatchDisplay matchResults={matchResults} />
-              )}
-
-              {/* Number Grids - always show when live */}
-              {renderNumberGrid(mensNumbers, "🧔 Men's Royal Rumble")}
-              {renderNumberGrid(womensNumbers, "👩 Women's Royal Rumble")}
+              {/* Single View Navigator - shows one match/rumble at a time */}
+              <TvViewNavigator
+                matchResults={matchResults}
+                mensNumbers={mensNumbers}
+                womensNumbers={womensNumbers}
+                getPlayerInitials={getPlayerInitials}
+                getNumberStatus={getNumberStatus}
+              />
 
               {/* Participant Picks */}
               <ParticipantPicksView
