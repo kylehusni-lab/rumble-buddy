@@ -9,7 +9,6 @@ import { NumberCell } from "@/components/tv/NumberCell";
 import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
 import { MatchProgressBar } from "@/components/tv/MatchProgressBar";
 import { TvViewNavigator } from "@/components/tv/TvViewNavigator";
-import { ParticipantPicksView } from "@/components/tv/ParticipantPicksView";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 
 interface Player {
@@ -448,20 +447,15 @@ export default function TvDisplay() {
             </div>
           ) : (
             <>
-              {/* Single View Navigator - shows one match/rumble at a time */}
+              {/* Single View Navigator - shows one match/rumble at a time with synced picks */}
               <TvViewNavigator
                 matchResults={matchResults}
                 mensNumbers={mensNumbers}
                 womensNumbers={womensNumbers}
-                getPlayerInitials={getPlayerInitials}
-                getNumberStatus={getNumberStatus}
-              />
-
-              {/* Participant Picks */}
-              <ParticipantPicksView
                 players={players}
                 picks={picks}
-                matchResults={matchResults}
+                getPlayerInitials={getPlayerInitials}
+                getNumberStatus={getNumberStatus}
               />
             </>
           )}

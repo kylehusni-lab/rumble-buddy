@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActiveMatchDisplay } from "./ActiveMatchDisplay";
 import { NumberCell } from "./NumberCell";
+import { ParticipantPicksView } from "./ParticipantPicksView";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 
 interface MatchResult {
@@ -19,10 +20,23 @@ interface RumbleNumber {
   elimination_timestamp: string | null;
 }
 
+interface Player {
+  id: string;
+  display_name: string;
+}
+
+interface Pick {
+  player_id: string;
+  match_id: string;
+  prediction: string;
+}
+
 interface TvViewNavigatorProps {
   matchResults: MatchResult[];
   mensNumbers: RumbleNumber[];
   womensNumbers: RumbleNumber[];
+  players: Player[];
+  picks: Pick[];
   getPlayerInitials: (id: string | null) => string;
   getNumberStatus: (num: RumbleNumber) => "pending" | "active" | "eliminated";
 }
@@ -48,6 +62,8 @@ export function TvViewNavigator({
   matchResults,
   mensNumbers,
   womensNumbers,
+  players,
+  picks,
   getPlayerInitials,
   getNumberStatus,
 }: TvViewNavigatorProps) {
@@ -226,6 +242,18 @@ export function TvViewNavigator({
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Participant Picks - only show for undercard matches */}
+      {currentView.type === "undercard" && (
+        <div className="mt-6">
+          <ParticipantPicksView
+            players={players}
+            picks={picks}
+            matchResults={matchResults}
+            currentMatchId={currentView.id}
+          />
+        </div>
+      )}
 
       {/* Dot Indicators */}
       <div className="flex justify-center gap-2 mt-6">
