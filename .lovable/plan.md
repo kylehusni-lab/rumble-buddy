@@ -1,264 +1,224 @@
 
-# TV Display Phase 1 Implementation - Go Live MVP
+# Simplified Number Draw Animation
 
-## Overview
+## Problem Analysis
 
-Implement the Phase 1 TV Display enhancements to create an engaging group viewing experience for the Royal Rumble watch party. This focuses on five key features from the provided specification.
+The current animation is **too long and jarring**:
 
----
+| Phase | Current Duration | Issue |
+|-------|-----------------|-------|
+| Intro | 2 seconds | Reasonable |
+| Per player reveal | ~2.7 seconds | Too slow with spinning cards |
+| 10 players × 2 Rumbles | ~54 seconds | Far too long |
+| **Total** | **~57 seconds** | Unacceptable |
 
-## Current State Analysis
-
-**Existing Implementation:**
-- 10x3 number grid for Men's/Women's Rumbles
-- Basic leaderboard sidebar (shows top 10 players)
-- Entry overlay animation (5 seconds)
-- Celebration overlays (Final Four, Iron Man, Winner)
-- Number reveal animation on event start
-- Real-time subscriptions via Supabase
-
-**Key Files:**
-- `src/pages/TvDisplay.tsx` - Main display (490 lines)
-- `src/lib/wrestler-data.ts` - Wrestler photos with WWE CDN URLs
-- `src/components/CelebrationOverlay.tsx` - Existing celebration animations
-- `src/lib/constants.ts` - Match/prop definitions
+**Visual issues:**
+- 3D card flip (rotateY: 180) is disorienting
+- Background particles add visual noise
+- Spring animations with low damping cause bouncing
+- Glow pulses and sparkles are excessive
 
 ---
 
-## Features to Implement
+## Solution Overview
 
-### 1. Active Match Display with Wrestler Photos
-
-Show the current undercard match with large wrestler photos.
-
-```text
-+-----------------------------------------------+
-|  [LIVE]           ROYAL RUMBLE 2026           |
-+-----------------------------------------------+
-|                                               |
-|    [Photo]           VS          [Photo]      |
-|   CM Punk                       Logan Paul    |
-|                                               |
-|          CM Punk vs Logan Paul                |
-+-----------------------------------------------+
-```
-
-**Data Flow:**
-- Query `match_results` to find active match (no result yet)
-- Use `getWrestlerImageUrl()` from wrestler-data.ts
-- Fallback to UI Avatars placeholder for unknowns
-
-**New Component:** `src/components/tv/ActiveMatchDisplay.tsx`
+1. **Add reveal mode selection** - Let users choose their experience
+2. **Streamline animations** - Faster, cleaner transitions
+3. **Reduce total duration** - Target 10-15 seconds max for quick mode
 
 ---
 
-### 2. Participant Picks - Horizontal Scroll View
+## Reveal Mode Options
 
-Show what each player picked for the current match.
-
-```text
-+----------------------------------------------------------+
-|  Who Did They Pick?                            [< >]     |
-+----------------------------------------------------------+
-|  [Photo]     [Photo]     [Photo]     [Photo]            |
-|  CM Punk     L. Paul     CM Punk     L. Paul            |
-|  Demo Host   Randy S.    Hulk H.     Macho Man          |
-|    [lock]      [lock]      [lock]      [lock]           |
-+----------------------------------------------------------+
-```
-
-**Data Flow:**
-- Query `picks` table for current match_id
-- Join with `players` for display names
-- Show wrestler photo + participant name
-
-**New Component:** `src/components/tv/ParticipantPicksView.tsx`
-
----
-
-### 3. Leaderboard Collapse/Expand Toggle
-
-Allow hiding/collapsing the leaderboard for more screen space.
-
-**States:**
-- `expanded` - Full leaderboard (top 10)
-- `collapsed` - Top 3 only
-- `hidden` - Minimal tab on right edge
-
-**Persist state:** localStorage
-
-**New Component:** `src/components/tv/LeaderboardPanel.tsx`
-
----
-
-### 4. Match Progress Counter
-
-Show how many matches are complete with an "Up Next" preview.
+Present a choice screen before the animation begins:
 
 ```text
 +------------------------------------------+
-|  Matches: 2 of 7 Complete                |
-|  [========--------] 29%                  |
+|           🎰 NUMBER DRAW                 |
++------------------------------------------+
 |                                          |
-|  UP NEXT: Men's Royal Rumble             |
+|   How would you like to reveal           |
+|   your numbers?                          |
+|                                          |
+|   ┌────────────────────────────────┐    |
+|   │  ⚡ INSTANT REVEAL              │    |
+|   │  See all numbers at once        │    |
+|   └────────────────────────────────┘    |
+|                                          |
+|   ┌────────────────────────────────┐    |
+|   │  🎬 DRAMATIC REVEAL             │    |
+|   │  Player-by-player suspense      │    |
+|   └────────────────────────────────┘    |
+|                                          |
 +------------------------------------------+
 ```
 
-**Logic:**
-- Count `match_results` entries
-- Total matches from `CARD_CONFIG` (7 cards)
-- Next match = first without a result
-
-**New Component:** `src/components/tv/MatchProgressBar.tsx`
-
 ---
 
-### 5. Big Board - Wrestler Photos on Numbers
+## Animation Modes
 
-Enhance number grid cells to show wrestler photos when claimed.
+### Mode 1: Instant Reveal (Default)
+
+**Total duration: ~5 seconds**
+
+1. **Brief intro** (1 second) - Title fade in
+2. **All numbers appear** (2 seconds) - Grid with all players' numbers
+3. **"Let's Rumble!"** (2 seconds) - Closing message
 
 ```text
-Current:    Enhanced:
-+----+      +--------+
-| 1  |      |   1    |
-| DH |      | [Photo]|
-+----+      | CM Punk|
-            |   DH   |
-            +--------+
++------------------------------------------+
+|       🎰 YOUR NUMBERS ARE IN!            |
++------------------------------------------+
+|                                          |
+|   Men's Rumble          Women's Rumble   |
+|   ┌─────┬─────┬─────┐   ┌─────┬─────┐   |
+|   │ #3  │ #15 │ #22 │   │ #8  │ #19 │   |
+|   └─────┴─────┴─────┘   └─────┴─────┘   |
+|                                          |
+|          Demo Host                       |
+|                                          |
+|   ┌─────┬─────┐         ┌─────┬─────┐   |
+|   │ #7  │ #28 │         │ #4  │ #25 │   |
+|   └─────┴─────┘         └─────┴─────┘   |
+|                                          |
+|          Randy Savage                    |
+|                                          |
++------------------------------------------+
 ```
 
-**Changes:**
-- Active cells show wrestler photo (small, 48px)
-- Wrestler name (first name only)
-- Owner initials below
-- Eliminated cells: grayscale photo, X overlay
+### Mode 2: Dramatic Reveal (Opt-in)
+
+**Total duration: ~20-30 seconds** (still faster than current 57s)
+
+- Reduced intro to 1 second
+- Per-player reveal: 1.5 seconds (down from 2.7s)
+- Combined Men's + Women's in single view per player
+- Simpler fade animations (no 3D flips)
 
 ---
 
-## File Structure
+## Technical Changes
 
-### New Files
+### New Component Structure
 
-| File | Purpose |
-|------|---------|
-| `src/components/tv/ActiveMatchDisplay.tsx` | Current match with photos |
-| `src/components/tv/ParticipantPicksView.tsx` | Horizontal scroll of picks |
-| `src/components/tv/LeaderboardPanel.tsx` | Collapsible leaderboard |
-| `src/components/tv/MatchProgressBar.tsx` | Progress counter |
-| `src/components/tv/NumberCell.tsx` | Enhanced grid cell |
-| `src/components/tv/WrestlerImage.tsx` | Reusable image with fallback |
+```typescript
+// Updated NumberRevealAnimation.tsx
 
-### Modified Files
+type RevealMode = "instant" | "dramatic";
+
+interface NumberRevealAnimationProps {
+  players: PlayerNumbers[];
+  onComplete: () => void;
+  mode?: RevealMode; // New prop with default "instant"
+}
+
+// New phases
+type Phase = "choice" | "instant" | "dramatic" | "complete";
+```
+
+### Simplified Animations
+
+**Remove:**
+- Background floating particles
+- 3D card flip (rotateY)
+- Sparkle icons
+- Glow blur effects
+- Bouncy spring physics
+
+**Keep (simplified):**
+- Fade in/out transitions
+- Gentle scale (0.95 → 1, not 0.5 → 1)
+- Quick stagger for number cards
+
+### Instant Mode Implementation
+
+```typescript
+// All players shown in a scrollable grid
+// Simple fade-in with stagger
+<motion.div
+  initial={{ opacity: 0, y: 10 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.3, delay: index * 0.1 }}
+>
+  <PlayerNumbersCard player={player} />
+</motion.div>
+```
+
+### Dramatic Mode Implementation
+
+```typescript
+// Per-player, but both Rumbles at once
+// Faster transitions: 1.5s per player total
+const REVEAL_DURATION = 1500; // Down from 2700ms
+
+// Simpler card animation
+<motion.div
+  initial={{ opacity: 0, scale: 0.9 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 0.2 }}
+/>
+```
+
+---
+
+## File Changes
+
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/TvDisplay.tsx` | Integrate new components, update layout |
-| `src/index.css` | Add TV-specific CSS classes |
+| `src/components/NumberRevealAnimation.tsx` | Complete rewrite with mode selection and simplified animations |
+
+### UI Components
+
+**Choice Screen:**
+- Two large buttons for mode selection
+- Crown icon header
+- Brief description for each option
+
+**Instant View:**
+- Grid layout showing all players
+- Each player card shows name + both Rumble numbers
+- Single staggered fade-in
+
+**Dramatic View:**
+- Single player at a time
+- Both Men's and Women's numbers shown together
+- Progress dots at bottom
+- Auto-advance after 1.5s per player
 
 ---
 
-## Technical Implementation
+## Animation Specifications
 
-### WrestlerImage Component
+### Instant Mode Timing
 
-```typescript
-// src/components/tv/WrestlerImage.tsx
-interface WrestlerImageProps {
-  name: string;
-  size?: "sm" | "md" | "lg" | "xl";
-  className?: string;
-  showFallbackIcon?: boolean;
-}
+| Step | Duration | Cumulative |
+|------|----------|------------|
+| Fade in title | 0.3s | 0.3s |
+| Stagger cards (10 players × 0.1s) | 1.0s | 1.3s |
+| Hold for readability | 2.0s | 3.3s |
+| Fade to "Let's Rumble!" | 0.5s | 3.8s |
+| Complete callback | 1.0s | ~5s |
 
-// Uses getWrestlerImageUrl() from wrestler-data.ts
-// Handles onError -> fallback to UI Avatars
-// Size variants: sm=48px, md=80px, lg=180px, xl=400px
-```
+### Dramatic Mode Timing
 
-### Updated TvDisplay Layout
-
-```text
-+----------------------------------------------------------------+
-|  Header: Logo + Status + Match Progress                        |
-+----------------------------------------------------------------+
-|                                                    |           |
-|  [Active Match Display - when undercard]           | Leaderboard
-|       OR                                           | (collapsible)
-|  [Number Grids - when Rumble active]               |           |
-|                                                    |           |
-+----------------------------------------------------------------+
-|  [Participant Picks - horizontal scroll]                       |
-+----------------------------------------------------------------+
-```
-
-### Data Queries Needed
-
-```typescript
-// Active match detection
-const activeMatch = UNDERCARD_MATCHES.find(m => 
-  !matchResults.some(r => r.match_id === m.id)
-);
-
-// Participant picks for current match
-const { data: picks } = await supabase
-  .from("picks")
-  .select("player_id, prediction")
-  .eq("match_id", activeMatchId);
-```
-
-### Leaderboard State Management
-
-```typescript
-type LeaderboardState = "expanded" | "collapsed" | "hidden";
-
-const [leaderboardState, setLeaderboardState] = useState<LeaderboardState>(
-  () => localStorage.getItem("tv-leaderboard-state") as LeaderboardState || "expanded"
-);
-
-useEffect(() => {
-  localStorage.setItem("tv-leaderboard-state", leaderboardState);
-}, [leaderboardState]);
-```
+| Step | Duration | Cumulative |
+|------|----------|------------|
+| Brief intro | 1.0s | 1.0s |
+| Per player (10 × 1.5s) | 15.0s | 16.0s |
+| "Let's Rumble!" ending | 2.0s | 18.0s |
 
 ---
 
-## Styling Updates
+## Comparison
 
-### New CSS Classes for `src/index.css`
-
-```css
-/* TV Active Match */
-.tv-match-display { ... }
-.tv-wrestler-card { ... }
-.tv-vs-graphic { ... }
-
-/* TV Participant Picks */
-.tv-picks-scroll { ... }
-.tv-pick-card { ... }
-.tv-pick-card.correct { ... }
-.tv-pick-card.incorrect { ... }
-
-/* TV Leaderboard States */
-.tv-leaderboard.expanded { ... }
-.tv-leaderboard.collapsed { ... }
-.tv-leaderboard.hidden { ... }
-
-/* Enhanced Number Cells */
-.number-cell-enhanced { ... }
-.number-cell-photo { ... }
-```
-
----
-
-## Implementation Order
-
-1. **WrestlerImage** - Reusable component (foundation)
-2. **NumberCell** - Enhanced grid cells with photos
-3. **LeaderboardPanel** - Collapsible leaderboard
-4. **MatchProgressBar** - Progress counter
-5. **ActiveMatchDisplay** - Current match view
-6. **ParticipantPicksView** - Horizontal picks scroll
-7. **TvDisplay Integration** - Wire everything together
+| Aspect | Current | Instant Mode | Dramatic Mode |
+|--------|---------|--------------|---------------|
+| Total duration | ~57 seconds | ~5 seconds | ~18 seconds |
+| Animation complexity | High (3D, particles, springs) | Low (fade, scale) | Medium (fade, stagger) |
+| User control | None | Choice offered | Choice offered |
+| Separate M/W phases | Yes | No (combined) | No (combined) |
 
 ---
 
@@ -266,31 +226,17 @@ useEffect(() => {
 
 | Scenario | Handling |
 |----------|----------|
-| Wrestler image fails to load | Fallback to UI Avatars placeholder |
-| No active match | Show "Waiting for next match" state |
-| All matches complete | Show final standings view |
-| 0 participants | Hide picks section |
-| Unknown wrestler (surprise entrant) | Generate placeholder with name initials |
-| Long participant names | Truncate with ellipsis (max 12 chars) |
+| 1 player | Skip choice, show instant |
+| Skip button | Add "Skip" in top-right corner |
+| TV Display | May want different default (dramatic for group suspense) |
+| Mobile | Instant mode preferred for quick viewing |
 
 ---
 
-## Responsive Considerations
+## Benefits
 
-- Optimized for 1920x1080 (Full HD TV)
-- Text sized for viewing from 10+ feet
-- High contrast colors for visibility
-- Minimal scrolling required during viewing
-
----
-
-## Testing Checklist
-
-- [ ] Wrestler photos load correctly
-- [ ] Fallback placeholders work
-- [ ] Leaderboard state persists on refresh
-- [ ] Match progress updates in real-time
-- [ ] Picks scroll smoothly with 10+ participants
-- [ ] Number cells show photos for active wrestlers
-- [ ] Eliminated cells show grayscale + X
-- [ ] Layout works on 1920x1080 display
+1. **User choice** - Players can pick their preferred experience
+2. **~90% faster** - 5 seconds vs 57 seconds for instant mode
+3. **Less jarring** - Simple fades instead of 3D flips and particles
+4. **Combined view** - See both Rumbles at once, no waiting
+5. **Skip option** - Can exit early if needed
