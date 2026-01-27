@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Loader2, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MatchCard } from "./cards/MatchCard";
 import { RumbleWinnerCard } from "./cards/RumbleWinnerCard";
@@ -9,8 +9,19 @@ import { ChaosPropsCard } from "./cards/ChaosPropsCard";
 import { RumblePropsCard } from "./cards/RumblePropsCard";
 import { ProgressBar } from "./ProgressBar";
 import { CARD_CONFIG, TOTAL_CARDS, CHAOS_PROPS, RUMBLE_PROPS, FINAL_FOUR_SLOTS } from "@/lib/constants";
+import { countCompletedPicks } from "@/lib/pick-validation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PickCardStackProps {
   partyCode: string;
@@ -37,6 +48,7 @@ export function PickCardStack({
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(Object.keys(existingPicks).length > 0);
+  const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
   
   // Touch swipe detection state
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -83,6 +95,9 @@ export function PickCardStack({
 
   const completedCount = cardCompletionStatus.filter(Boolean).length;
   const allPicksComplete = completedCount === TOTAL_CARDS;
+  
+  // Get detailed pick counts for the warning dialog
+  const pickCounts = useMemo(() => countCompletedPicks(picks, CARD_CONFIG), [picks]);
 
   const handleSwipe = (direction: "left" | "right") => {
     setSwipeDirection(direction);
@@ -146,10 +161,24 @@ export function PickCardStack({
     setTouchEnd(null);
   };
 
+  const handleSaveClick = () => {
+    if (isLocked) return;
+    
+    // If not all picks complete, show warning
+    if (!allPicksComplete) {
+      setShowIncompleteWarning(true);
+      return;
+    }
+    
+    // All complete, submit directly
+    handleSubmit();
+  };
+  
   const handleSubmit = async () => {
-    if (!playerId || !allPicksComplete || isLocked) return;
+    if (!playerId || isLocked) return;
 
     setIsSubmitting(true);
+    setShowIncompleteWarning(false);
 
     try {
       // Convert picks to database format
@@ -362,44 +391,36 @@ export function PickCardStack({
           {currentCardIndex + 1} / {TOTAL_CARDS}
         </div>
 
-      <div className="flex items-center gap-2">
-          {!isLastCard ? (
-            <Button
-              variant="ghost"
-              onClick={() => handleSwipe("right")}
-              className="flex items-center gap-2"
-            >
-              Next
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={!allPicksComplete || isSubmitting || isLocked}
-              className={allPicksComplete && !isLocked ? "gold-shimmer" : ""}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : isLocked ? (
-                "Locked 🔒"
-              ) : (
-                "Save"
-              )}
-            </Button>
-          )}
+        {!isLastCard ? (
           <Button
-            variant="outline"
-            onClick={handleSubmit}
-            disabled={isSubmitting || isLocked}
-            className="flex items-center gap-1"
+            variant="ghost"
+            onClick={() => handleSwipe("right")}
+            className="flex items-center gap-2"
           >
-            <Check className="w-4 h-4" />
-            Done
+            Next
+            <ChevronRight className="w-5 h-5" />
           </Button>
-        </div>
+        ) : (
+          <Button
+            onClick={handleSaveClick}
+            disabled={isSubmitting || isLocked}
+            className={allPicksComplete && !isLocked ? "gold-shimmer" : ""}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : isLocked ? (
+              "Locked 🔒"
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Back to Dashboard */}
@@ -412,6 +433,27 @@ export function PickCardStack({
           ← Back to Dashboard
         </Button>
       </div>
+      
+      {/* Incomplete Picks Warning Dialog */}
+      <AlertDialog open={showIncompleteWarning} onOpenChange={setShowIncompleteWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Not all picks completed</AlertDialogTitle>
+            <AlertDialogDescription>
+              You've completed {pickCounts.completed} of {pickCounts.total} picks. 
+              Saving now means you'll miss out on potential points for incomplete picks.
+              <br /><br />
+              Are you sure you want to save?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSubmit}>
+              Save Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

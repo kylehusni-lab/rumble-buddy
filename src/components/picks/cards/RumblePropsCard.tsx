@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Target, Users, Search, Check, X } from "lucide-react";
+import { Target, Users, Search, Check, X, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { RUMBLE_PROPS, FINAL_FOUR_SLOTS, SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
 import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
+import { getBlockedWrestlers, getBlockedReason } from "@/lib/pick-validation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface RumblePropsCardProps {
   title: string;
@@ -44,6 +51,15 @@ export function RumblePropsCard({
 
   // Helper to get match_id for a prop
   const getMatchId = (propId: string) => `${gender}_${propId}`;
+  
+  // Extract current prop ID being edited (for conflict checking)
+  const currentPropId = activePickerId?.replace(`${gender}_`, '') || null;
+  
+  // Get blocked wrestlers for the current picker
+  const blockedWrestlers = useMemo(() => {
+    if (!currentPropId) return new Set<string>();
+    return getBlockedWrestlers(gender, currentPropId, values);
+  }, [gender, currentPropId, values]);
 
   // Count completed props
   const wrestlerProps = RUMBLE_PROPS.filter((p) => p.type === "wrestler");
@@ -255,31 +271,41 @@ export function RumblePropsCard({
               {filteredEntrants.map((wrestler) => {
                 const isSelected = activePickerId ? values[activePickerId] === wrestler : false;
                 // Check if already used in another slot (for Final Four)
-                const isUsedElsewhere = activePickerId?.includes("final_four") && 
+                const isUsedInFinalFour = activePickerId?.includes("final_four") && 
                   Array.from({ length: FINAL_FOUR_SLOTS }).some((_, i) => {
                     const slotId = getMatchId(`final_four_${i + 1}`);
                     return slotId !== activePickerId && values[slotId] === wrestler;
                   });
                 
-                return (
+                // Check if blocked due to conflict rules
+                const isBlocked = blockedWrestlers.has(wrestler);
+                const blockReason = isBlocked && currentPropId 
+                  ? getBlockedReason(gender, currentPropId, wrestler, values)
+                  : null;
+                
+                const isDisabled = isUsedInFinalFour || isBlocked;
+                
+                const wrestlerButton = (
                   <motion.button
                     key={wrestler}
-                    onClick={() => !isUsedElsewhere && handleWrestlerSelect(wrestler)}
-                    disabled={disabled || isUsedElsewhere}
+                    onClick={() => !isDisabled && handleWrestlerSelect(wrestler)}
+                    disabled={disabled || isDisabled}
                     className={cn(
                       "flex flex-col items-center",
-                      isUsedElsewhere && "opacity-40"
+                      isDisabled && "opacity-40"
                     )}
-                    whileTap={!disabled && !isUsedElsewhere ? { scale: 0.95 } : undefined}
+                    whileTap={!disabled && !isDisabled ? { scale: 0.95 } : undefined}
                   >
                     <div
                       className={cn(
                         "relative w-[60px] h-[60px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
                         isSelected
                           ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
-                          : isUnconfirmedEntrant(wrestler)
-                            ? "border-dashed border-muted-foreground/50"
-                            : "border-transparent"
+                          : isBlocked
+                            ? "border-destructive/50"
+                            : isUnconfirmedEntrant(wrestler)
+                              ? "border-dashed border-muted-foreground/50"
+                              : "border-transparent"
                       )}
                     >
                       <img
@@ -300,11 +326,17 @@ export function RumblePropsCard({
                           <Check className="text-primary-foreground" size={24} strokeWidth={3} />
                         </motion.div>
                       )}
+                      {isBlocked && !isSelected && (
+                        <div className="absolute inset-0 bg-destructive/20 flex items-center justify-center">
+                          <Ban className="text-destructive" size={20} />
+                        </div>
+                      )}
                     </div>
                     <span
                       className={cn(
                         "mt-1 text-[10px] text-center leading-tight line-clamp-2 w-[60px]",
                         isSelected ? "text-primary font-semibold" : "text-foreground",
+                        isBlocked && "text-destructive/70",
                         isUnconfirmedEntrant(wrestler) && "italic opacity-80"
                       )}
                     >
@@ -312,6 +344,24 @@ export function RumblePropsCard({
                     </span>
                   </motion.button>
                 );
+                
+                // Wrap blocked wrestlers in a tooltip
+                if (isBlocked && blockReason) {
+                  return (
+                    <TooltipProvider key={wrestler}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          {wrestlerButton}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{blockReason}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                }
+                
+                return wrestlerButton;
               })}
             </div>
           </ScrollArea>
