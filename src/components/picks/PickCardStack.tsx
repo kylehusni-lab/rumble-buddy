@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { MatchCard } from "./cards/MatchCard";
 import { RumbleWinnerCard } from "./cards/RumbleWinnerCard";
 import { ChaosPropsCard } from "./cards/ChaosPropsCard";
+import { RumblePropsCard } from "./cards/RumblePropsCard";
 import { ProgressBar } from "./ProgressBar";
-import { CARD_CONFIG, TOTAL_CARDS, CHAOS_PROPS } from "@/lib/constants";
+import { CARD_CONFIG, TOTAL_CARDS, CHAOS_PROPS, RUMBLE_PROPS, FINAL_FOUR_SLOTS } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -57,6 +58,24 @@ export function PickCardStack({
         }).length;
         return propCount === 6;
       }
+      if (card.type === "rumble-props") {
+        // Check wrestler props + final four + yes/no props
+        const gender = card.gender;
+        const wrestlerProps = RUMBLE_PROPS.filter(p => p.type === "wrestler");
+        const yesNoProps = RUMBLE_PROPS.filter(p => p.type === "yesno");
+        
+        const wrestlerPropsComplete = wrestlerProps.every(p => 
+          picks[`${gender}_${p.id}`] !== null && picks[`${gender}_${p.id}`] !== undefined
+        );
+        const finalFourComplete = Array.from({ length: FINAL_FOUR_SLOTS }).every((_, i) =>
+          picks[`${gender}_final_four_${i + 1}`] !== null && picks[`${gender}_final_four_${i + 1}`] !== undefined
+        );
+        const yesNoComplete = yesNoProps.every(p =>
+          picks[`${gender}_${p.id}`] !== null && picks[`${gender}_${p.id}`] !== undefined
+        );
+        
+        return wrestlerPropsComplete && finalFourComplete && yesNoComplete;
+      }
       const pick = picks[card.id];
       return pick !== null && pick !== undefined;
     });
@@ -83,14 +102,19 @@ export function PickCardStack({
     
     setPicks(prev => ({ ...prev, [cardId]: value }));
     
-    // Auto-advance after selection (except for chaos props which need all 6)
+    // Auto-advance after selection (except for chaos props and rumble props which need multiple selections)
     const card = CARD_CONFIG.find(c => c.id === cardId);
-    if (card?.type !== "chaos-props" && currentCardIndex < TOTAL_CARDS - 1) {
+    if (card?.type !== "chaos-props" && card?.type !== "rumble-props" && currentCardIndex < TOTAL_CARDS - 1) {
       setTimeout(() => handleSwipe("right"), 300);
     }
   };
 
   const handleChaosPropsUpdate = (values: Record<string, "YES" | "NO" | null>) => {
+    if (isLocked) return;
+    setPicks(prev => ({ ...prev, ...values }));
+  };
+
+  const handleRumblePropsUpdate = (values: Record<string, string | null>) => {
     if (isLocked) return;
     setPicks(prev => ({ ...prev, ...values }));
   };
@@ -153,6 +177,30 @@ export function PickCardStack({
               });
             }
           });
+        } else if (card.type === "rumble-props") {
+          // Add rumble props (wrestler select + final four + yes/no)
+          RUMBLE_PROPS.forEach((prop) => {
+            const matchId = `${card.gender}_${prop.id}`;
+            if (picks[matchId]) {
+              pickRecords.push({
+                player_id: playerId,
+                match_id: matchId,
+                prediction: picks[matchId],
+              });
+            }
+          });
+          
+          // Add final four picks
+          for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+            const matchId = `${card.gender}_final_four_${i}`;
+            if (picks[matchId]) {
+              pickRecords.push({
+                player_id: playerId,
+                match_id: matchId,
+                prediction: picks[matchId],
+              });
+            }
+          }
         }
       });
 
@@ -180,6 +228,25 @@ export function PickCardStack({
       const matchId = `${gender}_chaos_prop_${index + 1}`;
       values[matchId] = picks[matchId] || null;
     });
+    return values;
+  };
+
+  // Get rumble props values for the current card
+  const getRumblePropsValues = (gender: "mens" | "womens") => {
+    const values: Record<string, string | null> = {};
+    
+    // Wrestler select props
+    RUMBLE_PROPS.forEach((prop) => {
+      const matchId = `${gender}_${prop.id}`;
+      values[matchId] = picks[matchId] || null;
+    });
+    
+    // Final four slots
+    for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+      const matchId = `${gender}_final_four_${i}`;
+      values[matchId] = picks[matchId] || null;
+    }
+    
     return values;
   };
 
@@ -253,6 +320,17 @@ export function PickCardStack({
                 values={getChaosPropsValues(currentCard.gender as "mens" | "womens")}
                 onChange={handleChaosPropsUpdate}
                 disabled={isLocked}
+              />
+            )}
+            
+            {currentCard.type === "rumble-props" && (
+              <RumblePropsCard
+                title={currentCard.title}
+                gender={currentCard.gender as "mens" | "womens"}
+                values={getRumblePropsValues(currentCard.gender as "mens" | "womens")}
+                onChange={handleRumblePropsUpdate}
+                disabled={isLocked}
+                customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
               />
             )}
           </motion.div>
