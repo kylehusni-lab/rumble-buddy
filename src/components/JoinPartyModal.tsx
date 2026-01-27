@@ -78,12 +78,12 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
       if (fetchError) throw fetchError;
 
       if (!data) {
-        setError("No party found with this code");
+        setError("No group found with this code");
         return;
       }
 
       if (data.status === "completed") {
-        setError("This party has already ended");
+        setError("This group has already ended");
         return;
       }
 
@@ -116,7 +116,7 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
           >
             <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Enter Party Code</h2>
+                <h2 className="text-2xl font-bold">Enter Group Code</h2>
                 <button
                   onClick={onClose}
                   className="text-muted-foreground hover:text-foreground transition-colors"
