@@ -1,242 +1,171 @@
 
-# Simplified Number Draw Animation
 
-## Problem Analysis
+# Number Draw Animation Fixes
 
-The current animation is **too long and jarring**:
+## Overview
 
-| Phase | Current Duration | Issue |
-|-------|-----------------|-------|
-| Intro | 2 seconds | Reasonable |
-| Per player reveal | ~2.7 seconds | Too slow with spinning cards |
-| 10 players × 2 Rumbles | ~54 seconds | Far too long |
-| **Total** | **~57 seconds** | Unacceptable |
-
-**Visual issues:**
-- 3D card flip (rotateY: 180) is disorienting
-- Background particles add visual noise
-- Spring animations with low damping cause bouncing
-- Glow pulses and sparkles are excessive
+Fix three issues with the NumberRevealAnimation component:
+1. Replace emojis and Crown icon with the Royal Rumble logo
+2. Filter out already-entered wrestlers from the entry list
+3. Fix stuck animation states in both reveal modes
 
 ---
 
-## Solution Overview
+## Issue 1: Remove Emojis and Crown Logo
 
-1. **Add reveal mode selection** - Let users choose their experience
-2. **Streamline animations** - Faster, cleaner transitions
-3. **Reduce total duration** - Target 10-15 seconds max for quick mode
+**Problem:**
+- Uses `Crown` icon from lucide-react on choice and complete screens
+- Uses emojis for Men's/Women's labels (lines 168, 184, 221, 237)
 
----
+**Solution:**
+- Import the Royal Rumble logo component
+- Replace Crown icon with the logo on choice/complete screens
+- Replace emojis with text labels ("Men's" / "Women's")
 
-## Reveal Mode Options
+**Changes to `NumberRevealAnimation.tsx`:**
 
-Present a choice screen before the animation begins:
-
-```text
-+------------------------------------------+
-|           🎰 NUMBER DRAW                 |
-+------------------------------------------+
-|                                          |
-|   How would you like to reveal           |
-|   your numbers?                          |
-|                                          |
-|   ┌────────────────────────────────┐    |
-|   │  ⚡ INSTANT REVEAL              │    |
-|   │  See all numbers at once        │    |
-|   └────────────────────────────────┘    |
-|                                          |
-|   ┌────────────────────────────────┐    |
-|   │  🎬 DRAMATIC REVEAL             │    |
-|   │  Player-by-player suspense      │    |
-|   └────────────────────────────────┘    |
-|                                          |
-+------------------------------------------+
-```
+| Location | Current | Replacement |
+|----------|---------|-------------|
+| Line 3 | `import { Crown, Zap, Film, X }` | `import { Zap, Film, X }` |
+| Line 98 | `<Crown ... size={80} />` | `<Logo size="md" />` |
+| Line 168 | `🧔 Men's` | `Men's` |
+| Line 184 | `👩 Women's` | `Women's` |
+| Line 221 | `🧔 Men's Rumble` | `Men's Rumble` |
+| Line 237 | `👩 Women's Rumble` | `Women's Rumble` |
+| Line 282 | `<Crown ... size={80} />` | `<Logo size="md" />` |
 
 ---
 
-## Animation Modes
+## Issue 2: Filter Out Already-Entered Wrestlers
 
-### Mode 1: Instant Reveal (Default)
+**Problem:**
+- `RumbleEntryControl` receives `entrants` prop containing all wrestlers
+- Already-entered wrestlers still appear in the selection list
+- This allows accidental duplicate entries
 
-**Total duration: ~5 seconds**
+**Solution:**
+- In `HostControl.tsx`, filter `allMensEntrants` and `allWomensEntrants` to exclude wrestlers already assigned to a number
 
-1. **Brief intro** (1 second) - Title fade in
-2. **All numbers appear** (2 seconds) - Grid with all players' numbers
-3. **"Let's Rumble!"** (2 seconds) - Closing message
-
-```text
-+------------------------------------------+
-|       🎰 YOUR NUMBERS ARE IN!            |
-+------------------------------------------+
-|                                          |
-|   Men's Rumble          Women's Rumble   |
-|   ┌─────┬─────┬─────┐   ┌─────┬─────┐   |
-|   │ #3  │ #15 │ #22 │   │ #8  │ #19 │   |
-|   └─────┴─────┴─────┘   └─────┴─────┘   |
-|                                          |
-|          Demo Host                       |
-|                                          |
-|   ┌─────┬─────┐         ┌─────┬─────┐   |
-|   │ #7  │ #28 │         │ #4  │ #25 │   |
-|   └─────┴─────┘         └─────┴─────┘   |
-|                                          |
-|          Randy Savage                    |
-|                                          |
-+------------------------------------------+
-```
-
-### Mode 2: Dramatic Reveal (Opt-in)
-
-**Total duration: ~20-30 seconds** (still faster than current 57s)
-
-- Reduced intro to 1 second
-- Per-player reveal: 1.5 seconds (down from 2.7s)
-- Combined Men's + Women's in single view per player
-- Simpler fade animations (no 3D flips)
-
----
-
-## Technical Changes
-
-### New Component Structure
+**Changes to `HostControl.tsx`:**
 
 ```typescript
-// Updated NumberRevealAnimation.tsx
+// Current (line 676-677):
+const allMensEntrants = useMemo(() => 
+  [...mensEntrants, ...mensSurpriseEntrants], 
+  [mensEntrants, mensSurpriseEntrants]
+);
 
-type RevealMode = "instant" | "dramatic";
-
-interface NumberRevealAnimationProps {
-  players: PlayerNumbers[];
-  onComplete: () => void;
-  mode?: RevealMode; // New prop with default "instant"
-}
-
-// New phases
-type Phase = "choice" | "instant" | "dramatic" | "complete";
+// Fixed:
+const allMensEntrants = useMemo(() => {
+  const enteredNames = new Set(
+    mensNumbers
+      .filter(n => n.wrestler_name)
+      .map(n => n.wrestler_name!.toLowerCase())
+  );
+  return [...mensEntrants, ...mensSurpriseEntrants]
+    .filter(name => !enteredNames.has(name.toLowerCase()));
+}, [mensEntrants, mensSurpriseEntrants, mensNumbers]);
 ```
 
-### Simplified Animations
+Same pattern for `allWomensEntrants`.
 
-**Remove:**
-- Background floating particles
-- 3D card flip (rotateY)
-- Sparkle icons
-- Glow blur effects
-- Bouncy spring physics
+---
 
-**Keep (simplified):**
-- Fade in/out transitions
-- Gentle scale (0.95 → 1, not 0.5 → 1)
-- Quick stagger for number cards
+## Issue 3: Fix Stuck Animation States
 
-### Instant Mode Implementation
+**Problem 1 - Instant Mode Stuck:**
+- Timer sets phase to "complete" but nested `setTimeout(onComplete, 1500)` may not fire reliably
+- The `onComplete` callback is in the dependency array which can cause issues
 
-```typescript
-// All players shown in a scrollable grid
-// Simple fade-in with stagger
-<motion.div
-  initial={{ opacity: 0, y: 10 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ duration: 0.3, delay: index * 0.1 }}
->
-  <PlayerNumbersCard player={player} />
-</motion.div>
-```
+**Problem 2 - Dramatic Mode Stuck:**
+- Auto-advance timer has similar nested timeout issue
+- When at last player, sets phase to "complete" but nested onComplete may fail
 
-### Dramatic Mode Implementation
+**Solution:**
+- Separate the "complete" phase transition from the `onComplete` callback
+- Add a dedicated useEffect for the complete phase to call `onComplete`
+- Remove `onComplete` from timer effect dependencies
+
+**Changes to `NumberRevealAnimation.tsx`:**
 
 ```typescript
-// Per-player, but both Rumbles at once
-// Faster transitions: 1.5s per player total
-const REVEAL_DURATION = 1500; // Down from 2700ms
+// Remove nested setTimeout, use dedicated effect for completion
+useEffect(() => {
+  if (phase === "complete") {
+    const timer = setTimeout(onComplete, 1000);
+    return () => clearTimeout(timer);
+  }
+}, [phase, onComplete]);
 
-// Simpler card animation
-<motion.div
-  initial={{ opacity: 0, scale: 0.9 }}
-  animate={{ opacity: 1, scale: 1 }}
-  transition={{ duration: 0.2 }}
-/>
+// Instant mode - just transition to complete
+useEffect(() => {
+  if (phase === "instant") {
+    const timer = setTimeout(() => {
+      setPhase("complete");
+    }, 3000);
+    return () => clearTimeout(timer);
+  }
+}, [phase]); // Remove onComplete from deps
+
+// Dramatic mode - advance or complete
+useEffect(() => {
+  if (phase === "dramatic" && currentPlayerIndex < players.length) {
+    const timer = setTimeout(() => {
+      if (currentPlayerIndex < players.length - 1) {
+        setCurrentPlayerIndex(prev => prev + 1);
+      } else {
+        setPhase("complete");
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }
+}, [phase, currentPlayerIndex, players.length]); // Remove onComplete from deps
 ```
 
 ---
 
-## File Changes
-
-### Files to Modify
+## File Changes Summary
 
 | File | Changes |
 |------|---------|
-| `src/components/NumberRevealAnimation.tsx` | Complete rewrite with mode selection and simplified animations |
-
-### UI Components
-
-**Choice Screen:**
-- Two large buttons for mode selection
-- Crown icon header
-- Brief description for each option
-
-**Instant View:**
-- Grid layout showing all players
-- Each player card shows name + both Rumble numbers
-- Single staggered fade-in
-
-**Dramatic View:**
-- Single player at a time
-- Both Men's and Women's numbers shown together
-- Progress dots at bottom
-- Auto-advance after 1.5s per player
+| `src/components/NumberRevealAnimation.tsx` | Replace Crown with Logo, remove emojis, fix timer logic |
+| `src/pages/HostControl.tsx` | Filter entered wrestlers from entrants lists |
 
 ---
 
-## Animation Specifications
+## Implementation Details
 
-### Instant Mode Timing
+### NumberRevealAnimation.tsx Updates
 
-| Step | Duration | Cumulative |
-|------|----------|------------|
-| Fade in title | 0.3s | 0.3s |
-| Stagger cards (10 players × 0.1s) | 1.0s | 1.3s |
-| Hold for readability | 2.0s | 3.3s |
-| Fade to "Let's Rumble!" | 0.5s | 3.8s |
-| Complete callback | 1.0s | ~5s |
+1. **Import changes:**
+   - Remove `Crown` from lucide-react imports
+   - Add `import { Logo } from "@/components/Logo"`
 
-### Dramatic Mode Timing
+2. **Timer refactor:**
+   - Create single useEffect for "complete" phase that calls onComplete
+   - Simplify instant/dramatic effects to only set phase
 
-| Step | Duration | Cumulative |
-|------|----------|------------|
-| Brief intro | 1.0s | 1.0s |
-| Per player (10 × 1.5s) | 15.0s | 16.0s |
-| "Let's Rumble!" ending | 2.0s | 18.0s |
+3. **UI text changes:**
+   - Replace all emoji prefixes with plain text
+   - Replace Crown components with Logo component
 
----
+### HostControl.tsx Updates
 
-## Comparison
-
-| Aspect | Current | Instant Mode | Dramatic Mode |
-|--------|---------|--------------|---------------|
-| Total duration | ~57 seconds | ~5 seconds | ~18 seconds |
-| Animation complexity | High (3D, particles, springs) | Low (fade, scale) | Medium (fade, stagger) |
-| User control | None | Choice offered | Choice offered |
-| Separate M/W phases | Yes | No (combined) | No (combined) |
+1. **Filter logic:**
+   - Build a Set of entered wrestler names (lowercase for case-insensitive matching)
+   - Filter the combined entrants list to exclude already-entered names
 
 ---
 
-## Edge Cases
+## Testing Checklist
 
-| Scenario | Handling |
-|----------|----------|
-| 1 player | Skip choice, show instant |
-| Skip button | Add "Skip" in top-right corner |
-| TV Display | May want different default (dramatic for group suspense) |
-| Mobile | Instant mode preferred for quick viewing |
+- [ ] Logo appears on choice screen instead of Crown
+- [ ] Logo appears on complete screen instead of Crown
+- [ ] No emojis in Men's/Women's labels
+- [ ] Instant reveal completes and calls onComplete
+- [ ] Dramatic reveal advances through all players
+- [ ] Dramatic reveal completes after last player
+- [ ] Skip button works in both modes
+- [ ] Already-entered wrestlers don't appear in entry list
+- [ ] Surprise entrants still work correctly
 
----
-
-## Benefits
-
-1. **User choice** - Players can pick their preferred experience
-2. **~90% faster** - 5 seconds vs 57 seconds for instant mode
-3. **Less jarring** - Simple fades instead of 3D flips and particles
-4. **Combined view** - See both Rumbles at once, no waiting
-5. **Skip option** - Can exit early if needed
