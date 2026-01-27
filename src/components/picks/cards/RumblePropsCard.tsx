@@ -4,7 +4,7 @@ import { Target, Users, Search, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { RUMBLE_PROPS, FINAL_FOUR_SLOTS, SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
-import { isUnconfirmedEntrant, getEntrantDisplayName } from "@/lib/entrant-utils";
+import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,9 +38,9 @@ export function RumblePropsCard({
   const defaultEntrants = gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS;
   const entrants = customEntrants && customEntrants.length > 0 ? customEntrants : defaultEntrants;
 
-  const filteredEntrants = entrants.filter((name) =>
-    name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredEntrants = entrants
+    .filter((name) => name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort(sortEntrants);
 
   // Helper to get match_id for a prop
   const getMatchId = (propId: string) => `${gender}_${propId}`;
