@@ -9,9 +9,9 @@ interface LogoProps {
 
 export function Logo({ size = "md", showTagline = false, className }: LogoProps) {
   const sizes = {
-    sm: { width: 120, title: "text-sm" },
-    md: { width: 180, title: "text-sm" },
-    lg: { width: 280, title: "text-lg" },
+    sm: { width: 140, title: "text-sm" },
+    md: { width: 220, title: "text-sm" },
+    lg: { width: 340, title: "text-lg" },
   };
 
   return (
@@ -23,11 +23,11 @@ export function Logo({ size = "md", showTagline = false, className }: LogoProps)
     >
       {/* Logo with glow effect */}
       <div className="relative">
-        {/* Background glow */}
+        {/* Background glow - green and gold theme */}
         <div 
-          className="absolute inset-0 blur-3xl scale-150 opacity-40"
+          className="absolute inset-0 blur-3xl scale-150 opacity-50"
           style={{
-            background: 'radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, hsl(var(--primary) / 0.1) 40%, transparent 70%)'
+            background: 'radial-gradient(circle, rgba(34, 139, 34, 0.4) 0%, rgba(212, 175, 55, 0.3) 40%, transparent 70%)'
           }}
         />
         
@@ -35,7 +35,7 @@ export function Logo({ size = "md", showTagline = false, className }: LogoProps)
           src={royalRumbleLogo}
           alt="Royal Rumble 2026"
           style={{ width: sizes[size].width }}
-          className="object-contain relative z-10 drop-shadow-[0_0_25px_rgba(212,175,55,0.4)]"
+          className="object-contain relative z-10 drop-shadow-[0_0_25px_rgba(34,139,34,0.5)]"
           animate={{ 
             scale: [1, 1.02, 1]
           }}
