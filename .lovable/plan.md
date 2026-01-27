@@ -1,291 +1,296 @@
 
-# Admin Rumble Entry Control Enhancements
+# TV Display Phase 1 Implementation - Go Live MVP
 
 ## Overview
 
-This plan improves the host's Royal Rumble entry control with three key enhancements:
+Implement the Phase 1 TV Display enhancements to create an engaging group viewing experience for the Royal Rumble watch party. This focuses on five key features from the provided specification.
 
-1. **Delayed Timer Start for #1 & #2** - Timer won't start until the match officially begins (due to entrances)
-2. **Alphabetized & Searchable Wrestler List** - Easier to find entrants quickly
-3. **Add Surprise Entrant** - Quick way to add a wrestler not in the pre-configured list
+---
 
-## User Flow
+## Current State Analysis
+
+**Existing Implementation:**
+- 10x3 number grid for Men's/Women's Rumbles
+- Basic leaderboard sidebar (shows top 10 players)
+- Entry overlay animation (5 seconds)
+- Celebration overlays (Final Four, Iron Man, Winner)
+- Number reveal animation on event start
+- Real-time subscriptions via Supabase
+
+**Key Files:**
+- `src/pages/TvDisplay.tsx` - Main display (490 lines)
+- `src/lib/wrestler-data.ts` - Wrestler photos with WWE CDN URLs
+- `src/components/CelebrationOverlay.tsx` - Existing celebration animations
+- `src/lib/constants.ts` - Match/prop definitions
+
+---
+
+## Features to Implement
+
+### 1. Active Match Display with Wrestler Photos
+
+Show the current undercard match with large wrestler photos.
 
 ```text
-Host Control > Men's/Women's Tab
-        |
-        v
++-----------------------------------------------+
+|  [LIVE]           ROYAL RUMBLE 2026           |
++-----------------------------------------------+
+|                                               |
+|    [Photo]           VS          [Photo]      |
+|   CM Punk                       Logan Paul    |
+|                                               |
+|          CM Punk vs Logan Paul                |
++-----------------------------------------------+
+```
+
+**Data Flow:**
+- Query `match_results` to find active match (no result yet)
+- Use `getWrestlerImageUrl()` from wrestler-data.ts
+- Fallback to UI Avatars placeholder for unknowns
+
+**New Component:** `src/components/tv/ActiveMatchDisplay.tsx`
+
+---
+
+### 2. Participant Picks - Horizontal Scroll View
+
+Show what each player picked for the current match.
+
+```text
++----------------------------------------------------------+
+|  Who Did They Pick?                            [< >]     |
++----------------------------------------------------------+
+|  [Photo]     [Photo]     [Photo]     [Photo]            |
+|  CM Punk     L. Paul     CM Punk     L. Paul            |
+|  Demo Host   Randy S.    Hulk H.     Macho Man          |
+|    [lock]      [lock]      [lock]      [lock]           |
++----------------------------------------------------------+
+```
+
+**Data Flow:**
+- Query `picks` table for current match_id
+- Join with `players` for display names
+- Show wrestler photo + participant name
+
+**New Component:** `src/components/tv/ParticipantPicksView.tsx`
+
+---
+
+### 3. Leaderboard Collapse/Expand Toggle
+
+Allow hiding/collapsing the leaderboard for more screen space.
+
+**States:**
+- `expanded` - Full leaderboard (top 10)
+- `collapsed` - Top 3 only
+- `hidden` - Minimal tab on right edge
+
+**Persist state:** localStorage
+
+**New Component:** `src/components/tv/LeaderboardPanel.tsx`
+
+---
+
+### 4. Match Progress Counter
+
+Show how many matches are complete with an "Up Next" preview.
+
+```text
 +------------------------------------------+
-|  Next Entrant: #1                        |
-|  Owner: Stone Cold                       |
-+------------------------------------------+
-|  [ Start Match ]   <-- New button for #1/#2
+|  Matches: 2 of 7 Complete                |
+|  [========--------] 29%                  |
 |                                          |
-|  Match hasn't started yet                |
-|  Timer will begin when you start match   |
-+------------------------------------------+
-|  [ Search wrestlers... 🔍 ]              |
-+------------------------------------------+
-|  Alexa Bliss                             |
-|  Asuka                                   |
-|  Bayley                                  |
-|  Charlotte Flair                         |
-|  ...alphabetized list...                 |
-|  ─────────────────────────────           |
-|  ✨ Add Surprise Entrant                 |
-+------------------------------------------+
-|  [ Confirm #1 Entry ]                    |
+|  UP NEXT: Men's Royal Rumble             |
 +------------------------------------------+
 ```
 
-## Technical Changes
+**Logic:**
+- Count `match_results` entries
+- Total matches from `CARD_CONFIG` (7 cards)
+- Next match = first without a result
 
-### 1. RumbleEntryControl Component Updates
+**New Component:** `src/components/tv/MatchProgressBar.tsx`
 
-#### New Props
+---
 
-| Prop | Type | Purpose |
-|------|------|---------|
-| `matchStarted` | `boolean` | Whether the Rumble match has officially started |
-| `onStartMatch` | `() => void` | Callback when host clicks "Start Match" |
-| `onAddSurprise` | `(name: string) => void` | Callback when host adds a custom wrestler |
+### 5. Big Board - Wrestler Photos on Numbers
 
-#### Alphabetization
-
-Sort the entrants alphabetically before rendering:
-
-```typescript
-const sortedEntrants = useMemo(() => 
-  [...entrants].sort((a, b) => a.localeCompare(b)),
-  [entrants]
-);
-```
-
-#### Search Implementation
-
-Add search input that filters the dropdown options:
-
-```typescript
-const [searchQuery, setSearchQuery] = useState("");
-
-const filteredEntrants = useMemo(() => 
-  sortedEntrants.filter(name =>
-    name.toLowerCase().includes(searchQuery.toLowerCase())
-  ),
-  [sortedEntrants, searchQuery]
-);
-```
-
-#### Surprise Entrant Feature
-
-When search has no matches, show an "Add as Surprise" option:
-
-```typescript
-{filteredEntrants.length === 0 && searchQuery.length > 0 && (
-  <button onClick={() => onAddSurprise(searchQuery)}>
-    ✨ Add "{searchQuery}" as Surprise Entrant
-  </button>
-)}
-```
-
-### 2. Host Control Page Updates
-
-#### Match Start State
-
-Track whether each Rumble match has started:
-
-```typescript
-const [mensMatchStarted, setMensMatchStarted] = useState(false);
-const [womensMatchStarted, setWomensMatchStarted] = useState(false);
-```
-
-#### Modified Entry Confirmation
-
-Only set `entry_timestamp` when the match has started. For #1 and #2 before match start:
-- Record wrestler name immediately
-- Set `entry_timestamp` to null until match starts
-- When "Start Match" is clicked, set `entry_timestamp` for all pending entries
-
-```typescript
-const handleConfirmEntry = async (type, wrestlerName) => {
-  const matchStarted = type === "mens" ? mensMatchStarted : womensMatchStarted;
-  const entryCount = type === "mens" ? mensEnteredCount : womensEnteredCount;
-  
-  // For #1 and #2, don't set timestamp until match starts
-  const shouldSetTimestamp = matchStarted || entryCount >= 2;
-  
-  await supabase.from("rumble_numbers").update({
-    wrestler_name: wrestlerName,
-    entry_timestamp: shouldSetTimestamp ? new Date().toISOString() : null,
-  }).eq("id", numberRecord.id);
-};
-```
-
-#### Start Match Handler
-
-When host clicks "Start Match":
-
-```typescript
-const handleStartMatch = async (type: "mens" | "womens") => {
-  const numbers = type === "mens" ? mensNumbers : womensNumbers;
-  const now = new Date().toISOString();
-  
-  // Set entry_timestamp for all wrestlers who have entered but no timestamp
-  const pendingEntries = numbers.filter(n => 
-    n.wrestler_name && !n.entry_timestamp
-  );
-  
-  for (const entry of pendingEntries) {
-    await supabase.from("rumble_numbers")
-      .update({ entry_timestamp: now })
-      .eq("id", entry.id);
-  }
-  
-  if (type === "mens") setMensMatchStarted(true);
-  else setWomensMatchStarted(true);
-  
-  toast.success(`${type === "mens" ? "Men's" : "Women's"} Rumble has begun!`);
-};
-```
-
-### 3. New UI Components
-
-#### Enhanced RumbleEntryControl Layout
+Enhance number grid cells to show wrestler photos when claimed.
 
 ```text
-+------------------------------------------+
-|  Progress: 0/30 entered                  |
-|  [████████░░░░░░░░░░░░]                  |
-+------------------------------------------+
-|  Next Entrant: #1                        |
-|  Owner: Demo Host                        |
-+------------------------------------------+
-|  MATCH NOT STARTED (only for #1/#2)      |
-|  [ 🔔 Start Match ]                      |
-|  Timer begins when match starts          |
-+------------------------------------------+
-|  🔍 Search wrestlers...                  |
-+------------------------------------------+
-|  ┌────────────────────────────────────┐  |
-|  │ AJ Styles                          │  |
-|  │ Asuka                              │  |
-|  │ Bayley                             │  |
-|  │ ...                                │  |
-|  │ ────────────────────────           │  |
-|  │ ✨ Add Surprise Entrant            │  |
-|  └────────────────────────────────────┘  |
-+------------------------------------------+
-|  [ Confirm #1 Entry ]                    |
-+------------------------------------------+
+Current:    Enhanced:
++----+      +--------+
+| 1  |      |   1    |
+| DH |      | [Photo]|
++----+      | CM Punk|
+            |   DH   |
+            +--------+
 ```
 
-#### Add Surprise Modal
+**Changes:**
+- Active cells show wrestler photo (small, 48px)
+- Wrestler name (first name only)
+- Owner initials below
+- Eliminated cells: grayscale photo, X overlay
 
-Simple dialog for adding a custom wrestler name:
+---
 
-```text
-+------------------------------------------+
-|  Add Surprise Entrant                    |
-+------------------------------------------+
-|  Wrestler Name:                          |
-|  [ _____________________________ ]       |
-|                                          |
-|  This wrestler will be added to the      |
-|  match and available for selection.      |
-+------------------------------------------+
-|  [ Cancel ]        [ Add to Match ]      |
-+------------------------------------------+
-```
-
-## File Changes
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/host/RumbleEntryControl.tsx` | Add search, alphabetization, match start UI, surprise option |
-| `src/pages/HostControl.tsx` | Add match start state, handlers, and pass new props |
+## File Structure
 
 ### New Files
 
 | File | Purpose |
 |------|---------|
-| `src/components/host/AddSurpriseEntrantModal.tsx` | Modal for adding custom wrestler names |
+| `src/components/tv/ActiveMatchDisplay.tsx` | Current match with photos |
+| `src/components/tv/ParticipantPicksView.tsx` | Horizontal scroll of picks |
+| `src/components/tv/LeaderboardPanel.tsx` | Collapsible leaderboard |
+| `src/components/tv/MatchProgressBar.tsx` | Progress counter |
+| `src/components/tv/NumberCell.tsx` | Enhanced grid cell |
+| `src/components/tv/WrestlerImage.tsx` | Reusable image with fallback |
 
-## Implementation Details
+### Modified Files
 
-### RumbleEntryControl.tsx Updates
+| File | Changes |
+|------|---------|
+| `src/pages/TvDisplay.tsx` | Integrate new components, update layout |
+| `src/index.css` | Add TV-specific CSS classes |
+
+---
+
+## Technical Implementation
+
+### WrestlerImage Component
 
 ```typescript
-interface RumbleEntryControlProps {
-  nextNumber: number;
-  ownerName: string | null;
-  entrants: string[];
-  enteredCount: number;
-  onConfirmEntry: (wrestlerName: string) => Promise<void>;
-  disabled?: boolean;
-  // New props
-  matchStarted: boolean;
-  onStartMatch: () => void;
-  onAddSurprise: (name: string) => void;
+// src/components/tv/WrestlerImage.tsx
+interface WrestlerImageProps {
+  name: string;
+  size?: "sm" | "md" | "lg" | "xl";
+  className?: string;
+  showFallbackIcon?: boolean;
 }
 
-export function RumbleEntryControl({ ... }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showAddSurprise, setShowAddSurprise] = useState(false);
-  
-  // Alphabetize and filter
-  const sortedAndFiltered = useMemo(() => 
-    [...entrants]
-      .sort((a, b) => a.localeCompare(b))
-      .filter(name => name.toLowerCase().includes(searchQuery.toLowerCase())),
-    [entrants, searchQuery]
-  );
-  
-  // Show match start UI for #1 and #2 only
-  const showMatchStartUI = nextNumber <= 2 && !matchStarted;
-  
-  // ...render logic
-}
+// Uses getWrestlerImageUrl() from wrestler-data.ts
+// Handles onError -> fallback to UI Avatars
+// Size variants: sm=48px, md=80px, lg=180px, xl=400px
 ```
 
-### Duration Calculation Fix
+### Updated TvDisplay Layout
 
-Update `getDuration` in HostControl to handle null `entry_timestamp`:
+```text
++----------------------------------------------------------------+
+|  Header: Logo + Status + Match Progress                        |
++----------------------------------------------------------------+
+|                                                    |           |
+|  [Active Match Display - when undercard]           | Leaderboard
+|       OR                                           | (collapsible)
+|  [Number Grids - when Rumble active]               |           |
+|                                                    |           |
++----------------------------------------------------------------+
+|  [Participant Picks - horizontal scroll]                       |
++----------------------------------------------------------------+
+```
+
+### Data Queries Needed
 
 ```typescript
-const getDuration = (entryTimestamp: string | null) => {
-  if (!entryTimestamp) return 0; // Not started yet
-  return Math.floor((Date.now() - new Date(entryTimestamp).getTime()) / 1000);
-};
+// Active match detection
+const activeMatch = UNDERCARD_MATCHES.find(m => 
+  !matchResults.some(r => r.match_id === m.id)
+);
+
+// Participant picks for current match
+const { data: picks } = await supabase
+  .from("picks")
+  .select("player_id, prediction")
+  .eq("match_id", activeMatchId);
 ```
 
-### Active Wrestler Display Update
-
-Show "Awaiting Start" instead of timer for wrestlers without `entry_timestamp`:
+### Leaderboard State Management
 
 ```typescript
-// In ActiveWrestlerCard or display logic
-{wrestler.entry_timestamp ? (
-  formatDuration(getDuration(wrestler.entry_timestamp))
-) : (
-  "Awaiting match start"
-)}
+type LeaderboardState = "expanded" | "collapsed" | "hidden";
+
+const [leaderboardState, setLeaderboardState] = useState<LeaderboardState>(
+  () => localStorage.getItem("tv-leaderboard-state") as LeaderboardState || "expanded"
+);
+
+useEffect(() => {
+  localStorage.setItem("tv-leaderboard-state", leaderboardState);
+}, [leaderboardState]);
 ```
+
+---
+
+## Styling Updates
+
+### New CSS Classes for `src/index.css`
+
+```css
+/* TV Active Match */
+.tv-match-display { ... }
+.tv-wrestler-card { ... }
+.tv-vs-graphic { ... }
+
+/* TV Participant Picks */
+.tv-picks-scroll { ... }
+.tv-pick-card { ... }
+.tv-pick-card.correct { ... }
+.tv-pick-card.incorrect { ... }
+
+/* TV Leaderboard States */
+.tv-leaderboard.expanded { ... }
+.tv-leaderboard.collapsed { ... }
+.tv-leaderboard.hidden { ... }
+
+/* Enhanced Number Cells */
+.number-cell-enhanced { ... }
+.number-cell-photo { ... }
+```
+
+---
+
+## Implementation Order
+
+1. **WrestlerImage** - Reusable component (foundation)
+2. **NumberCell** - Enhanced grid cells with photos
+3. **LeaderboardPanel** - Collapsible leaderboard
+4. **MatchProgressBar** - Progress counter
+5. **ActiveMatchDisplay** - Current match view
+6. **ParticipantPicksView** - Horizontal picks scroll
+7. **TvDisplay Integration** - Wire everything together
+
+---
 
 ## Edge Cases
 
 | Scenario | Handling |
 |----------|----------|
-| Host adds #1, #2, then clicks Start Match | Both get same timestamp (fair start) |
-| Host adds #1, starts match, then adds #2 | #2 gets current timestamp (arrived after start) |
-| Host adds #3+ before match started | Automatically uses current timestamp (match must have started) |
-| Surprise entrant name already exists | Show error toast "Wrestler already in list" |
-| Empty search query | Show all entrants alphabetically |
+| Wrestler image fails to load | Fallback to UI Avatars placeholder |
+| No active match | Show "Waiting for next match" state |
+| All matches complete | Show final standings view |
+| 0 participants | Hide picks section |
+| Unknown wrestler (surprise entrant) | Generate placeholder with name initials |
+| Long participant names | Truncate with ellipsis (max 12 chars) |
 
-## Benefits
+---
 
-1. **Fair Timing** - #1 and #2 don't have inflated durations due to entrance time
-2. **Easy Discovery** - Alphabetized list makes finding wrestlers quick
-3. **Fast Search** - Type-to-filter for instant lookup
-4. **Flexibility** - Surprise entrants can be added on the fly without pre-configuration
+## Responsive Considerations
+
+- Optimized for 1920x1080 (Full HD TV)
+- Text sized for viewing from 10+ feet
+- High contrast colors for visibility
+- Minimal scrolling required during viewing
+
+---
+
+## Testing Checklist
+
+- [ ] Wrestler photos load correctly
+- [ ] Fallback placeholders work
+- [ ] Leaderboard state persists on refresh
+- [ ] Match progress updates in real-time
+- [ ] Picks scroll smoothly with 10+ participants
+- [ ] Number cells show photos for active wrestlers
+- [ ] Eliminated cells show grayscale + X
+- [ ] Layout works on 1920x1080 display
