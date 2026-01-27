@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { memo } from "react";
 import { WrestlerImage } from "./WrestlerImage";
 import { cn } from "@/lib/utils";
 
@@ -11,28 +11,24 @@ interface NumberCellProps {
   delay?: number;
 }
 
-export function NumberCell({
+export const NumberCell = memo(function NumberCell({
   number,
   wrestlerName,
   ownerInitials,
   status,
-  delay = 0,
 }: NumberCellProps) {
   // Get first name only for display
   const firstName = wrestlerName?.split(" ")[0] || "";
 
   return (
-    <motion.div
+    <div
       className={cn(
         "relative flex flex-col items-center justify-center rounded-xl transition-all duration-300 p-2",
-        "aspect-[4/5] border-2",
+        "aspect-[4/5] border-2 animate-scale-in",
         status === "active" && "tv-number-cell-active",
         status === "eliminated" && "tv-number-cell-eliminated",
         status === "pending" && "tv-number-cell-pending"
       )}
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ delay: delay * 0.02 }}
     >
       {/* Number badge */}
       <div className={cn(
@@ -91,6 +87,14 @@ export function NumberCell({
           <div className="absolute w-full h-0.5 bg-destructive -rotate-45 opacity-60" />
         </div>
       )}
-    </motion.div>
+    </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render when relevant props change
+  return (
+    prevProps.number === nextProps.number &&
+    prevProps.wrestlerName === nextProps.wrestlerName &&
+    prevProps.status === nextProps.status &&
+    prevProps.ownerInitials === nextProps.ownerInitials
+  );
+});
