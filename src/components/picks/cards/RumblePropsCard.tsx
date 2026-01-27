@@ -141,25 +141,25 @@ export function RumblePropsCard({
   ).filter(Boolean);
 
   return (
-    <div className="bg-card rounded-2xl p-4 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-180px)]">
+    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-180px)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Target className="w-5 h-5 text-primary" />
+      <div className="flex items-center justify-between mb-3 sm:mb-4 flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Target className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
           <div>
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Rumble Props</div>
-            <h2 className="text-base font-bold text-foreground">{title}</h2>
+            <h2 className="text-base sm:text-lg font-bold text-foreground">{title}</h2>
           </div>
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs sm:text-sm text-muted-foreground">
           {completedGroups}/{totalProps}
         </div>
       </div>
 
       <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
-        <div className="space-y-3 pb-20">
-          {/* Wrestler Props Grid - 2x3 compact layout */}
-          <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-3 sm:space-y-4 pb-20">
+          {/* Wrestler Props Grid - responsive layout */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
             {RUMBLE_PROPS.map((prop) => {
               const matchId = getMatchId(prop.id);
               const selectedWrestler = values[matchId];
@@ -272,7 +272,7 @@ export function RumblePropsCard({
 
       {/* Single Wrestler Picker Modal */}
       <Dialog open={!!activePickerId} onOpenChange={(open) => !open && setActivePickerId(null)}>
-        <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-lg sm:max-w-xl md:max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {activePickerId && RUMBLE_PROPS.find(p => getMatchId(p.id) === activePickerId)?.title}
@@ -293,7 +293,7 @@ export function RumblePropsCard({
 
           {/* Wrestler Grid */}
           <ScrollArea className="flex-1 mt-4">
-            <div className="grid grid-cols-4 gap-3 pb-4">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3 pb-4">
               {filteredEntrants.map((wrestler) => {
                 const isSelected = activePickerId ? values[activePickerId] === wrestler : false;
                 const isBlocked = blockedWrestlers.has(wrestler);
@@ -314,7 +314,7 @@ export function RumblePropsCard({
                   >
                     <div
                       className={cn(
-                        "relative w-[60px] h-[60px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
+                        "relative w-full aspect-square max-w-[60px] sm:max-w-[70px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
                         isSelected
                           ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
                           : isBlocked
@@ -339,18 +339,18 @@ export function RumblePropsCard({
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                         >
-                          <Check className="text-primary-foreground" size={24} strokeWidth={3} />
+                          <Check className="text-primary-foreground w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
                         </motion.div>
                       )}
                       {isBlocked && !isSelected && (
                         <div className="absolute inset-0 bg-destructive/20 flex items-center justify-center">
-                          <Ban className="text-destructive" size={20} />
+                          <Ban className="text-destructive w-4 h-4 sm:w-5 sm:h-5" />
                         </div>
                       )}
                     </div>
                     <span
                       className={cn(
-                        "mt-1 text-[10px] text-center leading-tight line-clamp-2 w-[60px]",
+                        "mt-1 text-[9px] sm:text-[10px] text-center leading-tight line-clamp-2 w-full max-w-[60px] sm:max-w-[70px]",
                         isSelected ? "text-primary font-semibold" : "text-foreground",
                         isBlocked && "text-destructive/70",
                         isUnconfirmedEntrant(wrestler) && "italic opacity-80"
@@ -385,7 +385,7 @@ export function RumblePropsCard({
 
       {/* Final Four Picker Modal */}
       <Dialog open={isFinalFourOpen} onOpenChange={setIsFinalFourOpen}>
-        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+        <DialogContent className="max-w-lg sm:max-w-xl md:max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
@@ -441,7 +441,7 @@ export function RumblePropsCard({
 
           {/* Wrestler Grid */}
           <ScrollArea className="flex-1 mt-2">
-            <div className="grid grid-cols-4 gap-3 pb-4">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3 pb-4">
               {filteredEntrants.map((wrestler) => {
                 const isSelected = finalFourSelections.includes(wrestler);
                 const isFull = finalFourSelections.filter(Boolean).length >= 4 && !isSelected;
@@ -463,7 +463,7 @@ export function RumblePropsCard({
                   >
                     <div
                       className={cn(
-                        "relative w-[60px] h-[60px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
+                        "relative w-full aspect-square max-w-[60px] sm:max-w-[70px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
                         isSelected
                           ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
                           : isBlockedByFirstElim
@@ -488,18 +488,18 @@ export function RumblePropsCard({
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                         >
-                          <Check className="text-primary-foreground" size={24} strokeWidth={3} />
+                          <Check className="text-primary-foreground w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
                         </motion.div>
                       )}
                       {isBlockedByFirstElim && (
                         <div className="absolute inset-0 bg-destructive/20 flex items-center justify-center">
-                          <Ban className="text-destructive" size={20} />
+                          <Ban className="text-destructive w-4 h-4 sm:w-5 sm:h-5" />
                         </div>
                       )}
                     </div>
                     <span
                       className={cn(
-                        "mt-1 text-[10px] text-center leading-tight line-clamp-2 w-[60px]",
+                        "mt-1 text-[9px] sm:text-[10px] text-center leading-tight line-clamp-2 w-full max-w-[60px] sm:max-w-[70px]",
                         isSelected ? "text-primary font-semibold" : "text-foreground",
                         isUnconfirmedEntrant(wrestler) && "italic opacity-80"
                       )}
