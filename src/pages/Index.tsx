@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, Crown, Tv, Calendar } from "lucide-react";
+import { Users, Crown, Tv, Calendar, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { JoinPartyModal } from "@/components/JoinPartyModal";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
 import { EVENT_CONFIG } from "@/lib/constants";
+import { seedDemoParty } from "@/lib/demo-seeder";
 import { toast } from "sonner";
 
 interface TimeRemaining {
@@ -33,6 +34,7 @@ function CountdownUnit({ value, label }: { value: number; label: string }) {
 export default function Index() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isCreatingDemo, setIsCreatingDemo] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
   const navigate = useNavigate();
 
@@ -112,6 +114,49 @@ export default function Index() {
     }
   };
 
+  const handleDemoMode = async () => {
+    setIsCreatingDemo(true);
+
+    try {
+      const sessionId = getSessionId();
+      const demoCode = await generatePartyCode();
+
+      // Create demo party with auto-set PIN
+      const { error: partyError } = await supabase.from("parties").insert({
+        code: demoCode,
+        host_session_id: sessionId,
+        status: "pre_event",
+        host_pin: "0000",
+      });
+
+      if (partyError) throw partyError;
+
+      // Seed players and picks
+      const { hostPlayerId } = await seedDemoParty(demoCode, sessionId);
+
+      // Set session
+      setPlayerSession({
+        sessionId,
+        playerId: hostPlayerId,
+        partyCode: demoCode,
+        displayName: "Demo Host",
+        email: "demo-host@demo.local",
+        isHost: true,
+      });
+
+      // Store PIN for instant access
+      localStorage.setItem(`party_${demoCode}_pin`, "0000");
+
+      toast.success(`Demo party ${demoCode} created with 6 players!`);
+      navigate(`/host/setup/${demoCode}`);
+    } catch (err) {
+      console.error("Error creating demo:", err);
+      toast.error("Failed to create demo party");
+    } finally {
+      setIsCreatingDemo(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Background effects */}
@@ -173,6 +218,17 @@ export default function Index() {
           >
             <Users className="mr-2" size={24} />
             Join Party
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="default"
+            className="w-full text-muted-foreground hover:text-foreground"
+            onClick={handleDemoMode}
+            disabled={isCreatingDemo}
+          >
+            <FlaskConical className="mr-2" size={18} />
+            {isCreatingDemo ? "Creating Demo..." : "Try Demo Mode"}
           </Button>
         </motion.div>
 
