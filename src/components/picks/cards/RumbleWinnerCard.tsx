@@ -50,17 +50,17 @@ export function RumbleWinnerCard({
   };
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-220px)]">
+    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-220px)]">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <Crown className="w-6 h-6 text-primary" />
-        <div>
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">Royal Rumble Winner</div>
-          <h2 className="text-xl font-bold text-foreground">{title}</h2>
+      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+        <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
+        <div className="min-w-0">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Royal Rumble Winner</div>
+          <h2 className="text-base sm:text-xl font-bold text-foreground truncate">{title}</h2>
         </div>
       </div>
 
-      <div className="text-sm text-primary mb-4 font-bold">
+      <div className="text-xs sm:text-sm text-primary mb-3 sm:mb-4 font-bold">
         +{SCORING.RUMBLE_WINNER_PICK} pts if correct
       </div>
 
@@ -90,7 +90,7 @@ export function RumbleWinnerCard({
 
       {/* Wrestler Grid (Scrollable) */}
       <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
-        <div className="grid grid-cols-4 md:grid-cols-6 gap-3 pb-8">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3 pb-8">
           {filteredEntrants.map((wrestler) => {
             const isSelected = value === wrestler;
             return (
@@ -104,7 +104,7 @@ export function RumbleWinnerCard({
                 {/* Photo Container */}
                 <div
                   className={cn(
-                    "relative w-[70px] h-[70px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
+                    "relative w-[56px] h-[56px] sm:w-[70px] sm:h-[70px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
                     isSelected
                       ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
                       : isUnconfirmedEntrant(wrestler)
@@ -129,7 +129,7 @@ export function RumbleWinnerCard({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      <Check className="text-primary-foreground" size={28} strokeWidth={3} />
+                      <Check className="text-primary-foreground" size={24} strokeWidth={3} />
                     </motion.div>
                   )}
                 </div>
@@ -137,7 +137,7 @@ export function RumbleWinnerCard({
                 {/* Name */}
                 <span
                   className={cn(
-                    "mt-2 text-xs text-center leading-tight line-clamp-2 w-[70px]",
+                    "mt-1 sm:mt-2 text-[10px] sm:text-xs text-center leading-tight line-clamp-2 w-[56px] sm:w-[70px]",
                     isSelected ? "text-primary font-semibold" : "text-foreground",
                     isUnconfirmedEntrant(wrestler) && "italic opacity-80"
                   )}
