@@ -1,50 +1,200 @@
 
-
-# Demo Mode Feature
+# Admin Rumble Entry Control Enhancements
 
 ## Overview
 
-Add a "Demo Mode" button to the Index page that creates a pre-configured party with 6 guests, complete with picks and ready for testing TV mode and other features.
+This plan improves the host's Royal Rumble entry control with three key enhancements:
 
-## What Gets Seeded
-
-| Data Type | Count | Details |
-|-----------|-------|---------|
-| Party | 1 | Demo party with code like "DEMO" or random 4-digit |
-| Players | 6 | Demo Host + 5 guests with fun wrestling-themed names |
-| Picks | 7 per player (42 total) | Random picks for all 7 pick cards |
-
-## Demo Guest Names
-
-Using fun wrestling-themed names:
-1. Demo Host (you)
-2. Randy Savage
-3. Macho Man
-4. Hulk Hogan
-5. Stone Cold
-6. The Rock
+1. **Delayed Timer Start for #1 & #2** - Timer won't start until the match officially begins (due to entrances)
+2. **Alphabetized & Searchable Wrestler List** - Easier to find entrants quickly
+3. **Add Surprise Entrant** - Quick way to add a wrestler not in the pre-configured list
 
 ## User Flow
 
 ```text
-Index Page
-    |
-    v
-"Try Demo Mode" button (secondary style, below main buttons)
-    |
-    v
-Creates demo party automatically
-Creates demo host as player
-Creates 5 additional demo guests with picks
-    |
-    v
-Redirects to /host/setup/{code}
-    |
-    v
-Host can:
-- Open TV Display (fully populated leaderboard)
-- Start Event (distributes numbers)
-- Use Host Control features
+Host Control > Men's/Women's Tab
+        |
+        v
++------------------------------------------+
+|  Next Entrant: #1                        |
+|  Owner: Stone Cold                       |
++------------------------------------------+
+|  [ Start Match ]   <-- New button for #1/#2
+|                                          |
+|  Match hasn't started yet                |
+|  Timer will begin when you start match   |
++------------------------------------------+
+|  [ Search wrestlers... 🔍 ]              |
++------------------------------------------+
+|  Alexa Bliss                             |
+|  Asuka                                   |
+|  Bayley                                  |
+|  Charlotte Flair                         |
+|  ...alphabetized list...                 |
+|  ─────────────────────────────           |
+|  ✨ Add Surprise Entrant                 |
++------------------------------------------+
+|  [ Confirm #1 Entry ]                    |
++------------------------------------------+
+```
+
+## Technical Changes
+
+### 1. RumbleEntryControl Component Updates
+
+#### New Props
+
+| Prop | Type | Purpose |
+|------|------|---------|
+| `matchStarted` | `boolean` | Whether the Rumble match has officially started |
+| `onStartMatch` | `() => void` | Callback when host clicks "Start Match" |
+| `onAddSurprise` | `(name: string) => void` | Callback when host adds a custom wrestler |
+
+#### Alphabetization
+
+Sort the entrants alphabetically before rendering:
+
+```typescript
+const sortedEntrants = useMemo(() => 
+  [...entrants].sort((a, b) => a.localeCompare(b)),
+  [entrants]
+);
+```
+
+#### Search Implementation
+
+Add search input that filters the dropdown options:
+
+```typescript
+const [searchQuery, setSearchQuery] = useState("");
+
+const filteredEntrants = useMemo(() => 
+  sortedEntrants.filter(name =>
+    name.toLowerCase().includes(searchQuery.toLowerCase())
+  ),
+  [sortedEntrants, searchQuery]
+);
+```
+
+#### Surprise Entrant Feature
+
+When search has no matches, show an "Add as Surprise" option:
+
+```typescript
+{filteredEntrants.length === 0 && searchQuery.length > 0 && (
+  <button onClick={() => onAddSurprise(searchQuery)}>
+    ✨ Add "{searchQuery}" as Surprise Entrant
+  </button>
+)}
+```
+
+### 2. Host Control Page Updates
+
+#### Match Start State
+
+Track whether each Rumble match has started:
+
+```typescript
+const [mensMatchStarted, setMensMatchStarted] = useState(false);
+const [womensMatchStarted, setWomensMatchStarted] = useState(false);
+```
+
+#### Modified Entry Confirmation
+
+Only set `entry_timestamp` when the match has started. For #1 and #2 before match start:
+- Record wrestler name immediately
+- Set `entry_timestamp` to null until match starts
+- When "Start Match" is clicked, set `entry_timestamp` for all pending entries
+
+```typescript
+const handleConfirmEntry = async (type, wrestlerName) => {
+  const matchStarted = type === "mens" ? mensMatchStarted : womensMatchStarted;
+  const entryCount = type === "mens" ? mensEnteredCount : womensEnteredCount;
+  
+  // For #1 and #2, don't set timestamp until match starts
+  const shouldSetTimestamp = matchStarted || entryCount >= 2;
+  
+  await supabase.from("rumble_numbers").update({
+    wrestler_name: wrestlerName,
+    entry_timestamp: shouldSetTimestamp ? new Date().toISOString() : null,
+  }).eq("id", numberRecord.id);
+};
+```
+
+#### Start Match Handler
+
+When host clicks "Start Match":
+
+```typescript
+const handleStartMatch = async (type: "mens" | "womens") => {
+  const numbers = type === "mens" ? mensNumbers : womensNumbers;
+  const now = new Date().toISOString();
+  
+  // Set entry_timestamp for all wrestlers who have entered but no timestamp
+  const pendingEntries = numbers.filter(n => 
+    n.wrestler_name && !n.entry_timestamp
+  );
+  
+  for (const entry of pendingEntries) {
+    await supabase.from("rumble_numbers")
+      .update({ entry_timestamp: now })
+      .eq("id", entry.id);
+  }
+  
+  if (type === "mens") setMensMatchStarted(true);
+  else setWomensMatchStarted(true);
+  
+  toast.success(`${type === "mens" ? "Men's" : "Women's"} Rumble has begun!`);
+};
+```
+
+### 3. New UI Components
+
+#### Enhanced RumbleEntryControl Layout
+
+```text
++------------------------------------------+
+|  Progress: 0/30 entered                  |
+|  [████████░░░░░░░░░░░░]                  |
++------------------------------------------+
+|  Next Entrant: #1                        |
+|  Owner: Demo Host                        |
++------------------------------------------+
+|  MATCH NOT STARTED (only for #1/#2)      |
+|  [ 🔔 Start Match ]                      |
+|  Timer begins when match starts          |
++------------------------------------------+
+|  🔍 Search wrestlers...                  |
++------------------------------------------+
+|  ┌────────────────────────────────────┐  |
+|  │ AJ Styles                          │  |
+|  │ Asuka                              │  |
+|  │ Bayley                             │  |
+|  │ ...                                │  |
+|  │ ────────────────────────           │  |
+|  │ ✨ Add Surprise Entrant            │  |
+|  └────────────────────────────────────┘  |
++------------------------------------------+
+|  [ Confirm #1 Entry ]                    |
++------------------------------------------+
+```
+
+#### Add Surprise Modal
+
+Simple dialog for adding a custom wrestler name:
+
+```text
++------------------------------------------+
+|  Add Surprise Entrant                    |
++------------------------------------------+
+|  Wrestler Name:                          |
+|  [ _____________________________ ]       |
+|                                          |
+|  This wrestler will be added to the      |
+|  match and available for selection.      |
++------------------------------------------+
+|  [ Cancel ]        [ Add to Match ]      |
++------------------------------------------+
 ```
 
 ## File Changes
@@ -53,200 +203,89 @@ Host can:
 
 | File | Changes |
 |------|---------|
-| `src/pages/Index.tsx` | Add "Try Demo Mode" button and seeding logic |
-| `src/lib/constants.ts` | Add demo guest names constant (optional) |
+| `src/components/host/RumbleEntryControl.tsx` | Add search, alphabetization, match start UI, surprise option |
+| `src/pages/HostControl.tsx` | Add match start state, handlers, and pass new props |
 
-## Technical Implementation
+### New Files
 
-### Demo Seeding Logic
+| File | Purpose |
+|------|---------|
+| `src/components/host/AddSurpriseEntrantModal.tsx` | Modal for adding custom wrestler names |
+
+## Implementation Details
+
+### RumbleEntryControl.tsx Updates
 
 ```typescript
-const handleDemoMode = async () => {
-  setIsCreating(true);
+interface RumbleEntryControlProps {
+  nextNumber: number;
+  ownerName: string | null;
+  entrants: string[];
+  enteredCount: number;
+  onConfirmEntry: (wrestlerName: string) => Promise<void>;
+  disabled?: boolean;
+  // New props
+  matchStarted: boolean;
+  onStartMatch: () => void;
+  onAddSurprise: (name: string) => void;
+}
+
+export function RumbleEntryControl({ ... }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showAddSurprise, setShowAddSurprise] = useState(false);
   
-  try {
-    const sessionId = getSessionId();
-    const demoCode = await generatePartyCode(); // Use same function
-    
-    // 1. Create demo party
-    await supabase.from("parties").insert({
-      code: demoCode,
-      host_session_id: sessionId,
-      status: "pre_event",
-    });
-    
-    // 2. Create demo host as player first
-    const { data: hostPlayer } = await supabase
-      .from("players")
-      .insert({
-        party_code: demoCode,
-        email: "demo-host@example.com",
-        display_name: "Demo Host",
-        session_id: sessionId,
-      })
-      .select("id")
-      .single();
-    
-    // 3. Create 5 demo guests
-    const demoGuests = [
-      { name: "Randy Savage", email: "randy@example.com" },
-      { name: "Macho Man", email: "macho@example.com" },
-      { name: "Hulk Hogan", email: "hulk@example.com" },
-      { name: "Stone Cold", email: "stone@example.com" },
-      { name: "The Rock", email: "rock@example.com" },
-    ];
-    
-    const guestInserts = demoGuests.map(g => ({
-      party_code: demoCode,
-      email: g.email,
-      display_name: g.name,
-      session_id: crypto.randomUUID(), // Random session for each
-    }));
-    
-    const { data: guests } = await supabase
-      .from("players")
-      .insert(guestInserts)
-      .select("id");
-    
-    // 4. Generate random picks for all players
-    const allPlayerIds = [hostPlayer.id, ...guests.map(g => g.id)];
-    await generateDemoPicksForPlayers(allPlayerIds, demoCode);
-    
-    // 5. Set session and redirect
-    setPlayerSession({
-      sessionId,
-      playerId: hostPlayer.id,
-      partyCode: demoCode,
-      displayName: "Demo Host",
-      email: "demo-host@example.com",
-      isHost: true,
-    });
-    
-    // Skip PIN for demo - auto-store a PIN
-    localStorage.setItem(`party_${demoCode}_pin`, "0000");
-    
-    toast.success("Demo party created!");
-    navigate(`/host/setup/${demoCode}`);
-    
-  } catch (err) {
-    console.error("Error creating demo:", err);
-    toast.error("Failed to create demo party");
-  } finally {
-    setIsCreating(false);
-  }
+  // Alphabetize and filter
+  const sortedAndFiltered = useMemo(() => 
+    [...entrants]
+      .sort((a, b) => a.localeCompare(b))
+      .filter(name => name.toLowerCase().includes(searchQuery.toLowerCase())),
+    [entrants, searchQuery]
+  );
+  
+  // Show match start UI for #1 and #2 only
+  const showMatchStartUI = nextNumber <= 2 && !matchStarted;
+  
+  // ...render logic
+}
+```
+
+### Duration Calculation Fix
+
+Update `getDuration` in HostControl to handle null `entry_timestamp`:
+
+```typescript
+const getDuration = (entryTimestamp: string | null) => {
+  if (!entryTimestamp) return 0; // Not started yet
+  return Math.floor((Date.now() - new Date(entryTimestamp).getTime()) / 1000);
 };
 ```
 
-### Pick Generation Logic
+### Active Wrestler Display Update
 
-Each player needs 7 picks covering all card types:
+Show "Awaiting Start" instead of timer for wrestlers without `entry_timestamp`:
 
 ```typescript
-const generateDemoPicksForPlayers = async (playerIds: string[], partyCode: string) => {
-  const picks = [];
-  
-  // Get platform entrants for rumble winner picks
-  const mensEntrants = DEFAULT_MENS_ENTRANTS; // or fetch from platform_config
-  const womensEntrants = DEFAULT_WOMENS_ENTRANTS;
-  
-  for (const playerId of playerIds) {
-    // Undercard matches (3 picks)
-    UNDERCARD_MATCHES.forEach(match => {
-      picks.push({
-        player_id: playerId,
-        match_id: match.id,
-        prediction: match.options[Math.random() > 0.5 ? 0 : 1],
-      });
-    });
-    
-    // Men's Rumble Winner (1 pick)
-    picks.push({
-      player_id: playerId,
-      match_id: "mens_rumble_winner",
-      prediction: mensEntrants[Math.floor(Math.random() * mensEntrants.length)],
-    });
-    
-    // Women's Rumble Winner (1 pick)
-    picks.push({
-      player_id: playerId,
-      match_id: "womens_rumble_winner",
-      prediction: womensEntrants[Math.floor(Math.random() * womensEntrants.length)],
-    });
-    
-    // Men's Chaos Props (6 picks bundled as 1 card type)
-    CHAOS_PROPS.forEach((prop, i) => {
-      picks.push({
-        player_id: playerId,
-        match_id: `mens_chaos_prop_${i + 1}`,
-        prediction: Math.random() > 0.5 ? "yes" : "no",
-      });
-    });
-    
-    // Women's Chaos Props (6 picks bundled as 1 card type)
-    CHAOS_PROPS.forEach((prop, i) => {
-      picks.push({
-        player_id: playerId,
-        match_id: `womens_chaos_prop_${i + 1}`,
-        prediction: Math.random() > 0.5 ? "yes" : "no",
-      });
-    });
-  }
-  
-  await supabase.from("picks").insert(picks);
-};
+// In ActiveWrestlerCard or display logic
+{wrestler.entry_timestamp ? (
+  formatDuration(getDuration(wrestler.entry_timestamp))
+) : (
+  "Awaiting match start"
+)}
 ```
 
-## UI Design
+## Edge Cases
 
-### Demo Button Placement
+| Scenario | Handling |
+|----------|----------|
+| Host adds #1, #2, then clicks Start Match | Both get same timestamp (fair start) |
+| Host adds #1, starts match, then adds #2 | #2 gets current timestamp (arrived after start) |
+| Host adds #3+ before match started | Automatically uses current timestamp (match must have started) |
+| Surprise entrant name already exists | Show error toast "Wrestler already in list" |
+| Empty search query | Show all entrants alphabetically |
 
-```text
-+---------------------------+
-|      ROYAL RUMBLE         |
-|       2026 LOGO           |
-+---------------------------+
-|      [Countdown Timer]    |
-+---------------------------+
-|  [ 👑 Create Party ]      |  <-- Primary gold button
-+---------------------------+
-|  [ 👥 Join Party ]        |  <-- Secondary purple button
-+---------------------------+
-|                           |
-|   [ 🧪 Try Demo Mode ]    |  <-- Tertiary ghost/outline button
-|                           |
-|   No signup required      |
-+---------------------------+
-```
+## Benefits
 
-### Button Styling
-
-The demo button should be styled as a less prominent option:
-- Use `variant="ghost"` or `variant="outline"`
-- Smaller size (`size="default"` vs `size="xl"`)
-- Subtle icon like `Beaker` or `TestTube2` from Lucide
-
-## What Demo Mode Enables
-
-Once created, the demo party allows testing:
-
-1. **TV Display** - Shows 6 players on leaderboard, ready for number reveal
-2. **Host Setup** - All 6 guests appear with complete picks
-3. **Start Event** - Distributes numbers to all demo guests
-4. **Host Control** - Full scoring, eliminations, and celebrations
-5. **Player Dashboard** - Switch to player view via Quick Actions
-
-## PIN Handling
-
-For demo mode simplicity:
-- Auto-set host PIN to "0000" 
-- Store it in localStorage so host can access immediately
-- No need for PIN verification modal in demo flow
-
-## Implementation Steps
-
-1. Add demo guest names constant
-2. Create `generateDemoPicksForPlayers` utility function
-3. Add `handleDemoMode` handler in Index.tsx
-4. Add demo mode button to Index.tsx UI
-5. Auto-store demo PIN for instant host access
-
+1. **Fair Timing** - #1 and #2 don't have inflated durations due to entrance time
+2. **Easy Discovery** - Alphabetized list makes finding wrestlers quick
+3. **Fast Search** - Type-to-filter for instant lookup
+4. **Flexibility** - Surprise entrants can be added on the fly without pre-configuration
