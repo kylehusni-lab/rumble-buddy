@@ -1,344 +1,232 @@
 
+# Update Demo Mode Seeder for Complete Coverage
 
-# TV Display Enhancements: Rumble Winners + Props Views
+## Problem
 
-## Overview
+The demo seeder currently generates picks for:
+- 3 Undercard matches
+- 2 Rumble winners (Men's + Women's)
+- 12 Chaos Props (6 per Rumble)
 
-Two main changes to the TV display:
-1. **Show Rumble winners underneath the number grid** when declared
-2. **Add new views for Rumble Props** showing participant predictions for First Elimination, Most Eliminations, Iron Man/Woman, Final Four, and other props
+**Missing:** The new Rumble Props added recently:
+- First Elimination
+- Most Eliminations  
+- Longest Time (Iron Man/Woman)
+- #1 Entrant
+- #30 Entrant
+- Final Four (4 picks)
+- No-Show (YES/NO)
 
----
-
-## Change 1: Display Rumble Winner Under Number Grid
-
-### Current Behavior
-
-When viewing a Rumble grid, the winner result is only shown in a small text above the navigation ("Winner: [name]").
-
-### New Behavior
-
-When a Rumble winner is declared, display a prominent winner banner underneath the 30-number grid with:
-- Winner's photo (large)
-- Winner's name
-- Entry number
-- Owner name (player who had that number)
-
-### File Changes
-
-| File | Change |
-|------|--------|
-| `src/components/tv/TvViewNavigator.tsx` | Add winner display section below number grid |
-
-### Implementation
-
-Add a new section after the number grid in `renderNumberGrid`:
-
-```typescript
-const renderNumberGrid = (numbers: RumbleNumber[], title: string, rumbleId: string) => {
-  const activeCount = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length;
-  const winnerMatchId = rumbleId === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
-  const winnerResult = matchResults.find(r => r.match_id === winnerMatchId);
-  const winnerNumber = winnerResult 
-    ? numbers.find(n => n.wrestler_name === winnerResult.result)
-    : null;
-
-  return (
-    <div className="space-y-4">
-      {/* Existing header and grid */}
-      ...
-      
-      {/* Winner Display - show when declared */}
-      {winnerNumber && (
-        <motion.div className="mt-6 p-6 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-xl border-2 border-primary">
-          <div className="flex items-center justify-center gap-6">
-            <Crown className="w-10 h-10 text-primary" />
-            <WrestlerImage name={winnerNumber.wrestler_name!} size="lg" className="border-4 border-primary" />
-            <div className="text-left">
-              <div className="text-sm text-muted-foreground uppercase">Winner</div>
-              <div className="text-3xl font-bold text-primary">{winnerNumber.wrestler_name}</div>
-              <div className="text-lg text-muted-foreground">
-                Entry #{winnerNumber.number} - Owned by {getPlayerName(winnerNumber.assigned_to_player_id)}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </div>
-  );
-};
-```
+= **10 new predictions per Rumble × 2 Rumbles = 20 missing picks per player**
 
 ---
 
-## Change 2: Add Rumble Props View
+## Solution
 
-### New View Type
+Update `generateDemoPicksForPlayers` to include all Rumble Props.
 
-Add 2 new views to the navigator (one per Rumble) showing participant predictions for the Rumble Props.
+### File: `src/lib/demo-seeder.ts`
 
-### Updated VIEWS Array
+**Changes:**
+
+1. Import `RUMBLE_PROPS` and `FINAL_FOUR_SLOTS` from constants
+2. Add helper function to pick random unique wrestlers (for Final Four)
+3. Generate picks for each new prop type for both Men's and Women's Rumbles
+
+### New Pick Generation Logic
 
 ```typescript
-const VIEWS: View[] = [
-  { type: "undercard", id: "undercard_1", ... },
-  { type: "undercard", id: "undercard_2", ... },
-  { type: "undercard", id: "undercard_3", ... },
-  { type: "rumble", id: "mens", title: "Men's Royal Rumble" },
-  { type: "rumble-props", id: "mens_props", title: "Men's Rumble Props", gender: "mens" },  // NEW
-  { type: "rumble", id: "womens", title: "Women's Royal Rumble" },
-  { type: "rumble-props", id: "womens_props", title: "Women's Rumble Props", gender: "womens" },  // NEW
-];
+// Helper to get N unique random wrestlers
+function getRandomUniqueWrestlers(entrants: string[], count: number): string[] {
+  const shuffled = [...entrants].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+// For each player, add:
+
+// Men's Rumble Props (wrestler picks)
+['first_elimination', 'most_eliminations', 'longest_time', 'entrant_1', 'entrant_30'].forEach(propId => {
+  picks.push({
+    player_id: playerId,
+    match_id: `mens_${propId}`,
+    prediction: mensEntrants[Math.floor(Math.random() * mensEntrants.length)],
+  });
+});
+
+// Men's Final Four (4 unique wrestlers)
+const mensFinalFour = getRandomUniqueWrestlers(mensEntrants, 4);
+mensFinalFour.forEach((wrestler, i) => {
+  picks.push({
+    player_id: playerId,
+    match_id: `mens_final_four_${i + 1}`,
+    prediction: wrestler,
+  });
+});
+
+// Men's No-Show (YES/NO)
+picks.push({
+  player_id: playerId,
+  match_id: 'mens_no_show',
+  prediction: Math.random() > 0.5 ? 'YES' : 'NO',
+});
+
+// Repeat for Women's Rumble...
 ```
 
-**Total views: 7 (was 5)**
+---
 
-### New Component: RumblePropsDisplay
+## Pick Count Summary (per player)
 
-Create a new component to show participant predictions for Rumble props:
+| Category | Current | After Fix |
+|----------|---------|-----------|
+| Undercard matches | 3 | 3 |
+| Rumble winners | 2 | 2 |
+| Rumble Props (wrestler) | 0 | 10 |
+| Rumble Props (Final Four) | 0 | 8 |
+| Rumble Props (No-Show) | 0 | 2 |
+| Chaos Props | 12 | 12 |
+| **Total per player** | **17** | **37** |
 
-```text
-+--------------------------------------------------+
-|          MEN'S RUMBLE PREDICTIONS                |
-+--------------------------------------------------+
-|                                                  |
-|  FIRST ELIMINATION                               |
-|  +----------+  +----------+  +----------+        |
-|  |  Photo   |  |  Photo   |  |  Photo   |        |
-|  | CM Punk  |  | Rey M.   |  |  Gunther |        |
-|  |  John    |  |  Sarah   |  |   Mike   |        |
-|  +----------+  +----------+  +----------+        |
-|                                                  |
-|  MOST ELIMINATIONS                               |
-|  +----------+  +----------+  +----------+        |
-|  |  Photo   |  |  Photo   |  |  Photo   |        |
-|  | Bron B.  |  | Roman    |  |  Solo    |        |
-|  |  John    |  |  Sarah   |  |   Mike   |        |
-|  +----------+  +----------+  +----------+        |
-|                                                  |
-|  IRON MAN (Longest Time)                         |
-|  +----------+  +----------+  +----------+        |
-|  ...                                             |
-|                                                  |
-|  FINAL FOUR PICKS                                |
-|  Row showing each player's 4 picks               |
-|                                                  |
-+--------------------------------------------------+
-```
+With 6 players in demo mode: **222 total picks** (was 102)
 
-### Props to Display
+---
 
-| Prop | Match ID Pattern | Type |
-|------|------------------|------|
-| First Elimination | `{gender}_first_elimination` | Wrestler picks |
-| Most Eliminations | `{gender}_most_eliminations` | Wrestler picks |
-| Iron Man/Woman | `{gender}_longest_time` | Wrestler picks |
-| #1 Entrant | `{gender}_entrant_1` | Wrestler picks |
-| #30 Entrant | `{gender}_entrant_30` | Wrestler picks |
-| Final Four | `{gender}_final_four_1` through `_4` | 4 wrestlers per player |
-| No-Show | `{gender}_no_show` | YES/NO answers |
-
-### File Changes
+## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/components/tv/RumblePropsDisplay.tsx` | **NEW** - Component showing prop predictions |
-| `src/components/tv/TvViewNavigator.tsx` | Add new view type, import and render RumblePropsDisplay |
+| `src/lib/demo-seeder.ts` | Add Rumble Props generation for both genders |
 
 ---
 
 ## Implementation Details
 
-### File 1: `src/components/tv/RumblePropsDisplay.tsx` (NEW)
+### Updated `generateDemoPicksForPlayers` function:
 
 ```typescript
-interface RumblePropsDisplayProps {
-  gender: "mens" | "womens";
-  players: Player[];
-  picks: Pick[];
-  matchResults: MatchResult[];
-}
+export async function generateDemoPicksForPlayers(playerIds: string[]) {
+  const picks: Array<{
+    player_id: string;
+    match_id: string;
+    prediction: string;
+  }> = [];
 
-export function RumblePropsDisplay({ gender, players, picks, matchResults }: RumblePropsDisplayProps) {
-  // Get all picks for a specific prop
-  const getPicksForProp = (propId: string) => {
-    const matchId = `${gender}_${propId}`;
-    return players.map(player => {
-      const pick = picks.find(p => p.player_id === player.id && p.match_id === matchId);
-      return { player, prediction: pick?.prediction || null };
-    }).filter(p => p.prediction);
+  const mensEntrants = DEFAULT_MENS_ENTRANTS;
+  const womensEntrants = DEFAULT_WOMENS_ENTRANTS;
+
+  // Helper for unique random wrestlers
+  const getRandomUniqueWrestlers = (entrants: string[], count: number): string[] => {
+    const shuffled = [...entrants].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
   };
 
-  // Render a row of wrestler picks for a prop
-  const renderPropRow = (title: string, propId: string) => {
-    const propPicks = getPicksForProp(propId);
-    const result = matchResults.find(r => r.match_id === `${gender}_${propId}`);
-    
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold">{title}</h3>
-          {result && (
-            <span className="text-sm text-success">Winner: {result.result}</span>
-          )}
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {propPicks.map(({ player, prediction }) => (
-            <div key={player.id} className="flex-shrink-0 flex flex-col items-center">
-              <WrestlerImage name={prediction!} size="sm" 
-                className={prediction === result?.result ? "ring-2 ring-success" : ""} />
-              <span className="text-xs font-medium mt-1">{prediction}</span>
-              <span className="text-[10px] text-muted-foreground">{player.display_name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  for (const playerId of playerIds) {
+    // Undercard matches (3 picks)
+    UNDERCARD_MATCHES.forEach((match) => {
+      picks.push({
+        player_id: playerId,
+        match_id: match.id,
+        prediction: match.options[Math.random() > 0.5 ? 0 : 1],
+      });
+    });
 
-  // Render Final Four section
-  const renderFinalFour = () => {
-    // Get all 4 final four picks per player
-    const playerFinalFours = players.map(player => {
-      const fourPicks = [1, 2, 3, 4].map(i => {
-        const pick = picks.find(p => 
-          p.player_id === player.id && 
-          p.match_id === `${gender}_final_four_${i}`
-        );
-        return pick?.prediction || null;
-      }).filter(Boolean);
-      return { player, picks: fourPicks };
-    }).filter(p => p.picks.length > 0);
+    // Men's Rumble Winner (1 pick)
+    picks.push({
+      player_id: playerId,
+      match_id: "mens_rumble_winner",
+      prediction: mensEntrants[Math.floor(Math.random() * mensEntrants.length)],
+    });
 
-    return (
-      <div className="space-y-2">
-        <h3 className="text-lg font-bold">Final Four Picks</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {playerFinalFours.map(({ player, picks }) => (
-            <div key={player.id} className="bg-card/50 rounded-lg p-3">
-              <div className="text-sm font-semibold text-primary mb-2">{player.display_name}</div>
-              <div className="flex gap-2">
-                {picks.map((name, i) => (
-                  <WrestlerImage key={i} name={name} size="sm" />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+    // Women's Rumble Winner (1 pick)
+    picks.push({
+      player_id: playerId,
+      match_id: "womens_rumble_winner",
+      prediction: womensEntrants[Math.floor(Math.random() * womensEntrants.length)],
+    });
 
-  // Render No-Show prop (YES/NO)
-  const renderNoShow = () => {
-    const propPicks = getPicksForProp("no_show");
-    const result = matchResults.find(r => r.match_id === `${gender}_no_show`);
-    
-    const yesPicks = propPicks.filter(p => p.prediction === "YES");
-    const noPicks = propPicks.filter(p => p.prediction === "NO");
-    
-    return (
-      <div className="space-y-2">
-        <h3 className="text-lg font-bold">No-Show?</h3>
-        <div className="flex gap-4">
-          <div className="flex-1 bg-success/10 rounded-lg p-3 text-center">
-            <div className="text-success font-bold">YES ({yesPicks.length})</div>
-            <div className="text-xs text-muted-foreground">
-              {yesPicks.map(p => p.player.display_name).join(", ") || "No picks"}
-            </div>
-          </div>
-          <div className="flex-1 bg-destructive/10 rounded-lg p-3 text-center">
-            <div className="text-destructive font-bold">NO ({noPicks.length})</div>
-            <div className="text-xs text-muted-foreground">
-              {noPicks.map(p => p.player.display_name).join(", ") || "No picks"}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+    // Men's Rumble Props - wrestler selections (5 picks)
+    const mensWrestlerProps = ['first_elimination', 'most_eliminations', 'longest_time', 'entrant_1', 'entrant_30'];
+    mensWrestlerProps.forEach(propId => {
+      picks.push({
+        player_id: playerId,
+        match_id: `mens_${propId}`,
+        prediction: mensEntrants[Math.floor(Math.random() * mensEntrants.length)],
+      });
+    });
 
-  const title = gender === "mens" ? "Men's" : "Women's";
+    // Men's Final Four (4 unique picks)
+    const mensFinalFour = getRandomUniqueWrestlers(mensEntrants, 4);
+    mensFinalFour.forEach((wrestler, i) => {
+      picks.push({
+        player_id: playerId,
+        match_id: `mens_final_four_${i + 1}`,
+        prediction: wrestler,
+      });
+    });
 
-  return (
-    <div className="bg-card/50 border border-border rounded-2xl p-6 space-y-6">
-      <h2 className="text-2xl font-bold text-center">{title} Rumble Predictions</h2>
-      
-      {renderPropRow("First Elimination", "first_elimination")}
-      {renderPropRow("Most Eliminations", "most_eliminations")}
-      {renderPropRow("Iron " + (gender === "mens" ? "Man" : "Woman"), "longest_time")}
-      {renderPropRow("#1 Entrant", "entrant_1")}
-      {renderPropRow("#30 Entrant", "entrant_30")}
-      {renderFinalFour()}
-      {renderNoShow()}
-    </div>
-  );
-}
-```
+    // Men's No-Show prop (YES/NO)
+    picks.push({
+      player_id: playerId,
+      match_id: "mens_no_show",
+      prediction: Math.random() > 0.5 ? "YES" : "NO",
+    });
 
-### File 2: `src/components/tv/TvViewNavigator.tsx` Updates
+    // Women's Rumble Props - wrestler selections (5 picks)
+    const womensWrestlerProps = ['first_elimination', 'most_eliminations', 'longest_time', 'entrant_1', 'entrant_30'];
+    womensWrestlerProps.forEach(propId => {
+      picks.push({
+        player_id: playerId,
+        match_id: `womens_${propId}`,
+        prediction: womensEntrants[Math.floor(Math.random() * womensEntrants.length)],
+      });
+    });
 
-**Changes:**
+    // Women's Final Four (4 unique picks)
+    const womensFinalFour = getRandomUniqueWrestlers(womensEntrants, 4);
+    womensFinalFour.forEach((wrestler, i) => {
+      picks.push({
+        player_id: playerId,
+        match_id: `womens_final_four_${i + 1}`,
+        prediction: wrestler,
+      });
+    });
 
-1. Update View interface and VIEWS array to include `rumble-props` type
-2. Add `getPlayerName` helper (needs players prop)
-3. Update `renderNumberGrid` to accept rumble ID and show winner
-4. Add rendering for `rumble-props` view type
-5. Import Crown icon and RumblePropsDisplay component
+    // Women's No-Show prop (YES/NO)
+    picks.push({
+      player_id: playerId,
+      match_id: "womens_no_show",
+      prediction: Math.random() > 0.5 ? "YES" : "NO",
+    });
 
-**Key additions:**
+    // Men's Chaos Props (6 picks)
+    CHAOS_PROPS.forEach((_, i) => {
+      picks.push({
+        player_id: playerId,
+        match_id: `mens_chaos_prop_${i + 1}`,
+        prediction: Math.random() > 0.5 ? "YES" : "NO",
+      });
+    });
 
-```typescript
-// Update VIEWS array
-const VIEWS: View[] = [
-  { type: "undercard", id: "undercard_1", title: UNDERCARD_MATCHES[0].title, ... },
-  { type: "undercard", id: "undercard_2", title: UNDERCARD_MATCHES[1].title, ... },
-  { type: "undercard", id: "undercard_3", title: UNDERCARD_MATCHES[2].title, ... },
-  { type: "rumble", id: "mens", title: "Men's Royal Rumble" },
-  { type: "rumble-props", id: "mens_props", title: "Men's Rumble Props", gender: "mens" },
-  { type: "rumble", id: "womens", title: "Women's Royal Rumble" },
-  { type: "rumble-props", id: "womens_props", title: "Women's Rumble Props", gender: "womens" },
-];
+    // Women's Chaos Props (6 picks)
+    CHAOS_PROPS.forEach((_, i) => {
+      picks.push({
+        player_id: playerId,
+        match_id: `womens_chaos_prop_${i + 1}`,
+        prediction: Math.random() > 0.5 ? "YES" : "NO",
+      });
+    });
+  }
 
-// Update keyboard navigation range (1-7 instead of 1-5)
-} else if (e.key >= "1" && e.key <= "7") {
-
-// Add renderCurrentView case
-if (currentView.type === "rumble-props") {
-  return (
-    <RumblePropsDisplay
-      gender={currentView.gender as "mens" | "womens"}
-      players={players}
-      picks={picks}
-      matchResults={matchResults}
-    />
-  );
+  const { error } = await supabase.from("picks").insert(picks);
+  if (error) throw error;
 }
 ```
 
 ---
 
-## Summary of Changes
+## Testing
 
-| File | Type | Description |
-|------|------|-------------|
-| `src/components/tv/RumblePropsDisplay.tsx` | NEW | Component showing all player predictions for Rumble props |
-| `src/components/tv/TvViewNavigator.tsx` | EDIT | Add props views, winner display under grid, update navigation |
-
----
-
-## Visual Result
-
-**TV Navigator Views (7 total):**
-1. Undercard 1 (Drew vs Sami)
-2. Undercard 2 (Punk vs Seth)
-3. Undercard 3 (AJ vs Gunther)
-4. Men's Rumble Grid + Winner Banner
-5. Men's Rumble Props Predictions (NEW)
-6. Women's Rumble Grid + Winner Banner
-7. Women's Rumble Props Predictions (NEW)
-
-**Winner Display:** When a Rumble winner is declared, a prominent banner appears below the 30-number grid showing the winner's photo, name, entry number, and owner.
-
-**Props View:** Shows horizontally scrollable rows of participant predictions for each prop category, with wrestler photos and player names.
-
+After the update, creating a demo party should:
+1. Generate 37 picks per player (6 players = 222 total)
+2. TV Display Rumble Props view should show predictions for all props
+3. All Final Four sections should have 4 unique wrestlers per player
