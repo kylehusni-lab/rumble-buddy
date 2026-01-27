@@ -11,6 +11,7 @@ import { BottomNavBar, TabId, TabBadge } from "@/components/dashboard/BottomNavB
 import { NumbersSection } from "@/components/dashboard/NumbersSection";
 import { MatchesSection } from "@/components/dashboard/MatchesSection";
 import { RumblePropsSection } from "@/components/dashboard/RumblePropsSection";
+import { cn } from "@/lib/utils";
 // Match ID groupings for each tab (chaos props now included in mens/womens)
 const TAB_MATCH_IDS: Record<Exclude<TabId, "numbers">, string[]> = {
   matches: ['undercard_1', 'undercard_2', 'undercard_3', 'mens_rumble_winner', 'womens_rumble_winner'],
@@ -436,30 +437,36 @@ export default function PlayerDashboard() {
       </AnimatePresence>
 
       <div className="min-h-screen pb-24">
-        {/* Header with persistent points */}
-        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
+        {/* Header with persistent points - Enhanced with gradient and rank badges */}
+        <div className="sticky top-0 z-20 header-gradient backdrop-blur border-b border-border/50 ring-rope-texture">
           <div className="flex items-center justify-between p-4 max-w-lg mx-auto">
             <button
               onClick={() => navigate("/")}
-              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+              className="text-muted-foreground hover:text-foreground transition-colors p-2 -m-1 rounded-lg hover:bg-muted/50"
             >
-              <ArrowLeft size={24} />
+              <ArrowLeft size={22} />
             </button>
-            <div className="text-center flex-1 min-w-0 px-2">
-              <div className="text-sm text-muted-foreground">Party {code}</div>
-              <div className="font-bold truncate">{session?.displayName}</div>
+            <div className="text-center flex-1 min-w-0 px-3">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">Party {code}</div>
+              <div className="font-bold truncate text-[15px]">{session?.displayName}</div>
             </div>
             <div className="text-right">
               <motion.div 
                 key={playerPoints}
                 initial={{ scale: 1.2 }}
                 animate={{ scale: 1 }}
-                className="text-2xl font-black text-primary"
+                className="text-2xl font-black text-gradient-gold"
               >
                 {playerPoints}
               </motion.div>
-              <div className="text-xs text-muted-foreground">
-                {playerRank ? `#${playerRank} of ${totalPlayers}` : "pts"}
+              <div className={cn(
+                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5",
+                playerRank === 1 && "rank-badge-1 text-primary-foreground",
+                playerRank === 2 && "rank-badge-2 text-primary-foreground",
+                playerRank === 3 && "rank-badge-3 text-white",
+                playerRank && playerRank > 3 && "bg-muted text-muted-foreground"
+              )}>
+                #{playerRank} of {totalPlayers}
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, ChevronDown, Zap } from "lucide-react";
+import { Check, X, ChevronDown, Zap, Target } from "lucide-react";
 import { RUMBLE_PROPS, SCORING, FINAL_FOUR_SLOTS, CHAOS_PROPS } from "@/lib/constants";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
@@ -34,20 +34,42 @@ function PickRow({
   points: number;
 }) {
   return (
-    <div className="p-3 flex items-center justify-between">
+    <div className={cn(
+      "p-4 flex items-center justify-between gap-3 pick-row-interactive",
+      isCorrect === true && "status-correct-glow bg-success/5",
+      isCorrect === false && "bg-destructive/5"
+    )}>
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-muted-foreground">{label}</div>
-        <div className="font-medium truncate">{prediction || "No pick"}</div>
+        <div className="text-xs font-medium uppercase tracking-wide mb-0.5 text-muted-foreground">
+          {label}
+        </div>
+        <div className={cn(
+          "font-semibold text-[15px] truncate",
+          isCorrect === true && "text-success",
+          isCorrect === false && "text-destructive/80 line-through"
+        )}>
+          {prediction || <span className="text-muted-foreground italic">No pick</span>}
+        </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+      
+      {/* Result indicator */}
+      <div className="flex items-center gap-2 flex-shrink-0">
         {isCorrect === true && (
-          <>
-            <Check size={18} className="text-success" />
-            <span className="text-success text-sm font-medium">+{points}</span>
-          </>
+          <div className="flex items-center gap-1.5 point-badge px-2.5 py-1 rounded-full">
+            <Check size={14} className="text-white" />
+            <span className="text-white text-sm font-bold">+{points}</span>
+          </div>
         )}
-        {isCorrect === false && <X size={18} className="text-destructive" />}
-        {isCorrect === null && <span className="text-xs text-muted-foreground">pending</span>}
+        {isCorrect === false && (
+          <div className="w-8 h-8 rounded-full bg-destructive/20 flex items-center justify-center">
+            <X size={16} className="text-destructive" />
+          </div>
+        )}
+        {isCorrect === null && (
+          <div className="px-2.5 py-1 rounded-full bg-muted/50 text-muted-foreground text-xs font-medium">
+            Pending
+          </div>
+        )}
       </div>
     </div>
   );
@@ -127,59 +149,65 @@ export function RumblePropsSection({ picks, results, gender }: RumblePropsSectio
       className="space-y-4"
     >
       {/* Main Props */}
-      <div className="bg-card border border-border rounded-xl divide-y divide-border">
-        <div className="px-3 py-2 bg-muted/50 rounded-t-xl">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+      <div className="card-gradient border border-border/80 rounded-2xl shadow-premium overflow-hidden">
+        <div className="section-header ring-rope-texture">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Target size={14} className="text-primary" />
             {emoji} {title} Rumble Props
           </h3>
         </div>
-        {mainProps.map((prop) => {
-          const matchId = `${prefix}_${prop.id}`;
-          const pick = picks.find(p => p.match_id === matchId);
-          return (
-            <PickRow
-              key={matchId}
-              label={prop.title}
-              prediction={pick?.prediction || ""}
-              isCorrect={getPickResult(matchId)}
-              points={getPropScore(prop.id)}
-            />
-          );
-        })}
+        <div className="divide-y divide-border/50">
+          {mainProps.map((prop) => {
+            const matchId = `${prefix}_${prop.id}`;
+            const pick = picks.find(p => p.match_id === matchId);
+            return (
+              <PickRow
+                key={matchId}
+                label={prop.title}
+                prediction={pick?.prediction || ""}
+                isCorrect={getPickResult(matchId)}
+                points={getPropScore(prop.id)}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* Final Four */}
-      <div className="bg-card border border-border rounded-xl divide-y divide-border">
-        <div className="px-3 py-2 bg-muted/50 rounded-t-xl">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+      <div className="card-gradient-purple border border-secondary/30 rounded-2xl shadow-premium overflow-hidden">
+        <div className="section-header border-secondary/20">
+          <h3 className="text-sm font-bold text-secondary-foreground flex items-center gap-2">
+            <span className="text-base">🏅</span>
             {emoji} Final Four Predictions
           </h3>
         </div>
-        {finalFourPicks.map((pick, i) => {
-          const matchId = `${prefix}_final_four_${i + 1}`;
-          return (
-            <PickRow
-              key={matchId}
-              label={`Final Four #${i + 1}`}
-              prediction={pick?.prediction || ""}
-              isCorrect={getPickResult(matchId)}
-              points={SCORING.FINAL_FOUR_PICK}
-            />
-          );
-        })}
+        <div className="divide-y divide-secondary/20">
+          {finalFourPicks.map((pick, i) => {
+            const matchId = `${prefix}_final_four_${i + 1}`;
+            return (
+              <PickRow
+                key={matchId}
+                label={`Final Four #${i + 1}`}
+                prediction={pick?.prediction || ""}
+                isCorrect={getPickResult(matchId)}
+                points={SCORING.FINAL_FOUR_PICK}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* Chaos Props - Collapsible */}
       <Collapsible open={chaosOpen} onOpenChange={setChaosOpen}>
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <CollapsibleTrigger className="w-full px-3 py-2 bg-muted/50 flex items-center justify-between hover:bg-muted/70 transition-colors">
+        <div className="card-gradient-gold border border-primary/30 rounded-2xl shadow-premium overflow-hidden">
+          <CollapsibleTrigger className="w-full section-header border-primary/20 flex items-center justify-between hover:bg-primary/5 transition-colors">
             <div className="flex items-center gap-2">
-              <Zap size={14} className="text-amber-500" />
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <Zap size={14} className="text-amber-400" />
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
                 {emoji} Chaos Props
               </h3>
               {chaosStats.correct > 0 && (
-                <span className="flex items-center gap-0.5 text-[10px] font-bold text-success bg-success/20 px-1.5 py-0.5 rounded-full">
+                <span className="flex items-center gap-0.5 text-[10px] font-bold text-white point-badge px-1.5 py-0.5 rounded-full">
                   <Check size={10} />
                   {chaosStats.correct}
                 </span>
@@ -199,7 +227,7 @@ export function RumblePropsSection({ picks, results, gender }: RumblePropsSectio
             />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-primary/20">
               {chaosPicksData.map(({ prop, matchId, pick }) => (
                 <PickRow
                   key={matchId}

@@ -33,7 +33,7 @@ export function BottomNavBar({ activeTab, onTabChange, showNumbers = false, badg
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur border-t border-border"
+      className="fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-background via-background to-background/95 backdrop-blur border-t border-border/50"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="max-w-lg mx-auto flex items-center justify-around h-16">
@@ -55,14 +55,14 @@ export function BottomNavBar({ activeTab, onTabChange, showNumbers = false, badg
               )}
             >
               <div className={cn(
-                "relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors",
-                isActive && "bg-primary/10"
+                "relative flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-200",
+                isActive && "bg-primary/15 nav-active-glow"
               )}>
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                 
                 {/* Badge indicator */}
                 {badge && badge.correct > 0 && (
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-success text-success-foreground text-[10px] font-bold">
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full point-badge text-white text-[10px] font-bold">
                     <Check size={10} className="mr-0.5" />
                     {badge.correct}
                   </span>
