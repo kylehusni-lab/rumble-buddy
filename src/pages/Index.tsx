@@ -5,6 +5,7 @@ import { Users, Crown, Tv, Calendar, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { JoinPartyModal } from "@/components/JoinPartyModal";
+import { LegalFooter } from "@/components/LegalFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
 import { EVENT_CONFIG } from "@/lib/constants";
@@ -259,6 +260,8 @@ export default function Index() {
         isOpen={isJoinModalOpen}
         onClose={() => setIsJoinModalOpen(false)}
       />
+
+      <LegalFooter />
     </div>
   );
 }

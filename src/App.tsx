@@ -14,6 +14,7 @@ import HostControl from "./pages/HostControl";
 import TvDisplay from "./pages/TvDisplay";
 import PlatformAdmin from "./pages/PlatformAdmin";
 import PlatformAdminVerify from "./pages/PlatformAdminVerify";
+import Legal from "./pages/Legal";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/tv/:code" element={<TvDisplay />} />
           <Route path="/platform-admin" element={<PlatformAdmin />} />
           <Route path="/platform-admin/verify" element={<PlatformAdminVerify />} />
+          <Route path="/legal" element={<Legal />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
