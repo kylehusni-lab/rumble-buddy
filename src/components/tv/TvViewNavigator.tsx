@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActiveMatchDisplay } from "./ActiveMatchDisplay";
 import { NumberCell } from "./NumberCell";
 import { ParticipantPicksView } from "./ParticipantPicksView";
+import { RumblePropsDisplay } from "./RumblePropsDisplay";
+import { WrestlerImage } from "./WrestlerImage";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 
 interface MatchResult {
@@ -41,13 +43,14 @@ interface TvViewNavigatorProps {
   getNumberStatus: (num: RumbleNumber) => "pending" | "active" | "eliminated";
 }
 
-type ViewType = "undercard" | "rumble";
+type ViewType = "undercard" | "rumble" | "rumble-props";
 
 interface View {
   type: ViewType;
   id: string;
   title: string;
   options?: readonly [string, string];
+  gender?: "mens" | "womens";
 }
 
 const VIEWS: View[] = [
@@ -55,7 +58,9 @@ const VIEWS: View[] = [
   { type: "undercard", id: "undercard_2", title: UNDERCARD_MATCHES[1].title, options: UNDERCARD_MATCHES[1].options },
   { type: "undercard", id: "undercard_3", title: UNDERCARD_MATCHES[2].title, options: UNDERCARD_MATCHES[2].options },
   { type: "rumble", id: "mens", title: "Men's Royal Rumble" },
+  { type: "rumble-props", id: "mens_props", title: "Men's Rumble Props", gender: "mens" },
   { type: "rumble", id: "womens", title: "Women's Royal Rumble" },
+  { type: "rumble-props", id: "womens_props", title: "Women's Rumble Props", gender: "womens" },
 ];
 
 export function TvViewNavigator({
@@ -114,6 +119,13 @@ export function TvViewNavigator({
     }
   }, [matchResults, isViewComplete]);
 
+  // Helper to get player name
+  const getPlayerName = useCallback((playerId: string | null): string => {
+    if (!playerId) return "Unassigned";
+    const player = players.find(p => p.id === playerId);
+    return player?.display_name || "Unknown";
+  }, [players]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -121,10 +133,12 @@ export function TvViewNavigator({
         goToPrevious();
       } else if (e.key === "ArrowRight") {
         goToNext();
-      } else if (e.key >= "1" && e.key <= "5") {
+      } else if (e.key >= "1" && e.key <= "7") {
         const index = parseInt(e.key) - 1;
-        setDirection(index > currentViewIndex ? 1 : -1);
-        setCurrentViewIndex(index);
+        if (index < VIEWS.length) {
+          setDirection(index > currentViewIndex ? 1 : -1);
+          setCurrentViewIndex(index);
+        }
       }
     };
 
@@ -144,8 +158,13 @@ export function TvViewNavigator({
 
   const currentView = VIEWS[currentViewIndex];
 
-  const renderNumberGrid = (numbers: RumbleNumber[], title: string) => {
+  const renderNumberGrid = (numbers: RumbleNumber[], title: string, rumbleId: string) => {
     const activeCount = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length;
+    const winnerMatchId = rumbleId === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
+    const winnerResult = matchResults.find(r => r.match_id === winnerMatchId);
+    const winnerNumber = winnerResult 
+      ? numbers.find(n => n.wrestler_name === winnerResult.result)
+      : null;
 
     return (
       <div className="space-y-4">
@@ -165,6 +184,31 @@ export function TvViewNavigator({
             />
           ))}
         </div>
+        
+        {/* Winner Display - show when declared */}
+        {winnerNumber && winnerNumber.wrestler_name && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 p-6 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-xl border-2 border-primary"
+          >
+            <div className="flex items-center justify-center gap-6">
+              <Crown className="w-10 h-10 text-primary flex-shrink-0" />
+              <WrestlerImage 
+                name={winnerNumber.wrestler_name} 
+                size="lg" 
+                className="border-4 border-primary flex-shrink-0" 
+              />
+              <div className="text-left">
+                <div className="text-sm text-muted-foreground uppercase tracking-wide">Winner</div>
+                <div className="text-3xl font-bold text-primary">{winnerNumber.wrestler_name}</div>
+                <div className="text-lg text-muted-foreground">
+                  Entry #{winnerNumber.number} • Owned by {getPlayerName(winnerNumber.assigned_to_player_id)}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
     );
   };
@@ -184,7 +228,18 @@ export function TvViewNavigator({
 
     if (currentView.type === "rumble") {
       const numbers = currentView.id === "mens" ? mensNumbers : womensNumbers;
-      return renderNumberGrid(numbers, currentView.title);
+      return renderNumberGrid(numbers, currentView.title, currentView.id);
+    }
+
+    if (currentView.type === "rumble-props" && currentView.gender) {
+      return (
+        <RumblePropsDisplay
+          gender={currentView.gender}
+          players={players}
+          picks={picks}
+          matchResults={matchResults}
+        />
+      );
     }
 
     return null;
