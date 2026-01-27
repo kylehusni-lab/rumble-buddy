@@ -31,9 +31,14 @@ export function RumbleWinnerCard({
   const defaultEntrants = gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS;
   const entrants = customEntrants && customEntrants.length > 0 ? customEntrants : defaultEntrants;
   
-  const filteredEntrants = entrants.filter(name =>
-    name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter and alphabetize, keeping "Surprise/Other Entrant" at the end
+  const filteredEntrants = entrants
+    .filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (a.includes("Surprise")) return 1;
+      if (b.includes("Surprise")) return -1;
+      return a.localeCompare(b);
+    });
 
   const handleSelect = (wrestler: string) => {
     if (disabled) return;

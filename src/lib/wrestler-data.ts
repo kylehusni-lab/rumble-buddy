@@ -1,5 +1,4 @@
-// Wrestler data with WWE.com official images
-// Note: URLs may change if WWE updates their website
+// Wrestler data with local assets and WWE.com fallback images
 
 import romanReignsImage from '@/assets/wrestlers/roman-reigns.png';
 import brockLesnarImage from '@/assets/wrestlers/brock-lesnar.png';
@@ -61,6 +60,10 @@ import obaFemiImage from '@/assets/wrestlers/oba-femi.png';
 import trickWilliamsImage from '@/assets/wrestlers/trick-williams.png';
 import zackRyderImage from '@/assets/wrestlers/zack-ryder.png';
 import chadGableImage from '@/assets/wrestlers/chad-gable.png';
+import bronsonReedImage from '@/assets/wrestlers/bronson-reed.png';
+import bronBreakkerImage from '@/assets/wrestlers/bron-breakker.png';
+import codyRhodesImage from '@/assets/wrestlers/cody-rhodes.png';
+import austinTheoryImage from '@/assets/wrestlers/austin-theory.png';
 
 export interface WrestlerData {
   name: string;
@@ -68,7 +71,7 @@ export interface WrestlerData {
   gender: 'male' | 'female';
 }
 
-// WWE CDN base URL
+// WWE CDN base URL (fallback for wrestlers without local images)
 const WWE_CDN = 'https://www.wwe.com/f/styles/wwe_1_1_540/public';
 
 // Generate fallback avatar URL for a wrestler
@@ -77,77 +80,80 @@ export function getPlaceholderImageUrl(name: string): string {
   return `https://ui-avatars.com/api/?name=${encodedName}&background=D4AF37&color=0A0A0A&size=100&bold=true`;
 }
 
-// Default male wrestlers with WWE profile images
+// Default male wrestlers with local images (alphabetized, Surprise at end)
 export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
-  { name: 'Roman Reigns', imageUrl: romanReignsImage, gender: 'male' },
-  { name: 'Cody Rhodes', imageUrl: `${WWE_CDN}/2025/04/Cody_Rhodes_Profile.png`, gender: 'male' },
-  { name: 'Gunther', imageUrl: guntherImage, gender: 'male' },
-  { name: 'Jey Uso', imageUrl: jeyUsoImage, gender: 'male' },
-  { name: 'Solo Sikoa', imageUrl: soloSikoaImage, gender: 'male' },
-  { name: 'Jacob Fatu', imageUrl: jacobFatuImage, gender: 'male' },
-  { name: 'Rey Mysterio', imageUrl: reyMysterioImage, gender: 'male' },
-  { name: 'Dragon Lee', imageUrl: dragonLeeImage, gender: 'male' },
-  { name: 'Penta', imageUrl: pentaImage, gender: 'male' },
+  { name: 'AJ Styles', imageUrl: ajStylesImage, gender: 'male' },
+  { name: 'Aleister Black', imageUrl: aleisterBlackImage, gender: 'male' },
+  { name: 'Austin Theory', imageUrl: austinTheoryImage, gender: 'male' },
+  { name: 'Brock Lesnar', imageUrl: brockLesnarImage, gender: 'male' },
+  { name: 'Bron Breakker', imageUrl: bronBreakkerImage, gender: 'male' },
+  { name: 'Bronson Reed', imageUrl: bronsonReedImage, gender: 'male' },
+  { name: 'Carmelo Hayes', imageUrl: carmeloHayesImage, gender: 'male' },
+  { name: 'Chad Gable', imageUrl: chadGableImage, gender: 'male' },
   { name: 'CM Punk', imageUrl: `${WWE_CDN}/2025/11/CMPUNK_PROFILE.png`, gender: 'male' },
+  { name: 'Cody Rhodes', imageUrl: codyRhodesImage, gender: 'male' },
+  { name: 'Damian Priest', imageUrl: damianPriestImage, gender: 'male' },
+  { name: 'Dominik Mysterio', imageUrl: dominikMysterioImage, gender: 'male' },
+  { name: 'Dragon Lee', imageUrl: dragonLeeImage, gender: 'male' },
   { name: 'Drew McIntyre', imageUrl: `${WWE_CDN}/all/2021/09/Drew_Mcintyre_Profile--aca391095fe74e721e098cadc93571d3.png`, gender: 'male' },
+  { name: 'El Grande Gordo', imageUrl: elGrandeGordoImage, gender: 'male' },
+  { name: 'Finn Balor', imageUrl: finnBalorImage, gender: 'male' },
+  { name: 'Gunther', imageUrl: guntherImage, gender: 'male' },
+  { name: 'Ilja Dragunov', imageUrl: iljaDragunovImage, gender: 'male' },
+  { name: 'Jacob Fatu', imageUrl: jacobFatuImage, gender: 'male' },
+  { name: 'Jey Uso', imageUrl: jeyUsoImage, gender: 'male' },
+  { name: 'Joe Hendry', imageUrl: joeHendryImage, gender: 'male' },
+  { name: 'Kofi Kingston', imageUrl: kofiKingstonImage, gender: 'male' },
+  { name: 'LA Knight', imageUrl: laKnightImage, gender: 'male' },
+  { name: 'Logan Paul', imageUrl: loganPaulImage, gender: 'male' },
+  { name: 'Montez Ford', imageUrl: montezFordImage, gender: 'male' },
+  { name: 'Oba Femi', imageUrl: obaFemiImage, gender: 'male' },
+  { name: 'Penta', imageUrl: pentaImage, gender: 'male' },
+  { name: 'R-Truth', imageUrl: rTruthImage, gender: 'male' },
   { name: 'Randy Orton', imageUrl: randyOrtonImage, gender: 'male' },
-  { name: 'Trick Williams', imageUrl: trickWilliamsImage, gender: 'male' },
+  { name: 'Rey Fenix', imageUrl: reyFenixImage, gender: 'male' },
+  { name: 'Rey Mysterio', imageUrl: reyMysterioImage, gender: 'male' },
+  { name: 'Roman Reigns', imageUrl: romanReignsImage, gender: 'male' },
+  { name: 'Rusev', imageUrl: rusevImage, gender: 'male' },
   { name: 'Sami Zayn', imageUrl: samiZaynImage, gender: 'male' },
   { name: 'Seth Rollins', imageUrl: sethRollinsImage, gender: 'male' },
-  { name: 'Damian Priest', imageUrl: damianPriestImage, gender: 'male' },
-  { name: 'Logan Paul', imageUrl: loganPaulImage, gender: 'male' },
-  { name: 'Brock Lesnar', imageUrl: brockLesnarImage, gender: 'male' },
-  { name: 'Joe Hendry', imageUrl: joeHendryImage, gender: 'male' },
-  { name: 'AJ Styles', imageUrl: ajStylesImage, gender: 'male' },
-  { name: 'Dominik Mysterio', imageUrl: dominikMysterioImage, gender: 'male' },
-  { name: 'Carmelo Hayes', imageUrl: carmeloHayesImage, gender: 'male' },
-  { name: 'Aleister Black', imageUrl: aleisterBlackImage, gender: 'male' },
-  { name: 'Finn Balor', imageUrl: finnBalorImage, gender: 'male' },
-  { name: 'Ilja Dragunov', imageUrl: iljaDragunovImage, gender: 'male' },
-  { name: 'LA Knight', imageUrl: laKnightImage, gender: 'male' },
-  { name: 'Kofi Kingston', imageUrl: kofiKingstonImage, gender: 'male' },
-  { name: 'El Grande Gordo', imageUrl: elGrandeGordoImage, gender: 'male' },
-  { name: 'Montez Ford', imageUrl: montezFordImage, gender: 'male' },
-  { name: 'R-Truth', imageUrl: rTruthImage, gender: 'male' },
-  { name: 'Rey Fenix', imageUrl: reyFenixImage, gender: 'male' },
-  { name: 'Rusev', imageUrl: rusevImage, gender: 'male' },
   { name: 'Sheamus', imageUrl: sheamusImage, gender: 'male' },
   { name: 'Shinsuke Nakamura', imageUrl: shinsukeNakamuraImage, gender: 'male' },
+  { name: 'Solo Sikoa', imageUrl: soloSikoaImage, gender: 'male' },
   { name: 'The Miz', imageUrl: theMizImage, gender: 'male' },
+  { name: 'Trick Williams', imageUrl: trickWilliamsImage, gender: 'male' },
   { name: 'Xavier Woods', imageUrl: xavierWoodsImage, gender: 'male' },
-  { name: 'Oba Femi', imageUrl: obaFemiImage, gender: 'male' },
   { name: 'Zack Ryder', imageUrl: zackRyderImage, gender: 'male' },
-  { name: 'Chad Gable', imageUrl: chadGableImage, gender: 'male' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'male' },
 ];
 
-// Default female wrestlers with WWE profile images
+// Default female wrestlers with local images (alphabetized, Surprise at end)
 export const DEFAULT_FEMALE_WRESTLERS: WrestlerData[] = [
-  { name: 'Liv Morgan', imageUrl: livMorganImage, gender: 'female' },
-  { name: 'Rhea Ripley', imageUrl: rheaRipleyImage, gender: 'female' },
-  { name: 'IYO SKY', imageUrl: iyoSkyImage, gender: 'female' },
-  { name: 'Charlotte Flair', imageUrl: charlotteFlairImage, gender: 'female' },
-  { name: 'Bayley', imageUrl: bayleyImage, gender: 'female' },
-  { name: 'Asuka', imageUrl: asukaImage, gender: 'female' },
-  { name: 'Giulia', imageUrl: `${WWE_CDN}/2026/01/guilia_PROFILE.png`, gender: 'female' },
-  { name: 'Jordynne Grace', imageUrl: jordynneGraceImage, gender: 'female' },
   { name: 'Alexa Bliss', imageUrl: alexaBlissImage, gender: 'female' },
-  { name: 'Nia Jax', imageUrl: niaJaxImage, gender: 'female' },
-  { name: 'Roxanne Perez', imageUrl: `${WWE_CDN}/2025/11/Roxanne_Perez_Profile.png`, gender: 'female' },
-  { name: 'Raquel Rodriguez', imageUrl: raquelRodriguezImage, gender: 'female' },
-  { name: 'Lyra Valkyria', imageUrl: `${WWE_CDN}/2025/11/Lyra_Valkyria_Profile.png`, gender: 'female' },
-  { name: 'Lash Legend', imageUrl: lashLegendImage, gender: 'female' },
-  { name: 'Chelsea Green', imageUrl: chelseaGreenImage, gender: 'female' },
+  { name: 'Asuka', imageUrl: asukaImage, gender: 'female' },
+  { name: 'B-Fab', imageUrl: bFabImage, gender: 'female' },
+  { name: 'Bayley', imageUrl: bayleyImage, gender: 'female' },
   { name: 'Becky Lynch', imageUrl: beckyLynchImage, gender: 'female' },
   { name: 'Bianca Belair', imageUrl: biancaBelairImage, gender: 'female' },
   { name: 'Candice LeRae', imageUrl: candiceLeRaeImage, gender: 'female' },
-  { name: 'B-Fab', imageUrl: bFabImage, gender: 'female' },
+  { name: 'Charlotte Flair', imageUrl: charlotteFlairImage, gender: 'female' },
+  { name: 'Chelsea Green', imageUrl: chelseaGreenImage, gender: 'female' },
+  { name: 'Giulia', imageUrl: `${WWE_CDN}/2026/01/guilia_PROFILE.png`, gender: 'female' },
+  { name: 'IYO SKY', imageUrl: iyoSkyImage, gender: 'female' },
+  { name: 'Jordynne Grace', imageUrl: jordynneGraceImage, gender: 'female' },
   { name: 'Kairi Sane', imageUrl: kairiSaneImage, gender: 'female' },
+  { name: 'Lash Legend', imageUrl: lashLegendImage, gender: 'female' },
+  { name: 'Liv Morgan', imageUrl: livMorganImage, gender: 'female' },
+  { name: 'Lyra Valkyria', imageUrl: `${WWE_CDN}/2025/11/Lyra_Valkyria_Profile.png`, gender: 'female' },
   { name: 'Maxxine Dupri', imageUrl: maxxineDupriImage, gender: 'female' },
   { name: 'Michin', imageUrl: michinImage, gender: 'female' },
   { name: 'Natalya', imageUrl: natalyaImage, gender: 'female' },
+  { name: 'Nia Jax', imageUrl: niaJaxImage, gender: 'female' },
   { name: 'Nikki Bella', imageUrl: nikkiBellaImage, gender: 'female' },
   { name: 'Nikki Cross', imageUrl: nikkiCrossImage, gender: 'female' },
+  { name: 'Raquel Rodriguez', imageUrl: raquelRodriguezImage, gender: 'female' },
+  { name: 'Rhea Ripley', imageUrl: rheaRipleyImage, gender: 'female' },
+  { name: 'Roxanne Perez', imageUrl: `${WWE_CDN}/2025/11/Roxanne_Perez_Profile.png`, gender: 'female' },
   { name: 'Sol Ruca', imageUrl: solRucaImage, gender: 'female' },
   { name: 'Tiffany Stratton', imageUrl: tiffanyStrattonImage, gender: 'female' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'female' },
