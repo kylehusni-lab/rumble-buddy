@@ -3,6 +3,15 @@
 
 import samiZaynImage from '@/assets/wrestlers/sami-zayn.webp';
 import romanReignsImage from '@/assets/wrestlers/roman-reigns.png';
+import brockLesnarImage from '@/assets/wrestlers/brock-lesnar.png';
+import damianPriestImage from '@/assets/wrestlers/damian-priest.png';
+import guntherImage from '@/assets/wrestlers/gunther.png';
+import joeHendryImage from '@/assets/wrestlers/joe-hendry.png';
+import loganPaulImage from '@/assets/wrestlers/logan-paul.png';
+import ajStylesImage from '@/assets/wrestlers/aj-styles.png';
+import jeyUsoImage from '@/assets/wrestlers/jey-uso.png';
+import dominikMysterioImage from '@/assets/wrestlers/dominik-mysterio.png';
+import carmeloHayesImage from '@/assets/wrestlers/carmelo-hayes.png';
 
 export interface WrestlerData {
   name: string;
@@ -23,8 +32,8 @@ export function getPlaceholderImageUrl(name: string): string {
 export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'Roman Reigns', imageUrl: romanReignsImage, gender: 'male' },
   { name: 'Cody Rhodes', imageUrl: `${WWE_CDN}/2025/04/Cody_Rhodes_Profile.png`, gender: 'male' },
-  { name: 'Gunther', imageUrl: `${WWE_CDN}/2025/08/GUNTHER_Profile.png`, gender: 'male' },
-  { name: 'Jey Uso', imageUrl: `${WWE_CDN}/2025/12/20251229_usos_worldtag.png`, gender: 'male' },
+  { name: 'Gunther', imageUrl: guntherImage, gender: 'male' },
+  { name: 'Jey Uso', imageUrl: jeyUsoImage, gender: 'male' },
   { name: 'Solo Sikoa', imageUrl: `${WWE_CDN}/2025/11/Solo_Sikoa_Profile.png`, gender: 'male' },
   { name: 'Jacob Fatu', imageUrl: `${WWE_CDN}/2025/11/Jacob_Fatu_Profile.png`, gender: 'male' },
   { name: 'Rey Mysterio', imageUrl: `${WWE_CDN}/2025/04/Rey_Mysterio_Profile.png`, gender: 'male' },
@@ -36,6 +45,13 @@ export const DEFAULT_MALE_WRESTLERS: WrestlerData[] = [
   { name: 'Trick Williams', imageUrl: `${WWE_CDN}/2025/11/Trick_Williams_Profile.png`, gender: 'male' },
   { name: 'Sami Zayn', imageUrl: samiZaynImage, gender: 'male' },
   { name: 'Seth Rollins', imageUrl: `${WWE_CDN}/2025/11/Seth_Rollins_Profile.png`, gender: 'male' },
+  { name: 'Damian Priest', imageUrl: damianPriestImage, gender: 'male' },
+  { name: 'Logan Paul', imageUrl: loganPaulImage, gender: 'male' },
+  { name: 'Brock Lesnar', imageUrl: brockLesnarImage, gender: 'male' },
+  { name: 'Joe Hendry', imageUrl: joeHendryImage, gender: 'male' },
+  { name: 'AJ Styles', imageUrl: ajStylesImage, gender: 'male' },
+  { name: 'Dominik Mysterio', imageUrl: dominikMysterioImage, gender: 'male' },
+  { name: 'Carmelo Hayes', imageUrl: carmeloHayesImage, gender: 'male' },
   { name: 'Surprise/Other Entrant', imageUrl: getPlaceholderImageUrl('Surprise'), gender: 'male' },
 ];
 
