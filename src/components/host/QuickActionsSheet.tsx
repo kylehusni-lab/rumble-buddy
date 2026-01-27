@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Tv, Copy, ClipboardList, Hash, LogOut } from "lucide-react";
+import { Tv, Copy, ClipboardList, Hash, LogOut, Trophy, Edit3 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -7,7 +7,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { clearPlayerSession } from "@/lib/session";
+import { clearPlayerSession, getPlayerSession } from "@/lib/session";
 
 interface QuickActionsSheetProps {
   open: boolean;
@@ -39,6 +39,28 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
     onOpenChange(false);
   };
 
+  const handleMakeMyPicks = () => {
+    const session = getPlayerSession();
+    if (session?.playerId) {
+      navigate(`/player/picks/${code}`);
+    } else {
+      toast.info("Please join the party first");
+      navigate(`/player/join?code=${code}&host=true`);
+    }
+    onOpenChange(false);
+  };
+
+  const handleMyDashboard = () => {
+    const session = getPlayerSession();
+    if (session?.playerId) {
+      navigate(`/player/dashboard/${code}`);
+    } else {
+      toast.info("Please join the party first");
+      navigate(`/player/join?code=${code}&host=true`);
+    }
+    onOpenChange(false);
+  };
+
   const handleSignOut = () => {
     localStorage.removeItem(`party_${code}_pin`);
     clearPlayerSession();
@@ -47,6 +69,18 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
   };
 
   const actions = [
+    {
+      icon: Edit3,
+      title: "Make My Picks",
+      subtitle: "Submit your predictions",
+      onClick: handleMakeMyPicks,
+    },
+    {
+      icon: Trophy,
+      title: "My Dashboard",
+      subtitle: "View your numbers & points",
+      onClick: handleMyDashboard,
+    },
     {
       icon: Tv,
       title: "TV Display",

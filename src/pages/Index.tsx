@@ -103,7 +103,7 @@ export default function Index() {
       });
 
       toast.success(`Party ${partyCode} created!`);
-      navigate(`/host/setup/${partyCode}`);
+      navigate(`/player/join?code=${partyCode}&host=true`);
     } catch (err) {
       console.error("Error creating party:", err);
       toast.error("Failed to create party. Please try again.");
