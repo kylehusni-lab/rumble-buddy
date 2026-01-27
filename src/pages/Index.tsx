@@ -172,27 +172,37 @@ export default function Index() {
               How do you want to play?
             </p>
 
-            <Button
-              variant="hero"
-              size="xl"
-              className="w-full"
-              onClick={() => setStep("group-choice")}
-            >
-              <Users className="mr-2" size={24} />
-              Watch with Friends
-              <ArrowRight className="ml-auto" size={20} />
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant="hero"
+                size="xl"
+                className="w-full"
+                onClick={() => setStep("group-choice")}
+              >
+                <Users className="mr-2" size={24} />
+                Watch with Friends
+                <ArrowRight className="ml-auto" size={20} />
+              </Button>
+              <p className="text-xs text-muted-foreground text-center px-2">
+                Host or join a group to compete with friends at your watch party
+              </p>
+            </div>
 
-            <Button
-              variant="outline"
-              size="xl"
-              className="w-full"
-              onClick={() => navigate("/solo/setup")}
-            >
-              <User className="mr-2" size={24} />
-              Play Solo
-              <ArrowRight className="ml-auto" size={20} />
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="xl"
+                className="w-full"
+                onClick={() => navigate("/solo/setup")}
+              >
+                <User className="mr-2" size={24} />
+                Play Solo
+                <ArrowRight className="ml-auto" size={20} />
+              </Button>
+              <p className="text-xs text-muted-foreground text-center px-2">
+                Make picks and track your score on your own
+              </p>
+            </div>
 
             <div className="pt-4 border-t border-border">
               <Button
