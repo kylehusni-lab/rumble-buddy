@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
@@ -9,6 +8,7 @@ import { NumberCell } from "@/components/tv/NumberCell";
 import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
 import { MatchProgressBar } from "@/components/tv/MatchProgressBar";
 import { TvViewNavigator } from "@/components/tv/TvViewNavigator";
+import { Logo } from "@/components/Logo";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 
 interface Player {
@@ -411,13 +411,8 @@ export default function TvDisplay() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Crown className="text-primary" size={48} />
-          <div>
-            <h1 className="text-4xl font-black">
-              <span className="text-gradient-gold">ROYAL</span> RUMBLE 2026
-            </h1>
-            <p className="text-muted-foreground">Party {code}</p>
-          </div>
+          <Logo size="sm" />
+          <p className="text-muted-foreground text-lg">Party {code}</p>
         </div>
         <div className="flex items-center gap-4">
           {/* Match Progress */}
@@ -440,7 +435,7 @@ export default function TvDisplay() {
           {partyStatus === "pre_event" ? (
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
-                <Crown className="mx-auto text-primary mb-4 animate-pulse" size={80} />
+                <Logo size="lg" className="mx-auto mb-4" />
                 <h2 className="text-3xl font-bold mb-2">Waiting for Event to Start</h2>
                 <p className="text-muted-foreground">{players.length} players ready</p>
               </div>
