@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Loader2, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Save, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MatchCard } from "./cards/MatchCard";
 import { RumbleWinnerCard } from "./cards/RumbleWinnerCard";
@@ -283,10 +283,20 @@ export function PickCardStack({
         onJumpToCard={setCurrentCardIndex}
       />
 
-      {/* Group Code & Name */}
-      <div className="text-center py-2 border-b border-border">
-        <div className="text-sm text-muted-foreground">Group {partyCode}</div>
-        <div className="font-bold text-primary">Hey {displayName}!</div>
+      {/* Header with Home button, Group Code & Name */}
+      <div className="flex items-center justify-between py-2 px-1 border-b border-border">
+        <button
+          onClick={() => navigate(`/player/dashboard/${partyCode}`)}
+          className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Back to Dashboard"
+        >
+          <Home className="w-5 h-5" />
+        </button>
+        <div className="text-center flex-1">
+          <div className="text-sm text-muted-foreground">Group {partyCode}</div>
+          <div className="font-bold text-primary">Hey {displayName}!</div>
+        </div>
+        <div className="w-9" /> {/* Spacer for balance */}
       </div>
 
       {/* Card Container */}
