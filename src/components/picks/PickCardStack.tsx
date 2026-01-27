@@ -71,22 +71,17 @@ export function PickCardStack({
         return propCount === 6;
       }
       if (card.type === "rumble-props") {
-        // Check wrestler props + final four + yes/no props
+        // Check wrestler props + final four
         const gender = card.gender;
-        const wrestlerProps = RUMBLE_PROPS.filter(p => p.type === "wrestler");
-        const yesNoProps = RUMBLE_PROPS.filter(p => p.type === "yesno");
         
-        const wrestlerPropsComplete = wrestlerProps.every(p => 
+        const wrestlerPropsComplete = RUMBLE_PROPS.every(p => 
           picks[`${gender}_${p.id}`] !== null && picks[`${gender}_${p.id}`] !== undefined
         );
         const finalFourComplete = Array.from({ length: FINAL_FOUR_SLOTS }).every((_, i) =>
           picks[`${gender}_final_four_${i + 1}`] !== null && picks[`${gender}_final_four_${i + 1}`] !== undefined
         );
-        const yesNoComplete = yesNoProps.every(p =>
-          picks[`${gender}_${p.id}`] !== null && picks[`${gender}_${p.id}`] !== undefined
-        );
         
-        return wrestlerPropsComplete && finalFourComplete && yesNoComplete;
+        return wrestlerPropsComplete && finalFourComplete;
       }
       const pick = picks[card.id];
       return pick !== null && pick !== undefined;

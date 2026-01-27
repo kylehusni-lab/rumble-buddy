@@ -164,14 +164,13 @@ export const EVENT_INFO = {
   date: 'February 1, 2026',
 } as const;
 
-// Rumble Props configuration
+// Rumble Props configuration - ordered logically
 export const RUMBLE_PROPS = [
-  { id: 'first_elimination', title: 'First Eliminated', question: 'Who gets eliminated first?', type: 'wrestler' as const },
-  { id: 'most_eliminations', title: 'Most Eliminations', question: 'Who has the most eliminations?', type: 'wrestler' as const },
-  { id: 'longest_time', title: 'Iron Man/Woman', question: 'Who lasts longest in the ring?', type: 'wrestler' as const },
-  { id: 'entrant_1', title: '#1 Entrant', question: 'Who enters at #1?', type: 'wrestler' as const },
-  { id: 'entrant_30', title: '#30 Entrant', question: 'Who enters at #30?', type: 'wrestler' as const },
-  { id: 'no_show', title: 'No-Show', question: 'Will anyone not make it to the ring?', type: 'yesno' as const },
+  { id: 'entrant_1', title: '#1 Entrant', question: 'Who enters at #1?', type: 'wrestler' as const, icon: '1️⃣' },
+  { id: 'entrant_30', title: '#30 Entrant', question: 'Who enters at #30?', type: 'wrestler' as const, icon: '3️⃣0️⃣' },
+  { id: 'first_elimination', title: 'First Eliminated', question: 'Who gets eliminated first?', type: 'wrestler' as const, icon: '💨' },
+  { id: 'most_eliminations', title: 'Most Eliminations', question: 'Who has the most eliminations?', type: 'wrestler' as const, icon: '💪' },
+  { id: 'longest_time', title: 'Iron Man/Woman', question: 'Who lasts longest in the ring?', type: 'wrestler' as const, icon: '⏱️' },
 ] as const;
 
 export const FINAL_FOUR_SLOTS = 4;

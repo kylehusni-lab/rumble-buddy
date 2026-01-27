@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Target, Users, Search, Check, X, Ban } from "lucide-react";
+import { Target, Users, Search, Check, X, Ban, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { RUMBLE_PROPS, FINAL_FOUR_SLOTS, SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
@@ -41,6 +41,8 @@ export function RumblePropsCard({
 }: RumblePropsCardProps) {
   const [activePickerId, setActivePickerId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isFinalFourOpen, setIsFinalFourOpen] = useState(false);
+  const [finalFourSelections, setFinalFourSelections] = useState<(string | null)[]>([null, null, null, null]);
 
   const defaultEntrants = gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS;
   const entrants = customEntrants && customEntrants.length > 0 ? customEntrants : defaultEntrants;
@@ -51,10 +53,10 @@ export function RumblePropsCard({
 
   // Helper to get match_id for a prop
   const getMatchId = (propId: string) => `${gender}_${propId}`;
-  
+
   // Extract current prop ID being edited (for conflict checking)
   const currentPropId = activePickerId?.replace(`${gender}_`, '') || null;
-  
+
   // Get blocked wrestlers for the current picker
   const blockedWrestlers = useMemo(() => {
     if (!currentPropId) return new Set<string>();
@@ -62,21 +64,15 @@ export function RumblePropsCard({
   }, [gender, currentPropId, values]);
 
   // Count completed props
-  const wrestlerProps = RUMBLE_PROPS.filter((p) => p.type === "wrestler");
-  const yesNoProps = RUMBLE_PROPS.filter((p) => p.type === "yesno");
-  
-  const completedWrestlerProps = wrestlerProps.filter(
+  const completedWrestlerProps = RUMBLE_PROPS.filter(
     (p) => values[getMatchId(p.id)]
   ).length;
   const completedFinalFour = Array.from({ length: FINAL_FOUR_SLOTS }).filter(
     (_, i) => values[getMatchId(`final_four_${i + 1}`)]
   ).length;
-  const completedYesNo = yesNoProps.filter(
-    (p) => values[getMatchId(p.id)]
-  ).length;
-  
-  const totalProps = wrestlerProps.length + FINAL_FOUR_SLOTS + yesNoProps.length;
-  const completedProps = completedWrestlerProps + completedFinalFour + completedYesNo;
+
+  const totalProps = RUMBLE_PROPS.length + 1; // 5 wrestler props + 1 Final Four group
+  const completedGroups = completedWrestlerProps + (completedFinalFour === 4 ? 1 : 0);
 
   const handleWrestlerSelect = (wrestler: string) => {
     if (!activePickerId || disabled) return;
@@ -85,172 +81,190 @@ export function RumblePropsCard({
     setSearchQuery("");
   };
 
-  const handleYesNoSelect = (propId: string, answer: "YES" | "NO") => {
-    if (disabled) return;
-    const matchId = getMatchId(propId);
-    onChange({ ...values, [matchId]: answer });
-  };
-
   const openPicker = (matchId: string) => {
     if (disabled) return;
     setActivePickerId(matchId);
     setSearchQuery("");
   };
 
+  // Final Four handlers
+  const openFinalFourPicker = () => {
+    if (disabled) return;
+    // Load current selections
+    const current = Array.from({ length: 4 }).map((_, i) => 
+      values[getMatchId(`final_four_${i + 1}`)] || null
+    );
+    setFinalFourSelections(current);
+    setIsFinalFourOpen(true);
+  };
+
+  const handleFinalFourSelect = (wrestler: string) => {
+    // Find first empty slot or toggle if already selected
+    const existingIndex = finalFourSelections.indexOf(wrestler);
+    if (existingIndex !== -1) {
+      // Remove selection
+      const newSelections = [...finalFourSelections];
+      newSelections[existingIndex] = null;
+      setFinalFourSelections(newSelections);
+    } else {
+      // Add to first empty slot
+      const emptyIndex = finalFourSelections.indexOf(null);
+      if (emptyIndex !== -1) {
+        const newSelections = [...finalFourSelections];
+        newSelections[emptyIndex] = wrestler;
+        setFinalFourSelections(newSelections);
+      }
+    }
+  };
+
+  const saveFinalFour = () => {
+    const updates: Record<string, string | null> = {};
+    finalFourSelections.forEach((wrestler, i) => {
+      updates[getMatchId(`final_four_${i + 1}`)] = wrestler;
+    });
+    onChange({ ...values, ...updates });
+    setIsFinalFourOpen(false);
+  };
+
+  // Get Final Four picks for display
+  const finalFourPicks = Array.from({ length: 4 }).map((_, i) => 
+    values[getMatchId(`final_four_${i + 1}`)]
+  ).filter(Boolean);
+
   return (
-    <div className="bg-card rounded-2xl p-5 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-180px)]">
+    <div className="bg-card rounded-2xl p-4 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-180px)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <Target className="w-6 h-6 text-primary" />
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <Target className="w-5 h-5 text-primary" />
           <div>
             <div className="text-xs text-muted-foreground uppercase tracking-wide">Rumble Props</div>
-            <h2 className="text-lg font-bold text-foreground">{title}</h2>
+            <h2 className="text-base font-bold text-foreground">{title}</h2>
           </div>
         </div>
         <div className="text-xs text-muted-foreground">
-          {completedProps}/{totalProps} filled
+          {completedGroups}/{totalProps}
         </div>
       </div>
 
       <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
-        <div className="space-y-4 pb-24">
-          {/* Wrestler Select Props */}
-          {wrestlerProps.map((prop) => {
-            const matchId = getMatchId(prop.id);
-            const selectedWrestler = values[matchId];
-            return (
-              <div key={prop.id} className="space-y-1">
-                <div className="text-sm font-medium text-foreground">{prop.question}</div>
-                <div className="text-xs text-primary">
-                  +{prop.id === 'most_eliminations' || prop.id === 'longest_time' ? SCORING.MOST_ELIMINATIONS : prop.id.startsWith('entrant') ? SCORING.ENTRANT_GUESS : SCORING.FIRST_ELIMINATION} pts
-                </div>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start h-12",
-                    selectedWrestler && "border-primary bg-primary/10"
-                  )}
+        <div className="space-y-3 pb-20">
+          {/* Wrestler Props Grid - 2x3 compact layout */}
+          <div className="grid grid-cols-2 gap-2">
+            {RUMBLE_PROPS.map((prop) => {
+              const matchId = getMatchId(prop.id);
+              const selectedWrestler = values[matchId];
+              const points = prop.id === 'most_eliminations' || prop.id === 'longest_time' 
+                ? SCORING.MOST_ELIMINATIONS 
+                : prop.id.startsWith('entrant') 
+                  ? SCORING.ENTRANT_GUESS 
+                  : SCORING.FIRST_ELIMINATION;
+              
+              return (
+                <button
+                  key={prop.id}
                   onClick={() => openPicker(matchId)}
                   disabled={disabled}
+                  className={cn(
+                    "p-3 rounded-xl border text-left transition-all",
+                    selectedWrestler 
+                      ? "border-primary bg-primary/10" 
+                      : "border-border bg-card hover:border-primary/50"
+                  )}
                 >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{prop.icon}</span>
+                    <span className="text-xs font-medium text-foreground truncate">{prop.title}</span>
+                  </div>
                   {selectedWrestler ? (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <img
                         src={getWrestlerImageUrl(getEntrantDisplayName(selectedWrestler))}
                         alt={getEntrantDisplayName(selectedWrestler)}
-                        className="w-8 h-8 rounded-full object-cover"
+                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                         onError={(e) => {
                           e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(selectedWrestler));
                         }}
                       />
-                      <span className={cn("font-medium", isUnconfirmedEntrant(selectedWrestler) && "italic opacity-80")}>
+                      <span className={cn(
+                        "text-sm font-medium truncate flex-1",
+                        isUnconfirmedEntrant(selectedWrestler) && "italic opacity-80"
+                      )}>
                         {getEntrantDisplayName(selectedWrestler)}
                       </span>
-                      <Check className="w-4 h-4 text-primary ml-auto" />
+                      <Check className="w-4 h-4 text-primary flex-shrink-0" />
                     </div>
                   ) : (
-                    <span className="text-muted-foreground">Tap to select wrestler...</span>
+                    <div className="text-xs text-muted-foreground">
+                      Tap to pick • +{points}
+                    </div>
                   )}
-                </Button>
-              </div>
-            );
-          })}
-
-          {/* Final Four Section */}
-          <div className="space-y-2 pt-2 border-t border-border">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
-              <div>
-                <div className="text-sm font-medium text-foreground">Final Four</div>
-                <div className="text-xs text-muted-foreground">
-                  Pick 4 wrestlers who make the Final Four (+{SCORING.FINAL_FOUR_PICK} pts each)
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {Array.from({ length: FINAL_FOUR_SLOTS }).map((_, index) => {
-                const matchId = getMatchId(`final_four_${index + 1}`);
-                const selectedWrestler = values[matchId];
-                return (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className={cn(
-                      "h-14 justify-start",
-                      selectedWrestler && "border-primary bg-primary/10"
-                    )}
-                    onClick={() => openPicker(matchId)}
-                    disabled={disabled}
-                  >
-                    {selectedWrestler ? (
-                      <div className="flex items-center gap-2 w-full">
-                        <img
-                          src={getWrestlerImageUrl(getEntrantDisplayName(selectedWrestler))}
-                          alt={getEntrantDisplayName(selectedWrestler)}
-                          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                          onError={(e) => {
-                            e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(selectedWrestler));
-                          }}
-                        />
-                        <span className={cn("font-medium text-sm truncate", isUnconfirmedEntrant(selectedWrestler) && "italic opacity-80")}>
-                          {getEntrantDisplayName(selectedWrestler)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Slot {index + 1}</span>
-                    )}
-                  </Button>
-                );
-              })}
-            </div>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Yes/No Props */}
-          {yesNoProps.map((prop) => {
-            const matchId = getMatchId(prop.id);
-            const answer = values[matchId] as "YES" | "NO" | null;
-            return (
-              <div key={prop.id} className="space-y-2 pt-2 border-t border-border">
-                <div className="text-sm font-medium text-foreground">{prop.question}</div>
-                <div className="text-xs text-primary mb-2">+{SCORING.NO_SHOW_PROP} pts</div>
-                <div className="flex gap-2">
-                  <Button
-                    variant={answer === "YES" ? "default" : "outline"}
-                    className={cn(
-                      "flex-1",
-                      answer === "YES" && "bg-primary hover:bg-primary/90"
-                    )}
-                    onClick={() => handleYesNoSelect(prop.id, "YES")}
-                    disabled={disabled}
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    YES
-                  </Button>
-                  <Button
-                    variant={answer === "NO" ? "default" : "outline"}
-                    className={cn(
-                      "flex-1",
-                      answer === "NO" && "bg-destructive hover:bg-destructive/90"
-                    )}
-                    onClick={() => handleYesNoSelect(prop.id, "NO")}
-                    disabled={disabled}
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    NO
-                  </Button>
+          {/* Final Four Section - Compact */}
+          <div className="border-t border-border pt-3">
+            <button
+              onClick={openFinalFourPicker}
+              disabled={disabled}
+              className={cn(
+                "w-full p-3 rounded-xl border text-left transition-all",
+                completedFinalFour === 4
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-card hover:border-primary/50"
+              )}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  <span className="font-medium text-foreground">Final Four</span>
                 </div>
+                <span className="text-xs text-primary">+{SCORING.FINAL_FOUR_PICK} pts each</span>
               </div>
-            );
-          })}
+              
+              {completedFinalFour > 0 ? (
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 4 }).map((_, i) => {
+                    const pick = values[getMatchId(`final_four_${i + 1}`)];
+                    return pick ? (
+                      <img
+                        key={i}
+                        src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
+                        alt={getEntrantDisplayName(pick)}
+                        className="w-10 h-10 rounded-full object-cover border-2 border-primary"
+                        onError={(e) => {
+                          e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(pick));
+                        }}
+                      />
+                    ) : (
+                      <div key={i} className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                        <Plus className="w-4 h-4 text-muted-foreground/50" />
+                      </div>
+                    );
+                  })}
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {completedFinalFour}/4 picked
+                  </span>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  Tap to pick 4 wrestlers who make the Final Four
+                </div>
+              )}
+            </button>
+          </div>
         </div>
       </ScrollArea>
 
-      {/* Wrestler Picker Modal */}
+      {/* Single Wrestler Picker Modal */}
       <Dialog open={!!activePickerId} onOpenChange={(open) => !open && setActivePickerId(null)}>
         <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Select Wrestler</DialogTitle>
+            <DialogTitle>
+              {activePickerId && RUMBLE_PROPS.find(p => getMatchId(p.id) === activePickerId)?.title}
+            </DialogTitle>
           </DialogHeader>
 
           {/* Search */}
@@ -270,31 +284,21 @@ export function RumblePropsCard({
             <div className="grid grid-cols-4 gap-3 pb-4">
               {filteredEntrants.map((wrestler) => {
                 const isSelected = activePickerId ? values[activePickerId] === wrestler : false;
-                // Check if already used in another slot (for Final Four)
-                const isUsedInFinalFour = activePickerId?.includes("final_four") && 
-                  Array.from({ length: FINAL_FOUR_SLOTS }).some((_, i) => {
-                    const slotId = getMatchId(`final_four_${i + 1}`);
-                    return slotId !== activePickerId && values[slotId] === wrestler;
-                  });
-                
-                // Check if blocked due to conflict rules
                 const isBlocked = blockedWrestlers.has(wrestler);
                 const blockReason = isBlocked && currentPropId 
                   ? getBlockedReason(gender, currentPropId, wrestler, values)
                   : null;
                 
-                const isDisabled = isUsedInFinalFour || isBlocked;
-                
                 const wrestlerButton = (
                   <motion.button
                     key={wrestler}
-                    onClick={() => !isDisabled && handleWrestlerSelect(wrestler)}
-                    disabled={disabled || isDisabled}
+                    onClick={() => !isBlocked && handleWrestlerSelect(wrestler)}
+                    disabled={disabled || isBlocked}
                     className={cn(
                       "flex flex-col items-center",
-                      isDisabled && "opacity-40"
+                      isBlocked && "opacity-40"
                     )}
-                    whileTap={!disabled && !isDisabled ? { scale: 0.95 } : undefined}
+                    whileTap={!disabled && !isBlocked ? { scale: 0.95 } : undefined}
                   >
                     <div
                       className={cn(
@@ -345,7 +349,6 @@ export function RumblePropsCard({
                   </motion.button>
                 );
                 
-                // Wrap blocked wrestlers in a tooltip
                 if (isBlocked && blockReason) {
                   return (
                     <TooltipProvider key={wrestler}>
@@ -365,6 +368,146 @@ export function RumblePropsCard({
               })}
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Final Four Picker Modal */}
+      <Dialog open={isFinalFourOpen} onOpenChange={setIsFinalFourOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Pick Your Final Four
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Current Selections Display */}
+          <div className="flex items-center justify-center gap-2 py-3 border-b border-border">
+            {finalFourSelections.map((wrestler, i) => (
+              <div key={i} className="relative">
+                {wrestler ? (
+                  <button
+                    onClick={() => handleFinalFourSelect(wrestler)}
+                    className="relative"
+                  >
+                    <img
+                      src={getWrestlerImageUrl(getEntrantDisplayName(wrestler))}
+                      alt={getEntrantDisplayName(wrestler)}
+                      className="w-14 h-14 rounded-full object-cover border-2 border-primary"
+                      onError={(e) => {
+                        e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(wrestler));
+                      }}
+                    />
+                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+                      <X className="w-3 h-3" />
+                    </div>
+                  </button>
+                ) : (
+                  <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground">{i + 1}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center text-xs text-muted-foreground py-2">
+            {4 - finalFourSelections.filter(Boolean).length} slots remaining
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search wrestlers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Wrestler Grid */}
+          <ScrollArea className="flex-1 mt-2">
+            <div className="grid grid-cols-4 gap-3 pb-4">
+              {filteredEntrants.map((wrestler) => {
+                const isSelected = finalFourSelections.includes(wrestler);
+                const isFull = finalFourSelections.filter(Boolean).length >= 4 && !isSelected;
+                // Block first elimination pick from Final Four
+                const firstElimPick = values[getMatchId('first_elimination')];
+                const isBlockedByFirstElim = firstElimPick === wrestler;
+                const isDisabled = isFull || isBlockedByFirstElim;
+                
+                return (
+                  <motion.button
+                    key={wrestler}
+                    onClick={() => !isDisabled && handleFinalFourSelect(wrestler)}
+                    disabled={disabled || isDisabled}
+                    className={cn(
+                      "flex flex-col items-center",
+                      isDisabled && !isSelected && "opacity-40"
+                    )}
+                    whileTap={!disabled && !isDisabled ? { scale: 0.95 } : undefined}
+                  >
+                    <div
+                      className={cn(
+                        "relative w-[60px] h-[60px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
+                        isSelected
+                          ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
+                          : isBlockedByFirstElim
+                            ? "border-destructive/50"
+                            : isUnconfirmedEntrant(wrestler)
+                              ? "border-dashed border-muted-foreground/50"
+                              : "border-transparent"
+                      )}
+                    >
+                      <img
+                        src={getWrestlerImageUrl(wrestler)}
+                        alt={wrestler}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.src = getPlaceholderImageUrl(wrestler);
+                        }}
+                      />
+                      {isSelected && (
+                        <motion.div
+                          className="absolute inset-0 bg-primary/30 flex items-center justify-center"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                        >
+                          <Check className="text-primary-foreground" size={24} strokeWidth={3} />
+                        </motion.div>
+                      )}
+                      {isBlockedByFirstElim && (
+                        <div className="absolute inset-0 bg-destructive/20 flex items-center justify-center">
+                          <Ban className="text-destructive" size={20} />
+                        </div>
+                      )}
+                    </div>
+                    <span
+                      className={cn(
+                        "mt-1 text-[10px] text-center leading-tight line-clamp-2 w-[60px]",
+                        isSelected ? "text-primary font-semibold" : "text-foreground",
+                        isUnconfirmedEntrant(wrestler) && "italic opacity-80"
+                      )}
+                    >
+                      {getEntrantDisplayName(wrestler)}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </ScrollArea>
+
+          {/* Save Button */}
+          <Button
+            onClick={saveFinalFour}
+            className="w-full mt-2"
+            disabled={finalFourSelections.filter(Boolean).length === 0}
+          >
+            Save Final Four ({finalFourSelections.filter(Boolean).length}/4)
+          </Button>
         </DialogContent>
       </Dialog>
     </div>

@@ -276,40 +276,6 @@ function RumbleScoring({
         );
       })}
 
-      {/* Yes/No Props */}
-      {RUMBLE_PROPS.filter(p => p.type === "yesno").map((prop) => {
-        const matchId = `${gender}_${prop.id}`;
-        
-        return (
-          <div key={matchId} className="space-y-2">
-            <div className="text-sm font-medium text-foreground">{prop.title}</div>
-            <div className="flex gap-2">
-              {["YES", "NO"].map((option) => {
-                const isSelected = results[matchId] === option;
-                const isPicked = picks[matchId] === option;
-                
-                return (
-                  <button
-                    key={option}
-                    onClick={() => isSelected ? onClear(matchId) : onChange(matchId, option)}
-                    className={`flex-1 p-3 rounded-lg border text-sm font-medium transition-all ${
-                      isSelected
-                        ? option === "YES"
-                          ? "bg-success text-success-foreground border-success"
-                          : "bg-destructive text-destructive-foreground border-destructive"
-                        : "bg-card border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {option}
-                    {isPicked && <span className="ml-1 opacity-60">(you)</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-
       {/* Final Four */}
       <div className="pt-4 border-t border-border">
         <h4 className="text-md font-bold text-foreground mb-3">Final Four</h4>
