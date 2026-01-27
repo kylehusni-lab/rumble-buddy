@@ -4,6 +4,7 @@ import { Target, Users, Search, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { RUMBLE_PROPS, FINAL_FOUR_SLOTS, SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
+import { isUnconfirmedEntrant, getEntrantDisplayName } from "@/lib/entrant-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -120,14 +121,16 @@ export function RumblePropsCard({
                   {selectedWrestler ? (
                     <div className="flex items-center gap-3">
                       <img
-                        src={getWrestlerImageUrl(selectedWrestler)}
-                        alt={selectedWrestler}
+                        src={getWrestlerImageUrl(getEntrantDisplayName(selectedWrestler))}
+                        alt={getEntrantDisplayName(selectedWrestler)}
                         className="w-8 h-8 rounded-full object-cover"
                         onError={(e) => {
-                          e.currentTarget.src = getPlaceholderImageUrl(selectedWrestler);
+                          e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(selectedWrestler));
                         }}
                       />
-                      <span className="font-medium">{selectedWrestler}</span>
+                      <span className={cn("font-medium", isUnconfirmedEntrant(selectedWrestler) && "italic opacity-80")}>
+                        {getEntrantDisplayName(selectedWrestler)}
+                      </span>
                       <Check className="w-4 h-4 text-primary ml-auto" />
                     </div>
                   ) : (
@@ -167,14 +170,16 @@ export function RumblePropsCard({
                     {selectedWrestler ? (
                       <div className="flex items-center gap-2 w-full">
                         <img
-                          src={getWrestlerImageUrl(selectedWrestler)}
-                          alt={selectedWrestler}
+                          src={getWrestlerImageUrl(getEntrantDisplayName(selectedWrestler))}
+                          alt={getEntrantDisplayName(selectedWrestler)}
                           className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                           onError={(e) => {
-                            e.currentTarget.src = getPlaceholderImageUrl(selectedWrestler);
+                            e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(selectedWrestler));
                           }}
                         />
-                        <span className="font-medium text-sm truncate">{selectedWrestler}</span>
+                        <span className={cn("font-medium text-sm truncate", isUnconfirmedEntrant(selectedWrestler) && "italic opacity-80")}>
+                          {getEntrantDisplayName(selectedWrestler)}
+                        </span>
                       </div>
                     ) : (
                       <span className="text-muted-foreground text-sm">Slot {index + 1}</span>
@@ -297,10 +302,11 @@ export function RumblePropsCard({
                     <span
                       className={cn(
                         "mt-1 text-[10px] text-center leading-tight line-clamp-2 w-[60px]",
-                        isSelected ? "text-primary font-semibold" : "text-foreground"
+                        isSelected ? "text-primary font-semibold" : "text-foreground",
+                        isUnconfirmedEntrant(wrestler) && "italic opacity-80"
                       )}
                     >
-                      {wrestler}
+                      {getEntrantDisplayName(wrestler)}
                     </span>
                   </motion.button>
                 );

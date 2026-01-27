@@ -67,6 +67,7 @@ export const MATCH_IDS = {
 } as const;
 
 export const DEFAULT_MENS_ENTRANTS = [
+  // Confirmed
   'Oba Femi',
   'Bron Breakker',
   'Logan Paul',
@@ -84,14 +85,28 @@ export const DEFAULT_MENS_ENTRANTS = [
   'Jacob Fatu',
   'CM Punk',
   'Drew McIntyre',
-  'Randy Orton',
-  'Damian Priest',
-  'Sami Zayn',
   'Trick Williams',
+  // Unconfirmed (prefixed with *)
+  '*Seth Rollins',
+  '*Finn Bálor',
+  '*Dominik Mysterio',
+  '*Kofi Kingston',
+  '*Xavier Woods',
+  '*Chad Gable',
+  '*Otis',
+  '*Sami Zayn',
+  '*Carmelo Hayes',
+  '*Ilja Dragunov',
+  '*Damian Priest',
+  '*Shinsuke Nakamura',
+  '*The Miz',
+  '*LA Knight',
+  '*Randy Orton',
   'Surprise/Other Entrant',
 ];
 
 export const DEFAULT_WOMENS_ENTRANTS = [
+  // Confirmed
   'Charlotte Flair',
   'Jordynne Grace',
   'Giulia',
@@ -107,6 +122,21 @@ export const DEFAULT_WOMENS_ENTRANTS = [
   'Bayley',
   'Lyra Valkyria',
   'Asuka',
+  // Unconfirmed (prefixed with *)
+  '*Bianca Belair',
+  '*Naomi',
+  '*Natalya',
+  '*Tiffany Stratton',
+  '*Michin',
+  '*Candice LeRae',
+  '*Ivy Nile',
+  '*Maxxine Dupri',
+  '*Zoey Stark',
+  '*Kairi Sane',
+  '*Alba Fyre',
+  '*Piper Niven',
+  '*Nikki Cross',
+  '*B-Fab',
   'Surprise/Other Entrant',
 ];
 
