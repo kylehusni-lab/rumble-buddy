@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
-import { Check, X } from "lucide-react";
+import { Check, X, Crown } from "lucide-react";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 interface Pick {
   match_id: string;
@@ -22,18 +23,34 @@ function PickRow({
   label, 
   prediction, 
   isCorrect, 
-  points 
+  points,
+  isWinner = false,
 }: { 
   label: string; 
   prediction: string; 
   isCorrect: boolean | null; 
   points: number;
+  isWinner?: boolean;
 }) {
   return (
-    <div className="p-3 flex items-center justify-between">
+    <div className={cn(
+      "p-3 flex items-center justify-between",
+      isWinner && "bg-winner/5"
+    )}>
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-muted-foreground">{label}</div>
-        <div className="font-medium truncate">{prediction || "No pick"}</div>
+        <div className={cn(
+          "text-sm",
+          isWinner ? "text-winner" : "text-muted-foreground"
+        )}>
+          {isWinner && <Crown size={12} className="inline mr-1 mb-0.5" />}
+          {label}
+        </div>
+        <div className={cn(
+          "font-medium truncate",
+          isWinner && "text-winner"
+        )}>
+          {prediction || "No pick"}
+        </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
         {isCorrect === true && (
@@ -82,10 +99,11 @@ export function MatchesSection({ picks, results }: MatchesSectionProps) {
         })}
       </div>
 
-      {/* Rumble Winners */}
-      <div className="bg-card border border-border rounded-xl divide-y divide-border">
-        <div className="px-3 py-2 bg-muted/50 rounded-t-xl">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rumble Winners</h3>
+      {/* Rumble Winners - Winner Theme */}
+      <div className="bg-card border border-winner/30 rounded-xl divide-y divide-winner/20 overflow-hidden">
+        <div className="px-3 py-2 bg-winner/10 rounded-t-xl flex items-center gap-2">
+          <Crown size={14} className="text-winner" />
+          <h3 className="text-xs font-semibold text-winner uppercase tracking-wide">Rumble Winners</h3>
         </div>
         {["mens_rumble_winner", "womens_rumble_winner"].map((matchId) => {
           const pick = picks.find(p => p.match_id === matchId);
@@ -97,6 +115,7 @@ export function MatchesSection({ picks, results }: MatchesSectionProps) {
               prediction={pick?.prediction || ""}
               isCorrect={getPickResult(matchId)}
               points={SCORING.RUMBLE_WINNER_PICK}
+              isWinner
             />
           );
         })}

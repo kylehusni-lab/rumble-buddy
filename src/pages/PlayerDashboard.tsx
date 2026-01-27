@@ -11,14 +11,19 @@ import { BottomNavBar, TabId, TabBadge } from "@/components/dashboard/BottomNavB
 import { NumbersSection } from "@/components/dashboard/NumbersSection";
 import { MatchesSection } from "@/components/dashboard/MatchesSection";
 import { RumblePropsSection } from "@/components/dashboard/RumblePropsSection";
-import { ChaosPropsSection } from "@/components/dashboard/ChaosPropsSection";
-
-// Match ID groupings for each tab
+// Match ID groupings for each tab (chaos props now included in mens/womens)
 const TAB_MATCH_IDS: Record<Exclude<TabId, "numbers">, string[]> = {
   matches: ['undercard_1', 'undercard_2', 'undercard_3', 'mens_rumble_winner', 'womens_rumble_winner'],
-  mens: ['mens_first_elimination', 'mens_most_eliminations', 'mens_longest_time', 'mens_entrant_1', 'mens_entrant_30', 'mens_final_four_1', 'mens_final_four_2', 'mens_final_four_3', 'mens_final_four_4', 'mens_no_show'],
-  womens: ['womens_first_elimination', 'womens_most_eliminations', 'womens_longest_time', 'womens_entrant_1', 'womens_entrant_30', 'womens_final_four_1', 'womens_final_four_2', 'womens_final_four_3', 'womens_final_four_4', 'womens_no_show'],
-  chaos: ['mens_chaos_prop_1', 'mens_chaos_prop_2', 'mens_chaos_prop_3', 'mens_chaos_prop_4', 'mens_chaos_prop_5', 'mens_chaos_prop_6', 'womens_chaos_prop_1', 'womens_chaos_prop_2', 'womens_chaos_prop_3', 'womens_chaos_prop_4', 'womens_chaos_prop_5', 'womens_chaos_prop_6'],
+  mens: [
+    'mens_first_elimination', 'mens_most_eliminations', 'mens_longest_time', 'mens_entrant_1', 'mens_entrant_30', 
+    'mens_final_four_1', 'mens_final_four_2', 'mens_final_four_3', 'mens_final_four_4', 'mens_no_show',
+    'mens_chaos_prop_1', 'mens_chaos_prop_2', 'mens_chaos_prop_3', 'mens_chaos_prop_4', 'mens_chaos_prop_5', 'mens_chaos_prop_6'
+  ],
+  womens: [
+    'womens_first_elimination', 'womens_most_eliminations', 'womens_longest_time', 'womens_entrant_1', 'womens_entrant_30', 
+    'womens_final_four_1', 'womens_final_four_2', 'womens_final_four_3', 'womens_final_four_4', 'womens_no_show',
+    'womens_chaos_prop_1', 'womens_chaos_prop_2', 'womens_chaos_prop_3', 'womens_chaos_prop_4', 'womens_chaos_prop_5', 'womens_chaos_prop_6'
+  ],
 };
 
 function calculateBadges(picks: Pick[], results: MatchResult[]): Partial<Record<TabId, TabBadge>> {
@@ -402,8 +407,6 @@ export default function PlayerDashboard() {
         return <RumblePropsSection picks={picks} results={results} gender="mens" />;
       case "womens":
         return <RumblePropsSection picks={picks} results={results} gender="womens" />;
-      case "chaos":
-        return <ChaosPropsSection picks={picks} results={results} />;
       default:
         return null;
     }

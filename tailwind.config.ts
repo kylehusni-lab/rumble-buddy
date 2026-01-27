@@ -57,6 +57,10 @@ export default {
         },
         gold: "hsl(var(--riyadh-gold))",
         purple: "hsl(var(--royal-purple))",
+        winner: {
+          DEFAULT: "hsl(var(--winner))",
+          foreground: "hsl(var(--winner-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
