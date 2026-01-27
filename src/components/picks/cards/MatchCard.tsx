@@ -88,15 +88,15 @@ export function MatchCard({ title, options, value, onChange, disabled }: MatchCa
               )}
             </motion.button>
             
-            {/* VS Divider - only show after first wrestler on desktop */}
+            {/* VS Divider - show on all screen sizes */}
             {index === 0 && (
-              <div className="hidden md:flex items-center justify-center flex-shrink-0">
+              <div className="flex items-center justify-center flex-shrink-0 py-1 md:py-0">
                 <div className="relative">
                   {/* Glowing background */}
                   <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-150" />
                   {/* VS badge */}
-                  <div className="relative w-14 h-14 lg:w-16 lg:h-16 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 border-2 border-primary/50 flex items-center justify-center">
-                    <span className="text-xl lg:text-2xl font-black text-primary drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
+                  <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 border-2 border-primary/50 flex items-center justify-center">
+                    <span className="text-sm sm:text-base md:text-xl lg:text-2xl font-black text-primary drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
                       VS
                     </span>
                   </div>
