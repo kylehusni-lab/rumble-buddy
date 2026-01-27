@@ -4,18 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { getPlayerSession } from "@/lib/session";
 import { PickCardStack } from "@/components/picks/PickCardStack";
 import { toast } from "sonner";
-import { Json } from "@/integrations/supabase/types";
+import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 
 interface PartyData {
   status: string;
-  mens_rumble_entrants: Json;
-  womens_rumble_entrants: Json;
 }
 
 export default function PlayerPicks() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const session = getPlayerSession();
+  const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
 
   const [party, setParty] = useState<PartyData | null>(null);
   const [existingPicks, setExistingPicks] = useState<Record<string, string>>({});
@@ -31,7 +30,7 @@ export default function PlayerPicks() {
       try {
         const { data: partyData, error: partyError } = await supabase
           .from("parties")
-          .select("status, mens_rumble_entrants, womens_rumble_entrants")
+          .select("status")
           .eq("code", code)
           .single();
 
@@ -65,7 +64,7 @@ export default function PlayerPicks() {
     fetchData();
   }, [code, session?.playerId, navigate]);
 
-  if (isLoading) {
+  if (isLoading || configLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-primary text-xl">Loading...</div>
@@ -74,12 +73,6 @@ export default function PlayerPicks() {
   }
 
   const isLocked = party?.status === "live" || party?.status === "completed";
-  const mensEntrants = Array.isArray(party?.mens_rumble_entrants)
-    ? (party.mens_rumble_entrants as string[])
-    : [];
-  const womensEntrants = Array.isArray(party?.womens_rumble_entrants)
-    ? (party.womens_rumble_entrants as string[])
-    : [];
 
   return (
     <PickCardStack

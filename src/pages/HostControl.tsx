@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { isHostSession } from "@/lib/session";
 import { toast } from "sonner";
-import { Json } from "@/integrations/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { HostHeader } from "@/components/host/HostHeader";
@@ -17,6 +16,7 @@ import { ActiveWrestlerCard } from "@/components/host/ActiveWrestlerCard";
 import { EliminationModal } from "@/components/host/EliminationModal";
 import { WinnerDeclarationModal } from "@/components/host/WinnerDeclarationModal";
 import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING } from "@/lib/constants";
+import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 
 interface RumbleNumber {
   id: string;
@@ -42,13 +42,12 @@ interface MatchResult {
 interface PartyData {
   host_session_id: string;
   status: string;
-  mens_rumble_entrants: Json;
-  womens_rumble_entrants: Json;
 }
 
 export default function HostControl() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+  const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
 
   const [party, setParty] = useState<PartyData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -102,7 +101,7 @@ export default function HostControl() {
         // Fetch party data
         const { data: partyData, error } = await supabase
           .from("parties")
-          .select("host_session_id, status, mens_rumble_entrants, womens_rumble_entrants")
+          .select("host_session_id, status")
           .eq("code", code)
           .single();
 
@@ -619,15 +618,12 @@ export default function HostControl() {
   const mensNextOwner = getPlayerName(mensNumbers.find(n => n.number === mensNextNumber)?.assigned_to_player_id || null);
   const womensNextOwner = getPlayerName(womensNumbers.find(n => n.number === womensNextNumber)?.assigned_to_player_id || null);
 
-  const mensEntrants = Array.isArray(party?.mens_rumble_entrants) ? party.mens_rumble_entrants as string[] : [];
-  const womensEntrants = Array.isArray(party?.womens_rumble_entrants) ? party.womens_rumble_entrants as string[] : [];
-
   // Calculate durations for active wrestlers
   const getDuration = (entryTimestamp: string) => {
     return Math.floor((Date.now() - new Date(entryTimestamp).getTime()) / 1000);
   };
 
-  if (isLoading) {
+  if (isLoading || configLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-primary text-xl">Loading...</div>
