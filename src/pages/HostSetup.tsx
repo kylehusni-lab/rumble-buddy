@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, Plus, Trash2, Play, ChevronDown, AlertCircle } from "lucide-react";
+import { Users, Play, ChevronDown, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { isHostSession } from "@/lib/session";
 import { toast } from "sonner";
-import { Json } from "@/integrations/supabase/types";
 import { HostHeader } from "@/components/host/HostHeader";
 import { QuickActionsSheet } from "@/components/host/QuickActionsSheet";
 import { GuestStatusCard } from "@/components/host/GuestStatusCard";
@@ -28,8 +26,6 @@ interface Player {
 interface PartyData {
   host_session_id: string;
   status: string;
-  mens_rumble_entrants: Json;
-  womens_rumble_entrants: Json;
 }
 
 export default function HostSetup() {
@@ -39,10 +35,6 @@ export default function HostSetup() {
   const [party, setParty] = useState<PartyData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerPicks, setPlayerPicks] = useState<Record<string, number>>({});
-  const [mensEntrants, setMensEntrants] = useState<string[]>([]);
-  const [womensEntrants, setWomensEntrants] = useState<string[]>([]);
-  const [newMensEntrant, setNewMensEntrant] = useState("");
-  const [newWomensEntrant, setNewWomensEntrant] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
@@ -50,8 +42,6 @@ export default function HostSetup() {
   
   // Collapsible states
   const [guestsOpen, setGuestsOpen] = useState(true);
-  const [mensEntrantsOpen, setMensEntrantsOpen] = useState(false);
-  const [womensEntrantsOpen, setWomensEntrantsOpen] = useState(false);
 
   useEffect(() => {
     if (!code) {
@@ -71,7 +61,7 @@ export default function HostSetup() {
         // Fetch party data
         const { data: partyData, error } = await supabase
           .from("parties")
-          .select("host_session_id, status, mens_rumble_entrants, womens_rumble_entrants")
+          .select("host_session_id, status")
           .eq("code", code)
           .single();
 
@@ -95,12 +85,6 @@ export default function HostSetup() {
         }
 
         setParty(partyData);
-        setMensEntrants(Array.isArray(partyData.mens_rumble_entrants) 
-          ? partyData.mens_rumble_entrants as string[] 
-          : []);
-        setWomensEntrants(Array.isArray(partyData.womens_rumble_entrants) 
-          ? partyData.womens_rumble_entrants as string[] 
-          : []);
 
         // Fetch players
         const { data: playersData } = await supabase
@@ -177,55 +161,6 @@ export default function HostSetup() {
       supabase.removeChannel(channel);
     };
   }, [code, navigate, players.length]);
-
-  const handleAddEntrant = async (type: "mens" | "womens") => {
-    const newName = type === "mens" ? newMensEntrant.trim() : newWomensEntrant.trim();
-    if (!newName) return;
-
-    const current = type === "mens" ? mensEntrants : womensEntrants;
-    if (current.includes(newName)) {
-      toast.error("This entrant already exists");
-      return;
-    }
-
-    const updated = [...current, newName];
-    
-    const { error } = await supabase
-      .from("parties")
-      .update({ [`${type}_rumble_entrants`]: updated })
-      .eq("code", code);
-
-    if (error) {
-      toast.error("Failed to add entrant");
-      return;
-    }
-
-    if (type === "mens") {
-      setMensEntrants(updated);
-      setNewMensEntrant("");
-    } else {
-      setWomensEntrants(updated);
-      setNewWomensEntrant("");
-    }
-  };
-
-  const handleRemoveEntrant = async (type: "mens" | "womens", name: string) => {
-    const current = type === "mens" ? mensEntrants : womensEntrants;
-    const updated = current.filter(n => n !== name);
-
-    const { error } = await supabase
-      .from("parties")
-      .update({ [`${type}_rumble_entrants`]: updated })
-      .eq("code", code);
-
-    if (error) {
-      toast.error("Failed to remove entrant");
-      return;
-    }
-
-    if (type === "mens") setMensEntrants(updated);
-    else setWomensEntrants(updated);
-  };
 
   const distributeNumbers = async (rumbleType: "mens" | "womens") => {
     if (players.length === 0) return;
@@ -386,105 +321,6 @@ export default function HostSetup() {
           </Collapsible>
         </motion.div>
 
-        {/* Men's Entrants (Collapsible) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Collapsible open={mensEntrantsOpen} onOpenChange={setMensEntrantsOpen}>
-            <CollapsibleTrigger className="w-full">
-              <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between">
-                <span className="font-bold">🧔 Men's Entrants ({mensEntrants.length})</span>
-                <ChevronDown className={cn(
-                  "text-muted-foreground transition-transform",
-                  mensEntrantsOpen && "rotate-180"
-                )} size={20} />
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="mt-2 p-4 bg-card/50 border border-border rounded-xl space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {mensEntrants.map((name) => (
-                    <div
-                      key={name}
-                      className="bg-muted px-3 py-1 rounded-full text-sm flex items-center gap-2"
-                    >
-                      {name}
-                      <button
-                        onClick={() => handleRemoveEntrant("mens", name)}
-                        className="text-destructive hover:text-destructive/80"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add entrant..."
-                    value={newMensEntrant}
-                    onChange={(e) => setNewMensEntrant(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddEntrant("mens")}
-                  />
-                  <Button variant="outline" size="icon" onClick={() => handleAddEntrant("mens")}>
-                    <Plus size={20} />
-                  </Button>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </motion.div>
-
-        {/* Women's Entrants (Collapsible) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Collapsible open={womensEntrantsOpen} onOpenChange={setWomensEntrantsOpen}>
-            <CollapsibleTrigger className="w-full">
-              <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between">
-                <span className="font-bold">👩 Women's Entrants ({womensEntrants.length})</span>
-                <ChevronDown className={cn(
-                  "text-muted-foreground transition-transform",
-                  womensEntrantsOpen && "rotate-180"
-                )} size={20} />
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="mt-2 p-4 bg-card/50 border border-border rounded-xl space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {womensEntrants.map((name) => (
-                    <div
-                      key={name}
-                      className="bg-muted px-3 py-1 rounded-full text-sm flex items-center gap-2"
-                    >
-                      {name}
-                      <button
-                        onClick={() => handleRemoveEntrant("womens", name)}
-                        className="text-destructive hover:text-destructive/80"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add entrant..."
-                    value={newWomensEntrant}
-                    onChange={(e) => setNewWomensEntrant(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddEntrant("womens")}
-                  />
-                  <Button variant="outline" size="icon" onClick={() => handleAddEntrant("womens")}>
-                    <Plus size={20} />
-                  </Button>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </motion.div>
       </div>
 
       {/* Start Button - Sticky Footer */}
