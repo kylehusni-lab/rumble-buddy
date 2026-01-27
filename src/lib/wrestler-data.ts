@@ -162,10 +162,13 @@ export const DEFAULT_FEMALE_WRESTLERS: WrestlerData[] = [
 ];
 
 // Get wrestler image URL by name (searches defaults, falls back to placeholder)
+// Handles unconfirmed entrants by stripping the * prefix
 export function getWrestlerImageUrl(name: string): string {
+  // Strip * prefix for unconfirmed entrants
+  const cleanName = name.startsWith('*') ? name.slice(1) : name;
   const allWrestlers = [...DEFAULT_MALE_WRESTLERS, ...DEFAULT_FEMALE_WRESTLERS];
-  const found = allWrestlers.find(w => w.name === name);
-  return found?.imageUrl || getPlaceholderImageUrl(name);
+  const found = allWrestlers.find(w => w.name === cleanName);
+  return found?.imageUrl || getPlaceholderImageUrl(cleanName);
 }
 
 // Get wrestler data from a name (dynamically generates image if not in defaults)
