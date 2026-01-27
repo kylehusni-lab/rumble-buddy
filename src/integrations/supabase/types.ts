@@ -227,6 +227,100 @@ export type Database = {
           },
         ]
       }
+      solo_picks: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string
+          prediction: string
+          solo_player_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id: string
+          prediction: string
+          solo_player_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string
+          prediction?: string
+          solo_player_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solo_picks_solo_player_id_fkey"
+            columns: ["solo_player_id"]
+            isOneToOne: false
+            referencedRelation: "solo_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solo_players: {
+        Row: {
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          pin: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          email: string
+          id?: string
+          pin: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          email?: string
+          id?: string
+          pin?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      solo_results: {
+        Row: {
+          id: string
+          match_id: string
+          result: string
+          scored_at: string
+          solo_player_id: string
+        }
+        Insert: {
+          id?: string
+          match_id: string
+          result: string
+          scored_at?: string
+          solo_player_id: string
+        }
+        Update: {
+          id?: string
+          match_id?: string
+          result?: string
+          scored_at?: string
+          solo_player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solo_results_solo_player_id_fkey"
+            columns: ["solo_player_id"]
+            isOneToOne: false
+            referencedRelation: "solo_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

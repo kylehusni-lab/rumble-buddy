@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MatchCard } from "@/components/picks/cards/MatchCard";
 import { RumbleWinnerCard } from "@/components/picks/cards/RumbleWinnerCard";
@@ -17,22 +17,37 @@ import {
   DEFAULT_MENS_ENTRANTS,
   DEFAULT_WOMENS_ENTRANTS 
 } from "@/lib/constants";
-import { getSoloSession, getSoloPicks, saveSoloPicks } from "@/lib/solo-storage";
+import { countCompletedPicks } from "@/lib/pick-validation";
+import { getSoloPicks, saveSoloPicks } from "@/lib/solo-storage";
+import { useSoloCloud } from "@/hooks/useSoloCloud";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function SoloPicks() {
   const navigate = useNavigate();
+  const { isLoading, isAuthenticated, player, savePicksToCloud } = useSoloCloud();
+  
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [picks, setPicks] = useState<Record<string, any>>({});
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
   
   // Touch swipe detection state
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const minSwipeDistance = 50;
 
-  const session = getSoloSession();
-  const displayName = session?.displayName || "Me";
+  const displayName = player?.display_name || "Me";
 
   // Load existing picks on mount
   useEffect(() => {
@@ -42,12 +57,12 @@ export default function SoloPicks() {
     }
   }, []);
 
-  // Redirect if no solo session
+  // Redirect if not authenticated
   useEffect(() => {
-    if (!session) {
+    if (!isLoading && !isAuthenticated) {
       navigate("/solo/setup");
     }
-  }, [session, navigate]);
+  }, [isLoading, isAuthenticated, navigate]);
 
   const currentCard = CARD_CONFIG[currentCardIndex];
   const isLastCard = currentCardIndex === TOTAL_CARDS - 1;
@@ -87,6 +102,9 @@ export default function SoloPicks() {
 
   const completedCount = cardCompletionStatus.filter(Boolean).length;
   const allPicksComplete = completedCount === TOTAL_CARDS;
+  
+  // Get detailed pick counts for the warning dialog
+  const pickCounts = useMemo(() => countCompletedPicks(picks, CARD_CONFIG), [picks]);
 
   const handleSwipe = (direction: "left" | "right") => {
     setSwipeDirection(direction);
@@ -106,6 +124,9 @@ export default function SoloPicks() {
     setPicks(newPicks);
     saveSoloPicks(newPicks);
     
+    // Auto-sync to cloud
+    savePicksToCloud(newPicks);
+    
     // Auto-advance after selection (except for chaos props and rumble props)
     const card = CARD_CONFIG.find(c => c.id === cardId);
     if (card?.type !== "chaos-props" && card?.type !== "rumble-props" && currentCardIndex < TOTAL_CARDS - 1) {
@@ -117,12 +138,14 @@ export default function SoloPicks() {
     const newPicks = { ...picks, ...values };
     setPicks(newPicks);
     saveSoloPicks(newPicks);
+    savePicksToCloud(newPicks);
   };
 
   const handleRumblePropsUpdate = (values: Record<string, string | null>) => {
     const newPicks = { ...picks, ...values };
     setPicks(newPicks);
     saveSoloPicks(newPicks);
+    savePicksToCloud(newPicks);
   };
 
   // Touch event handlers
@@ -152,12 +175,35 @@ export default function SoloPicks() {
     setTouchEnd(null);
   };
 
-  const handleSubmit = () => {
-    if (!allPicksComplete) return;
+  const handleSaveClick = () => {
+    // If not all picks complete, show warning
+    if (!allPicksComplete) {
+      setShowIncompleteWarning(true);
+      return;
+    }
     
-    saveSoloPicks(picks);
-    toast.success("Picks saved! Good luck! 🎉");
-    navigate("/solo/dashboard");
+    // All complete, submit directly
+    handleSubmit();
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setShowIncompleteWarning(false);
+    
+    try {
+      // Save locally
+      saveSoloPicks(picks);
+      
+      // Save to cloud
+      await savePicksToCloud(picks);
+      
+      toast.success("Picks saved! Good luck! 🎉");
+      navigate("/solo/dashboard");
+    } catch (err) {
+      toast.error("Failed to save picks");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Get chaos props values for the current card
@@ -187,7 +233,13 @@ export default function SoloPicks() {
     return values;
   };
 
-  if (!session) return null;
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -201,8 +253,8 @@ export default function SoloPicks() {
       {/* Header */}
       <div className="text-center py-2 border-b border-border">
         <div className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
-          Solo Mode
+          <span className="inline-block w-2 h-2 rounded-full bg-success animate-pulse" />
+          Synced
         </div>
         <div className="font-bold text-primary">Hey {displayName}!</div>
       </div>
@@ -304,46 +356,67 @@ export default function SoloPicks() {
           {currentCardIndex + 1} / {TOTAL_CARDS}
         </div>
 
-        <div className="flex items-center gap-2">
-          {!isLastCard ? (
-            <Button
-              variant="ghost"
-              onClick={() => handleSwipe("right")}
-              className="flex items-center gap-2"
-            >
-              Next
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={!allPicksComplete}
-              className={allPicksComplete ? "gold-shimmer" : ""}
-            >
-              Save
-            </Button>
-          )}
+        {!isLastCard ? (
           <Button
-            variant="outline"
-            onClick={handleSubmit}
-            className="flex items-center gap-1"
+            variant="ghost"
+            onClick={() => handleSwipe("right")}
+            className="flex items-center gap-2"
           >
-            <Check className="w-4 h-4" />
-            Done
+            Next
+            <ChevronRight className="w-5 h-5" />
           </Button>
-        </div>
+        ) : (
+          <Button
+            onClick={handleSaveClick}
+            disabled={isSubmitting}
+            className={allPicksComplete ? "gold-shimmer" : ""}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
-      {/* Back to Home */}
+      {/* Back to Dashboard */}
       <div className="p-2 text-center border-t border-border">
         <Button 
           variant="link" 
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/solo/dashboard")}
           className="text-muted-foreground"
         >
-          ← Back to Home
+          ← Back to Dashboard
         </Button>
       </div>
+      
+      {/* Incomplete Picks Warning Dialog */}
+      <AlertDialog open={showIncompleteWarning} onOpenChange={setShowIncompleteWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Not all picks completed</AlertDialogTitle>
+            <AlertDialogDescription>
+              You've completed {pickCounts.completed} of {pickCounts.total} picks. 
+              Saving now means you'll miss out on potential points for incomplete picks.
+              <br /><br />
+              Are you sure you want to save?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSubmit}>
+              Save Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
