@@ -199,12 +199,11 @@ export function RumblePropsCard({
                         }}
                       />
                       <span className={cn(
-                        "text-xs sm:text-sm font-medium truncate flex-1",
+                        "text-xs sm:text-sm font-medium truncate",
                         isUnconfirmedEntrant(selectedWrestler) && "italic opacity-80"
                       )}>
                         {getEntrantDisplayName(selectedWrestler)}
                       </span>
-                      <Check className="w-4 h-4 text-primary flex-shrink-0" />
                     </div>
                   ) : (
                     <div className="text-[10px] sm:text-xs text-muted-foreground">
