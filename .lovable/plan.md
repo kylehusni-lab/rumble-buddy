@@ -1,244 +1,193 @@
 
-
-# Platform-Level Rumble Entrants Admin System
+# Host Party Participation Feature
 
 ## Overview
 
-This plan creates a centralized platform admin system for managing Royal Rumble entrants globally, replacing the per-party entrant storage. A single super-admin will be able to configure the wrestler lists that all parties use.
+This plan enables hosts to easily join their own party and make picks by routing them through the same player registration flow after party creation. This keeps the "Create Party" and "Join Party" experiences consistent.
 
-## Architecture Changes
+## Current Problem
 
-### 1. Database Schema Updates
+When a host creates a party:
+- They are stored as `host_session_id` in the `parties` table
+- Their localStorage session has `isHost: true` but **no `playerId`**
+- They are NOT added to the `players` table
+- The picks page requires a `playerId` to save picks
+- **Result**: Hosts cannot participate in their own party
 
-Create a new `platform_config` table to store global configuration:
+## Proposed Solution
 
-```sql
--- Platform configuration table for global settings
-CREATE TABLE public.platform_config (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  key text UNIQUE NOT NULL,
-  value jsonb NOT NULL,
-  updated_at timestamptz DEFAULT now(),
-  updated_by text
-);
+Route the host through the player registration flow immediately after party creation, then to the Host Setup page.
 
--- Enable realtime for live updates across all hosts
-ALTER PUBLICATION supabase_realtime ADD TABLE public.platform_config;
+### User Flow (Updated)
+
+```text
+Index Page
+    |
+    v
+"Create Party" clicked
+    |
+    v
+Party created in database
+    |
+    v
+/player/join?code=XXXX&host=true  <-- NEW: Host goes through join flow
+    |
+    v
+Host enters name + email (same as regular players)
+    |
+    v
+Host added to players table with playerId
+    |
+    v
+/host/setup/XXXX  <-- Redirected to host setup (not player picks)
 ```
 
-This table will store:
-- `mens_rumble_entrants` - Array of male wrestler names
-- `womens_rumble_entrants` - Array of female wrestler names
+### Key Behaviors
 
-### 2. Admin Authentication
+| Scenario | Behavior |
+|----------|----------|
+| Host creates party | Goes to PlayerJoin with `?host=true` flag |
+| Host submits join form | Creates player record, then redirects to Host Setup |
+| Regular player joins | Same flow as before, redirects to Player Picks |
+| Host returns later | Can access both Host Setup/Control AND Player Dashboard |
 
-Since security is critical, the platform admin page will be protected by a hardcoded super-admin PIN (stored in a secret environment variable). This is a simple approach suitable for a single-admin scenario without full user authentication.
+## File Changes
 
-- Create a new route `/platform-admin` with PIN verification
-- Store the admin PIN as a server-side environment variable (`PLATFORM_ADMIN_PIN`)
-- Use an edge function to validate the PIN securely
-
-### 3. New Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/pages/PlatformAdmin.tsx` | Main admin dashboard for managing entrants |
-| `src/pages/PlatformAdminVerify.tsx` | PIN verification gate for admin access |
-| `src/hooks/usePlatformConfig.ts` | Custom hook to fetch/subscribe to platform config |
-| `supabase/functions/verify-admin-pin/index.ts` | Edge function to securely verify admin PIN |
-
-### 4. Files to Modify
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/App.tsx` | Add routes for `/platform-admin` and `/platform-admin/verify` |
-| `src/pages/HostControl.tsx` | Replace party entrants with platform config |
-| `src/pages/Index.tsx` | Remove entrant initialization when creating parties |
-| `src/components/picks/cards/RumbleWinnerCard.tsx` | Use platform config for entrant lists |
-| `src/lib/constants.ts` | Keep defaults as fallbacks only |
+| `src/pages/Index.tsx` | Change redirect from `/host/setup/{code}` to `/player/join?code={code}&host=true` |
+| `src/pages/PlayerJoin.tsx` | Detect `host=true` param and redirect to `/host/setup/{code}` after registration |
+| `src/components/host/QuickActionsSheet.tsx` | Add "Make My Picks" action to let host access player picks/dashboard |
 
-## Detailed Component Design
+### QuickActionsSheet Updates
 
-### Platform Admin Page (`/platform-admin`)
+Add two new actions for host participation:
 
-A mobile-friendly admin interface with:
-
-- **Header**: "Platform Admin" with logout button
-- **Men's Rumble Section**: 
-  - List of current entrants with remove buttons
-  - "Add Wrestler" input with autocomplete from wrestler-data
-  - Drag-to-reorder functionality (optional, for display order)
-- **Women's Rumble Section**: Same as above
-- **Save Changes**: Button to persist changes to database
-- **Live Preview**: Shows how the list will appear to players
-
-### Platform Config Hook
-
-```typescript
-// src/hooks/usePlatformConfig.ts
-export function usePlatformConfig() {
-  // Fetches mens_rumble_entrants and womens_rumble_entrants from platform_config
-  // Subscribes to realtime updates
-  // Falls back to DEFAULT_*_ENTRANTS from constants if no config exists
-  return { mensEntrants, womensEntrants, isLoading, refetch };
-}
-```
-
-### HostControl Updates
-
-Replace:
-```typescript
-const mensEntrants = Array.isArray(party?.mens_rumble_entrants) ? ... : [];
-const womensEntrants = Array.isArray(party?.womens_rumble_entrants) ? ... : [];
-```
-
-With:
-```typescript
-const { mensEntrants, womensEntrants } = usePlatformConfig();
-```
-
-## Security Considerations
-
-1. **Admin PIN Verification**: The PIN is never exposed client-side. An edge function validates it server-side and returns a signed session token stored in localStorage.
-
-2. **Session Expiry**: Admin sessions expire after 24 hours for security.
-
-3. **Platform Config Protection**: The `platform_config` table should be read-only for normal users. Only the edge function (using service role) can write to it.
-
-4. **RLS Policies**:
-   - SELECT: Allow all authenticated and anonymous users (needed for reading config)
-   - INSERT/UPDATE/DELETE: Deny all (only edge function with service role can modify)
-
-## Data Flow
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Platform Admin Flow                          │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  [Admin] ──> /platform-admin/verify ──> Edge Function               │
-│                                           │                         │
-│                                           ▼                         │
-│                                    Validate PIN                     │
-│                                           │                         │
-│                                           ▼                         │
-│                                   Return session token              │
-│                                           │                         │
-│                                           ▼                         │
-│  [Admin] ──> /platform-admin ──────> CRUD on platform_config        │
-│                                           │                         │
-│                                           ▼                         │
-│                               Realtime broadcast to all clients     │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Host/Player Flow                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  [Host/Player] ──> usePlatformConfig() ──> Fetch from platform_config│
-│                                                │                    │
-│                                                ▼                    │
-│                                     Subscribe to realtime updates   │
-│                                                │                    │
-│                                                ▼                    │
-│                                     Use entrants in UI              │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-## Implementation Steps
-
-1. **Database Setup**
-   - Create `platform_config` table with migration
-   - Add RLS policies (read-only for public)
-   - Enable realtime
-   - Seed initial data with current DEFAULT_*_ENTRANTS
-
-2. **Edge Function**
-   - Create `verify-admin-pin` function
-   - Accept PIN, validate against secret, return session token
-   - Create `update-platform-config` function for secure writes
-
-3. **Platform Admin Pages**
-   - Build PIN verification page
-   - Build main admin dashboard with entrant management UI
-   - Add wrestler search/autocomplete from existing wrestler-data
-
-4. **Integration**
-   - Create `usePlatformConfig` hook
-   - Update HostControl to use the hook
-   - Update RumbleWinnerCard to use the hook
-   - Update party creation to not store entrants (optional cleanup)
-
-5. **Testing**
-   - Verify admin can add/remove entrants
-   - Verify all hosts see updated entrants in real-time
-   - Verify players see correct entrants in picker
-   - Verify fallback to defaults works when no config exists
+1. **"Make My Picks"** - Takes host to `/player/picks/{code}` (pre-event) or `/player/dashboard/{code}` (live)
+2. **"My Dashboard"** - Takes host to their player dashboard to see their numbers, points, etc.
 
 ## Technical Details
 
-### Database Migration SQL
-
-```sql
--- Create platform_config table
-CREATE TABLE IF NOT EXISTS public.platform_config (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  key text UNIQUE NOT NULL,
-  value jsonb NOT NULL,
-  updated_at timestamptz DEFAULT now(),
-  updated_by text
-);
-
--- Enable RLS
-ALTER TABLE public.platform_config ENABLE ROW LEVEL SECURITY;
-
--- Read-only policy for everyone
-CREATE POLICY "Anyone can read platform config"
-  ON public.platform_config FOR SELECT
-  USING (true);
-
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.platform_config;
-
--- Seed initial data
-INSERT INTO public.platform_config (key, value) VALUES 
-  ('mens_rumble_entrants', '["Roman Reigns", "Cody Rhodes", "Gunther", "Jey Uso", "Solo Sikoa", "Jacob Fatu", "Rey Mysterio", "Dragon Lee", "Penta", "CM Punk", "Drew McIntyre", "Randy Orton", "Trick Williams", "Surprise/Other Entrant"]'),
-  ('womens_rumble_entrants', '["Liv Morgan", "Rhea Ripley", "IYO SKY", "Charlotte Flair", "Bayley", "Asuka", "Giulia", "Jordynne Grace", "Alexa Bliss", "Nia Jax", "Roxanne Perez", "Raquel Rodriguez", "Lyra Valkyria", "Lash Legend", "Chelsea Green", "Surprise/Other Entrant"]')
-ON CONFLICT (key) DO NOTHING;
-```
-
-### Edge Function: verify-admin-pin
+### Index.tsx Changes
 
 ```typescript
-// Validates PIN against PLATFORM_ADMIN_PIN secret
-// Returns JWT-like session token on success
-// Token stored in localStorage as 'platform_admin_session'
+// Before:
+navigate(`/host/setup/${partyCode}`);
+
+// After:
+navigate(`/player/join?code=${partyCode}&host=true`);
 ```
 
-### usePlatformConfig Hook Structure
+### PlayerJoin.tsx Changes
 
 ```typescript
-export function usePlatformConfig() {
-  const [config, setConfig] = useState({ 
-    mensEntrants: DEFAULT_MENS_ENTRANTS,
-    womensEntrants: DEFAULT_WOMENS_ENTRANTS 
-  });
-  const [isLoading, setIsLoading] = useState(true);
+const isHostJoining = searchParams.get("host") === "true";
 
-  // Fetch on mount
-  // Subscribe to realtime changes
-  // Return merged config with defaults as fallback
+// In handleSubmit, after creating/updating player:
+setPlayerSession({
+  sessionId,
+  playerId,
+  partyCode,
+  displayName: displayName.trim(),
+  email: email.toLowerCase().trim(),
+  isHost: isHostJoining, // Set isHost based on URL param
+});
 
-  return { ...config, isLoading, refetch };
+// Redirect logic:
+if (isHostJoining) {
+  // Host goes to setup page after registering
+  navigate(`/host/setup/${partyCode}`);
+} else if (partyStatus === "live") {
+  navigate(`/player/dashboard/${partyCode}`);
+} else {
+  navigate(`/player/picks/${partyCode}`);
 }
 ```
 
-## Cleanup (Optional Future Work)
+### QuickActionsSheet.tsx Updates
 
-After confirming the platform config works:
-- Remove `mens_rumble_entrants` and `womens_rumble_entrants` columns from `parties` table
-- Remove related code from Index.tsx party creation
-- Remove party-specific entrant handling from HostSetup.tsx (already done)
+Add new actions array entries:
 
+```typescript
+{
+  icon: ClipboardList, // or UserCircle
+  title: "Make My Picks",
+  subtitle: "Submit your predictions",
+  onClick: handleMakeMyPicks,
+},
+{
+  icon: Trophy,
+  title: "My Dashboard", 
+  subtitle: "View your numbers & points",
+  onClick: handleMyDashboard,
+},
+```
+
+Handler functions:
+
+```typescript
+const handleMakeMyPicks = () => {
+  // Check if player session exists
+  const session = getPlayerSession();
+  if (session?.playerId) {
+    navigate(`/player/picks/${code}`);
+  } else {
+    toast.info("Please join the party first");
+    navigate(`/player/join?code=${code}&host=true`);
+  }
+  onOpenChange(false);
+};
+
+const handleMyDashboard = () => {
+  const session = getPlayerSession();
+  if (session?.playerId) {
+    navigate(`/player/dashboard/${code}`);
+  } else {
+    toast.info("Please join the party first");
+    navigate(`/player/join?code=${code}&host=true`);
+  }
+  onOpenChange(false);
+};
+```
+
+## Edge Cases Handled
+
+| Scenario | Handling |
+|----------|----------|
+| Host created party before this change | Quick Actions shows "Make My Picks" which routes them to join flow with `host=true` |
+| Host tries to re-register | PlayerJoin detects existing email and updates session (existing behavior) |
+| Host loses session | Can re-join via Quick Actions or join party modal with same email |
+| Party status is "live" | Host can still access dashboard via Quick Actions |
+
+## UI Considerations
+
+- The join form looks identical for hosts and regular players
+- Form title could optionally say "Join Your Party" for hosts
+- The only difference is the redirect destination after submission
+- Quick Actions menu provides easy access to player features from host screens
+
+## Session Data Structure
+
+After implementation, a host's session will contain all fields:
+
+```typescript
+{
+  sessionId: "uuid",
+  playerId: "uuid",      // Now populated for hosts
+  partyCode: "1234",
+  displayName: "Host Name",
+  email: "host@example.com",
+  isHost: true
+}
+```
+
+This allows hosts to use all player features while retaining host privileges.
+
+## Benefits
+
+1. **Consistency** - Same registration flow for everyone
+2. **Simplicity** - No separate host registration system
+3. **Full participation** - Hosts get numbers, can make picks, see their dashboard
+4. **Backward compatible** - Existing hosts can join via Quick Actions
