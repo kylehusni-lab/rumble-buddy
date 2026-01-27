@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Trophy, Edit3, Calculator, Hash, Swords, Zap } from "lucide-react";
+import { Trophy, Edit3, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { SoloScoringModal } from "@/components/solo/SoloScoringModal";
+import { useSoloCloud } from "@/hooks/useSoloCloud";
 import { 
-  getSoloSession, 
   getSoloPicks, 
   getSoloResults, 
   calculateSoloScore 
@@ -22,28 +22,48 @@ type TabType = "matches" | "mens" | "womens" | "chaos";
 
 export default function SoloDashboard() {
   const navigate = useNavigate();
+  const { isLoading, isAuthenticated, player, logout, saveResultsToCloud } = useSoloCloud();
+  
   const [activeTab, setActiveTab] = useState<TabType>("matches");
   const [isScoringOpen, setIsScoringOpen] = useState(false);
   const [results, setResults] = useState<Record<string, string>>({});
+  const [picks, setPicks] = useState<Record<string, string>>({});
 
-  const session = getSoloSession();
-  const picks = getSoloPicks();
-
+  // Redirect if not authenticated
   useEffect(() => {
-    if (!session) {
+    if (!isLoading && !isAuthenticated) {
       navigate("/solo/setup");
       return;
     }
+    
+    // Load local data
+    setPicks(getSoloPicks());
     setResults(getSoloResults());
-  }, [session, navigate]);
+  }, [isLoading, isAuthenticated, navigate]);
 
   const score = useMemo(() => calculateSoloScore(picks, results), [picks, results]);
 
-  const handleResultsUpdated = () => {
-    setResults(getSoloResults());
+  const handleResultsUpdated = async () => {
+    const newResults = getSoloResults();
+    setResults(newResults);
+    // Sync to cloud
+    await saveResultsToCloud(newResults);
   };
 
-  if (!session) return null;
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !player) return null;
 
   const tabs = [
     { id: "matches" as const, icon: Swords, label: "Matches" },
@@ -59,9 +79,19 @@ export default function SoloDashboard() {
         <div className="p-4 pb-2">
           <div className="flex items-center justify-between mb-3">
             <Logo size="sm" />
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
-              Solo Mode
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Cloud className="w-3 h-3 text-success" />
+                Synced
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="text-muted-foreground"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
 
@@ -74,10 +104,13 @@ export default function SoloDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-muted-foreground">
-                  Hey {session.displayName}!
+                  Hey {player.display_name}!
                 </div>
                 <div className="text-3xl font-black text-primary tabular-nums">
                   {score} pts
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {player.email}
                 </div>
               </div>
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
