@@ -1,177 +1,168 @@
 
-# Host View Improvements & Bug Fixes
 
-## Overview
-This plan addresses three issues:
-1. Streamline the host control hamburger menu
-2. Fix women's rumble showing men's wrestlers in edit modal  
-3. Fix missing wrestler images
+# TV Display Enhancement Plan
+
+## Current State Analysis
+
+The TV display currently has:
+- A minimal header (logo + party code)
+- A 12-column grid with 10 columns for content and 2 for leaderboard
+- Navigation via small dots at the bottom and chevron buttons
+- 7 views: 3 undercard matches, Men's Rumble, Men's Props, Women's Rumble, Women's Props
+
+### Issues Identified
+1. **Navigation friction** - Small dots and separated chevrons aren't TV-friendly
+2. **Wasted header space** - Header is minimal, could show useful info
+3. **No view context** - Hard to know what you're looking at from across the room
+4. **No live activity feed** - Missing real-time event updates
 
 ---
 
-## Issue 1: Host View Simplification
+## Proposed Enhancements
 
-### Current State
-The hamburger menu contains:
-- Make My Picks
-- My Dashboard
-- TV Display
-- Copy Join Link
-- View All Picks (coming soon)
-- Number Assignments (coming soon)
-- Sign Out
+### 1. Tab Navigation Bar (Replace Dots)
 
-### Proposed Changes
+Replace the bottom dot indicators with a prominent horizontal tab bar showing all 7 views:
 
-**A. Header Button Enhancement**
-- Change header's "Group #CODE" button to copy the **full join URL** (not just the code)
-- Currently: `navigator.clipboard.writeText(code)` 
-- New: `navigator.clipboard.writeText(\`\${window.location.origin}/player/join?code=\${code}\`)`
+| Tab | Icon | Label |
+|-----|------|-------|
+| 1 | Swords | Match 1 |
+| 2 | Swords | Match 2 |
+| 3 | Swords | Match 3 |
+| 4 | Users | Men's Grid |
+| 5 | List | Men's Props |
+| 6 | Users | Women's Grid |
+| 7 | List | Women's Props |
 
-**B. Consolidate Menu Items**
-- Merge "Make My Picks" and "My Dashboard" into a single **"My Picks & Stats"** button that navigates to the dashboard
-- The dashboard already has an "Edit Picks" button for pre-event editing, so separate navigation isn't needed
+- Active tab highlighted with primary color
+- Completed tabs show green checkmark
+- Clickable for quick navigation
+- Shows keyboard shortcuts (1-7)
 
-**C. Optional: Add Quick Actions to Main Screen**
-- Add a "TV Display" button visible on the main host control page (not just in menu)
-- Keep menu for less-used items (Sign Out, Settings, etc.)
+### 2. Enhanced Header Bar
 
-### Files to Modify
+Expand the header to show:
+- **Left**: Logo + Party Code (existing)
+- **Center**: Current view title (large, readable from distance)
+- **Right**: Live stats pill showing:
+  - Active wrestlers count (during Rumble views)
+  - Total eliminations
+  - Time since last action
+
+### 3. Live Activity Ticker
+
+Add a scrolling ticker at the bottom showing recent events:
+- "Roman Reigns eliminated by Seth Rollins"
+- "Entry #15: Cody Rhodes owned by Mike"
+- "Drew McIntyre wins undercard match"
+
+This fills dead space and keeps viewers engaged even when not actively watching.
+
+### 4. Auto-Rotate Mode
+
+Add an auto-rotate toggle that cycles through views every 30 seconds:
+- Useful for ambient display during watch party
+- Pause indicator shows when paused
+- Any manual navigation pauses auto-rotate
+
+### 5. Fullscreen Mode Button
+
+Add a fullscreen toggle in the header for true TV display experience.
+
+---
+
+## File Changes
 
 | File | Changes |
 |------|---------|
-| `src/components/host/HostHeader.tsx` | Change copy action to copy full join URL |
-| `src/components/host/QuickActionsSheet.tsx` | Consolidate My Picks/Dashboard into single item |
-
----
-
-## Issue 2: Women's Rumble Showing Men's Wrestlers
-
-### Root Cause
-The `SinglePickEditModal` uses `DEFAULT_MENS_ENTRANTS` and `DEFAULT_WOMENS_ENTRANTS` from constants, but the `PlayerDashboard` doesn't pass the gender-specific entrants from platform config.
-
-### Current Code (SinglePickEditModal.tsx)
-```tsx
-// For rumble props:
-const gender = matchId.includes("mens") ? "mens" : "womens";
-entrants: customEntrants || (gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS),
-```
-
-The logic is correct, but if `customEntrants` is passed, it overrides both genders with the same list.
-
-### Solution
-1. Change `customEntrants` prop to separate `mensEntrants` and `womensEntrants` props
-2. Update `PlayerDashboard` to pass both from `usePlatformConfig()`
-3. Update `getPickConfig` to use the correct entrants based on detected gender
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/dashboard/SinglePickEditModal.tsx` | Change `customEntrants` to `mensEntrants` + `womensEntrants` |
-| `src/pages/PlayerDashboard.tsx` | Pass entrants from `usePlatformConfig()` |
-
----
-
-## Issue 3: Missing Wrestler Images
-
-### Likely Cause
-The wrestler names in `DEFAULT_MENS_ENTRANTS` (constants.ts) may not exactly match the names in `wrestler-data.ts`. For example:
-- Constants: `"Finn Bálor"` (with accent)
-- Wrestler data: `"Finn Balor"` (without accent)
-
-### Solution
-1. Audit name mismatches between `constants.ts` and `wrestler-data.ts`
-2. Ensure the fallback to UI Avatars placeholder is working correctly
-3. Add console logging to identify which names aren't matching
-
-### Names to check for mismatches:
-- `Finn Bálor` vs `Finn Balor`
-- `Je'Von Evans` (apostrophe handling)
-- `*` prefix stripping for unconfirmed entrants
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/lib/constants.ts` | Fix name mismatches |
-| `src/lib/wrestler-data.ts` | Ensure all entrant names have corresponding data |
-
----
-
-## Implementation Order
-
-1. **Fix HostHeader.tsx** - Copy full join URL
-2. **Fix QuickActionsSheet.tsx** - Consolidate menu items
-3. **Fix SinglePickEditModal.tsx** - Separate gender entrant props
-4. **Fix PlayerDashboard.tsx** - Pass platform config entrants
-5. **Audit & fix name mismatches** - Between constants and wrestler-data
+| `src/pages/TvDisplay.tsx` | Add header stats, activity tracker state, auto-rotate logic |
+| `src/components/tv/TvViewNavigator.tsx` | Replace dots with tab bar component |
+| `src/components/tv/TvTabBar.tsx` | **New** - Horizontal navigation tabs |
+| `src/components/tv/TvActivityTicker.tsx` | **New** - Scrolling event feed |
+| `src/components/tv/TvHeaderStats.tsx` | **New** - Live stats display |
 
 ---
 
 ## Technical Details
 
-### HostHeader.tsx Change
+### TvTabBar Component
 ```tsx
-const handleCopyCode = () => {
-  const joinUrl = `${window.location.origin}/player/join?code=${code}`;
-  navigator.clipboard.writeText(joinUrl);
-  setCopied(true);
-  toast.success("Join link copied!");
-  setTimeout(() => setCopied(false), 2000);
-};
-```
-
-### SinglePickEditModal.tsx Props Change
-```tsx
-interface SinglePickEditModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  matchId: string;
-  currentPick: string;
-  onSave: (matchId: string, newValue: string) => void;
-  mensEntrants?: string[];
-  womensEntrants?: string[];
+interface TvTabBarProps {
+  views: View[];
+  currentIndex: number;
+  onSelectView: (index: number) => void;
+  isViewComplete: (view: View) => boolean;
 }
 
-function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?: string[]) {
-  // For rumble winner/props:
-  const gender = matchId.includes("mens") ? "mens" : "womens";
-  return {
-    type: "wrestler",
-    entrants: gender === "mens" 
-      ? (mensEntrants || DEFAULT_MENS_ENTRANTS)
-      : (womensEntrants || DEFAULT_WOMENS_ENTRANTS),
-  };
+// Renders as:
+// [Match 1 ✓] [Match 2 ✓] [Match 3] [Men's ●] [M Props] [Women's] [W Props]
+```
+
+### Activity Tracking
+Track events in state array (max 20 recent events):
+```tsx
+interface ActivityEvent {
+  id: string;
+  type: "entry" | "elimination" | "result";
+  message: string;
+  timestamp: Date;
 }
 ```
 
-### PlayerDashboard.tsx Usage
+### Auto-Rotate Logic
 ```tsx
-import { usePlatformConfig } from "@/hooks/usePlatformConfig";
+const [autoRotate, setAutoRotate] = useState(false);
+const [rotateInterval, setRotateInterval] = useState(30000); // 30s
 
-// Inside component:
-const { mensEntrants, womensEntrants } = usePlatformConfig();
-
-// In JSX:
-<SinglePickEditModal
-  isOpen={editModalOpen}
-  onClose={() => setEditModalOpen(false)}
-  matchId={editingMatchId}
-  currentPick={editingCurrentPick}
-  onSave={handleSavePick}
-  mensEntrants={mensEntrants}
-  womensEntrants={womensEntrants}
-/>
+useEffect(() => {
+  if (!autoRotate) return;
+  const timer = setInterval(goToNext, rotateInterval);
+  return () => clearInterval(timer);
+}, [autoRotate, rotateInterval]);
 ```
+
+---
+
+## Visual Layout (After Changes)
+
+```text
++------------------------------------------------------------------+
+| [Logo]  Party #9301    MEN'S ROYAL RUMBLE    Active: 12 | Auto ⟳ |
++------------------------------------------------------------------+
+|                                                                  |
+|                      [Main Content Area]                         |
+|                      (Match/Grid/Props)                          |
+|                                                                  |
+|                                                         +--------+
+|                                                         | Leader |
+|                                                         | board  |
+|                                                         +--------+
++------------------------------------------------------------------+
+| [1] Match 1 ✓ | [2] Match 2 ✓ | [3] Match 3 | [4] Men's ● | ... |
++------------------------------------------------------------------+
+| ← Roman Reigns eliminated • Entry #15 Cody Rhodes (Mike) • ... → |
++------------------------------------------------------------------+
+```
+
+---
+
+## Implementation Order
+
+1. **TvTabBar.tsx** - Create new tab navigation component
+2. **TvActivityTicker.tsx** - Create scrolling event feed
+3. **TvHeaderStats.tsx** - Create live stats display
+4. **TvViewNavigator.tsx** - Replace dots with TvTabBar
+5. **TvDisplay.tsx** - Integrate all components, add auto-rotate
 
 ---
 
 ## Summary
 
-| Issue | Fix | Complexity |
-|-------|-----|------------|
-| Copy join URL | Update HostHeader | Low |
-| Consolidate menu | Update QuickActionsSheet | Low |
-| Wrong gender wrestlers | Separate entrant props | Medium |
-| Missing images | Audit name mismatches | Medium |
+| Enhancement | Benefit |
+|-------------|---------|
+| Tab navigation bar | TV-friendly, one-click access to any view |
+| Enhanced header | View title readable from across room |
+| Live activity ticker | Fills space, keeps engagement high |
+| Auto-rotate mode | Hands-free ambient display |
+| Fullscreen button | True TV experience |
+
