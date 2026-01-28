@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Trophy, Edit3, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud } from "lucide-react";
+import { Trophy, Edit3, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { SoloScoringModal } from "@/components/solo/SoloScoringModal";
@@ -42,6 +42,46 @@ export default function SoloDashboard() {
   }, [isLoading, isAuthenticated, navigate]);
 
   const score = useMemo(() => calculateSoloScore(picks, results), [picks, results]);
+
+  const tabCompletion = useMemo(() => {
+    const matchCards = CARD_CONFIG.filter(c => c.type === "match");
+    const matchesComplete = matchCards.filter(c => picks[c.id]).length;
+    const winnersComplete = (picks["mens_rumble_winner"] ? 1 : 0) + 
+                            (picks["womens_rumble_winner"] ? 1 : 0);
+    
+    // Men's: 5 props + 4 final four
+    let mensComplete = 0;
+    RUMBLE_PROPS.forEach(prop => {
+      if (picks[`mens_${prop.id}`]) mensComplete++;
+    });
+    for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+      if (picks[`mens_final_four_${i}`]) mensComplete++;
+    }
+    
+    // Women's: same structure
+    let womensComplete = 0;
+    RUMBLE_PROPS.forEach(prop => {
+      if (picks[`womens_${prop.id}`]) womensComplete++;
+    });
+    for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+      if (picks[`womens_final_four_${i}`]) womensComplete++;
+    }
+    
+    // Chaos: 6 props x 2 genders
+    let chaosComplete = 0;
+    ["mens", "womens"].forEach(gender => {
+      CHAOS_PROPS.forEach((_, i) => {
+        if (picks[`${gender}_chaos_prop_${i + 1}`]) chaosComplete++;
+      });
+    });
+    
+    return {
+      matches: { complete: matchesComplete + winnersComplete, total: 5 },
+      mens: { complete: mensComplete, total: 9 },
+      womens: { complete: womensComplete, total: 9 },
+      chaos: { complete: chaosComplete, total: 12 },
+    };
+  }, [picks]);
 
   const handleResultsUpdated = async () => {
     const newResults = getSoloResults();
@@ -122,26 +162,45 @@ export default function SoloDashboard() {
 
         {/* Tab Navigation */}
         <div className="flex border-b border-border">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center gap-1 py-3 px-2 transition-colors relative ${
-                activeTab === tab.id
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <tab.icon className="w-5 h-5" />
-              <span className="text-xs font-medium">{tab.label}</span>
-              {activeTab === tab.id && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                />
-              )}
-            </button>
-          ))}
+          {tabs.map((tab) => {
+            const completion = tabCompletion[tab.id];
+            const isComplete = completion.complete === completion.total;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-2 transition-colors relative ${
+                  activeTab === tab.id
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                <span className="text-xs font-medium">{tab.label}</span>
+                <span className={`text-[10px] font-medium ${
+                  isComplete 
+                    ? "text-success" 
+                    : "text-muted-foreground"
+                }`}>
+                  {isComplete ? (
+                    <span className="flex items-center gap-0.5">
+                      <Check className="w-3 h-3" />
+                      {completion.complete}/{completion.total}
+                    </span>
+                  ) : (
+                    `${completion.complete}/${completion.total}`
+                  )}
+                </span>
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
