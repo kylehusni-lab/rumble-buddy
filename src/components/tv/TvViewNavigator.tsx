@@ -5,6 +5,7 @@ import { ActiveMatchDisplay } from "./ActiveMatchDisplay";
 import { NumberCell } from "./NumberCell";
 import { RumblePropsDisplay } from "./RumblePropsDisplay";
 import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
+import { TvLeaderboardView } from "./TvLeaderboardView";
 import { WrestlerImage } from "./WrestlerImage";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
@@ -45,7 +46,7 @@ interface TvViewNavigatorProps {
   getNumberStatus: (num: RumbleNumber) => "pending" | "active" | "eliminated";
 }
 
-export type ViewType = "undercard" | "rumble" | "rumble-props";
+export type ViewType = "leaderboard" | "undercard" | "rumble" | "rumble-props";
 
 export interface View {
   type: ViewType;
@@ -56,6 +57,7 @@ export interface View {
 }
 
 export const VIEWS: View[] = [
+  { type: "leaderboard", id: "leaderboard", title: "Leaderboard" },
   { type: "undercard", id: "undercard_1", title: UNDERCARD_MATCHES[0].title, options: UNDERCARD_MATCHES[0].options },
   { type: "undercard", id: "undercard_2", title: UNDERCARD_MATCHES[1].title, options: UNDERCARD_MATCHES[1].options },
   { type: "undercard", id: "undercard_3", title: UNDERCARD_MATCHES[2].title, options: UNDERCARD_MATCHES[2].options },
@@ -157,7 +159,7 @@ export function TvViewNavigator({
         goToPrevious();
       } else if (e.key === "ArrowRight") {
         goToNext();
-      } else if (e.key >= "1" && e.key <= "7") {
+      } else if (e.key >= "1" && e.key <= "8") {
         const index = parseInt(e.key) - 1;
         if (index < VIEWS.length) {
           setDirection(index > currentViewIndex ? 1 : -1);
@@ -264,6 +266,10 @@ export function TvViewNavigator({
   };
 
   const renderCurrentView = () => {
+    if (currentView.type === "leaderboard") {
+      return <TvLeaderboardView players={players} />;
+    }
+
     if (currentView.type === "undercard" && currentView.options) {
       const match = UNDERCARD_MATCHES.find(m => m.id === currentView.id);
       if (match) {
