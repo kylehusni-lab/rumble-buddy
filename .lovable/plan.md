@@ -1,288 +1,178 @@
 
 
-# TV Display Layout Improvements
+# TV Display Cleanup and Layout Optimization
 
 ## Overview
 
-Based on the screenshot, there are several improvements needed to optimize the TV display:
+This plan addresses several UI redundancies and layout optimizations for the TV display based on the screenshot:
 
-1. Move the tab navigation bar higher (currently at the bottom, below content)
-2. Hide the leaderboard when viewing Props to maximize screen real estate
-3. Remove duplicate "Men's Royal Rumble" header from Rumble views (it already shows in the top header)
-4. Enhance individual match views with pick percentages and player breakdown
+1. Remove the ParticipantPicksView panel (picks are now shown directly on match cards)
+2. Replace the collapsible LeaderboardPanel with a compact horizontal bar
+3. Fix duplicate headers in Rumble Props views
+4. Expand content to use full width without the side column
 
 ---
 
-## Current Issues (from Screenshot)
+## Current Issues
 
 Looking at the screenshot:
-- The header shows "Men's Royal Rumble" in large text (good)
-- But the content area ALSO shows "Men's Royal Rumble" header with "Active: 6" (duplicative)
-- The tab bar is at the very bottom, below the "Waiting for action..." ticker
-- For undercard matches, only wrestler photos are shown without pick distribution stats
+- The leaderboard takes up right-side column space with expand/collapse/hide states
+- "Men's Rumble Props" appears in header, then "Men's Rumble Predictions" duplicates in content
+- ParticipantPicksView shows picks that are already visible on match cards
 
 ---
 
 ## Proposed Changes
 
-### 1. Move Tab Bar Up
+### 1. Remove ParticipantPicksView
 
-**Current Layout:**
-```
-[Header]
-[Main Content]
-[Participant Picks]
-[Tab Bar]
-[Activity Ticker]
-```
+The picks are now shown directly on the `ActiveMatchDisplay` component with percentage bars and player names. The ParticipantPicksView is redundant.
 
-**New Layout:**
+**File: `src/components/tv/TvViewNavigator.tsx`**
+- Remove lines 335-345 that render ParticipantPicksView for undercard matches
+
+### 2. Create Simple Horizontal Leaderboard Bar
+
+Replace the complex collapsible panel with a compact inline bar that fits below the tab bar:
+
+**New Component: `src/components/tv/TvLeaderboardBar.tsx`**
 ```
-[Header]
-[Tab Bar]  <-- Moved up directly below header
-[Main Content]
-[Participant Picks]
-[Activity Ticker]
+[Trophy] 1. Kyle (0) | 2. Melanie (0) | 3. Mike (0) | 4. Jon (0) | 5. Chris (0) | 6. Steve (0)
 ```
 
-This makes navigation more accessible and visible while watching.
+Features:
+- Single horizontal row with all players
+- Gold/Silver/Bronze styling for top 3
+- Always visible, no collapse/expand controls
+- Compact pill badges for each player
 
-**Files to modify:**
-- `src/pages/TvDisplay.tsx` - Move TvActivityTicker and restructure layout
-- `src/components/tv/TvViewNavigator.tsx` - Remove TvTabBar from here (will be rendered in parent)
+### 3. Remove Side Column Layout
 
-### 2. Hide Leaderboard for Props Views
+**File: `src/pages/TvDisplay.tsx`**
+- Remove the 12-column grid split
+- Make content full-width
+- Remove LeaderboardPanel import and rendering
+- Add new TvLeaderboardBar below the tab bar
 
-This is already partially implemented! Looking at line 571-603 of TvDisplay.tsx:
-```tsx
-{currentViewType !== "rumble-props" && (
-  <div className={sideColSpan}>
-    <LeaderboardPanel players={players} />
-  </div>
-)}
+### 4. Fix Duplicate Title in RumblePropsDisplay
+
+**File: `src/components/tv/RumblePropsDisplay.tsx`**
+- Remove the "Men's/Women's Rumble Predictions" header since it's already shown in TvHeaderStats
+
+---
+
+## New Layout Structure
+
 ```
-
-The leaderboard is already hidden for `rumble-props` views, so this works. No changes needed.
-
-### 3. Remove Duplicate Rumble Title
-
-The `renderNumberGrid` function in `TvViewNavigator.tsx` (lines 185-270) renders:
-```tsx
-<div className="flex items-center justify-between">
-  <h2 className="text-2xl font-bold">{title}</h2>  // <-- DUPLICATE
-  <span className="text-success text-lg font-semibold">Active: {activeCount}</span>
-</div>
++------------------------------------------------------------------+
+| [Logo] #9301                Men's Rumble Props    [Auto] [Full]  |
++------------------------------------------------------------------+
+| [Match 1] [Match 2] [Match 3] [Men's] [M Props*] [Women's] [W Props] |
++------------------------------------------------------------------+
+| [Trophy] 1. Kyle 0 | 2. Melanie 0 | 3. Mike 0 | 4. Jon 0 | ...   |
++------------------------------------------------------------------+
+|                                                                   |
+|                     [FULL WIDTH CONTENT]                          |
+|                      (Props Grid Table)                           |
+|                                                                   |
++------------------------------------------------------------------+
+| [Activity Ticker]                                                 |
++------------------------------------------------------------------+
 ```
-
-Since the main header already shows "Men's Royal Rumble", we should:
-- Remove the title from the grid content
-- Keep only the "Active: X" counter (move it to a more prominent position)
-
-**Files to modify:**
-- `src/components/tv/TvViewNavigator.tsx` - Remove title from `renderNumberGrid`, keep active count
-
-### 4. Enhanced Individual Match Display
-
-For undercard matches, we'll enhance `ActiveMatchDisplay.tsx` to show:
-1. The matchup (already shows wrestlers VS each other)
-2. Pick percentage bars for each wrestler
-3. Player names grouped by who they picked
-
-**New Layout for Match View:**
-```
-+--------------------------------------------------+
-|  [LIVE/COMPLETE badge]                           |
-+--------------------------------------------------+
-|                                                  |
-|    [Photo]                      [Photo]          |
-|    Wrestler 1        VS        Wrestler 2        |
-|                                                  |
-|  =========== 60% ===========  ==== 40% ====     |
-|                                                  |
-|  Picked by:                   Picked by:         |
-|  Kyle, Melanie, Mike          Jon, Chris, Steve  |
-|                                                  |
-+--------------------------------------------------+
-```
-
-**Files to modify:**
-- `src/components/tv/ActiveMatchDisplay.tsx` - Add pick percentage bars and player lists
-- Will receive `players` and `picks` as new props
 
 ---
 
 ## Technical Details
 
-### TvDisplay.tsx Layout Restructure
+### TvLeaderboardBar Component
+
+```tsx
+interface TvLeaderboardBarProps {
+  players: Player[];
+}
+
+export function TvLeaderboardBar({ players }: TvLeaderboardBarProps) {
+  return (
+    <div className="bg-card/80 backdrop-blur-sm rounded-xl px-4 py-3 border border-border">
+      <div className="flex items-center gap-4">
+        <Trophy className="w-5 h-5 text-primary" />
+        <span className="font-semibold text-sm text-muted-foreground">Leaderboard</span>
+        <div className="flex items-center gap-3 overflow-x-auto">
+          {players.map((player, index) => (
+            <div 
+              key={player.id}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full",
+                index === 0 && "bg-primary/20 border border-primary",
+                index === 1 && "bg-muted/80",
+                index === 2 && "bg-muted/60",
+                index > 2 && "bg-muted/40"
+              )}
+            >
+              <span className={cn(
+                "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                index === 0 && "tv-rank-gold",
+                index === 1 && "tv-rank-silver",
+                index === 2 && "tv-rank-bronze",
+                index > 2 && "bg-muted text-muted-foreground"
+              )}>
+                {index + 1}
+              </span>
+              <span className="font-medium text-sm">{player.display_name}</span>
+              <span className="font-bold">{player.points}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+### Updated TvDisplay Layout
 
 ```tsx
 <div className="min-h-screen bg-background text-foreground tv-mode p-6 flex flex-col">
-  {/* Header */}
-  <div className="flex items-center justify-between mb-4">
-    {/* Logo + Code */}
-    <TvHeaderStats ... />
-  </div>
-
-  {/* Tab Bar - MOVED UP */}
+  {/* Header - unchanged */}
+  
+  {/* Tab Bar */}
+  {partyStatus !== "pre_event" && (
+    <div className="mb-3">
+      <TvTabBar ... />
+    </div>
+  )}
+  
+  {/* NEW: Horizontal Leaderboard Bar */}
   {partyStatus !== "pre_event" && (
     <div className="mb-4">
-      <TvTabBar
-        views={VIEWS}
-        currentIndex={currentViewIndex}
-        onSelectView={handleSelectView}
-        isViewComplete={isViewComplete}
-        isViewActive={isViewActive}
-      />
+      <TvLeaderboardBar players={players} />
     </div>
   )}
 
-  {/* Main Content Area */}
-  <div className={...}>
-    {/* Content */}
-    {/* Leaderboard (conditional) */}
+  {/* Main Content - FULL WIDTH, no grid split */}
+  <div className="flex-1">
+    {partyStatus === "pre_event" ? (
+      <div>Waiting...</div>
+    ) : (
+      <TvViewNavigator ... />
+    )}
   </div>
 
-  {/* Activity Ticker - stays at bottom */}
-  {partyStatus !== "pre_event" && (
-    <div className="mt-4">
-      <TvActivityTicker events={activityEvents} />
-    </div>
-  )}
+  {/* Activity Ticker - unchanged */}
 </div>
-```
-
-### TvViewNavigator.tsx Changes
-
-Remove the TvTabBar from this component since it will now be rendered in the parent:
-
-```tsx
-// Remove this from the return statement:
-<div className="mt-6">
-  <TvTabBar ... />
-</div>
-```
-
-Also remove the duplicate title from `renderNumberGrid`:
-
-```tsx
-const renderNumberGrid = (numbers: RumbleNumber[], title: string, rumbleId: string) => {
-  // Keep active count logic
-  const activeCount = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length;
-
-  return (
-    <div className="space-y-4">
-      {/* REMOVE: the title header
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">{title}</h2>
-        <span className="text-success...">Active: {activeCount}</span>
-      </div>
-      */}
-      
-      {/* The grid - no changes */}
-      <div className={cn("grid grid-cols-10", gridGapClass)}>
-        ...
-      </div>
-      
-      {/* Winner Display - no changes */}
-      ...
-    </div>
-  );
-};
-```
-
-### ActiveMatchDisplay.tsx Enhancement
-
-Add props for players and picks to calculate and display pick distribution:
-
-```tsx
-interface ActiveMatchDisplayProps {
-  match: typeof UNDERCARD_MATCHES[number];
-  matchResults: MatchResult[];
-  players: Player[];  // NEW
-  picks: Pick[];       // NEW
-}
-
-export function ActiveMatchDisplay({ match, matchResults, players, picks }: ActiveMatchDisplayProps) {
-  // Calculate pick distribution
-  const pickStats = useMemo(() => {
-    const matchPicks = picks.filter(p => p.match_id === match.id);
-    const totalPicks = matchPicks.length;
-    
-    const wrestler1Picks = matchPicks.filter(p => p.prediction === wrestler1);
-    const wrestler2Picks = matchPicks.filter(p => p.prediction === wrestler2);
-    
-    return {
-      wrestler1: {
-        count: wrestler1Picks.length,
-        percentage: totalPicks > 0 ? Math.round((wrestler1Picks.length / totalPicks) * 100) : 0,
-        players: wrestler1Picks.map(p => 
-          players.find(pl => pl.id === p.player_id)?.display_name || "Unknown"
-        ),
-      },
-      wrestler2: {
-        count: wrestler2Picks.length,
-        percentage: totalPicks > 0 ? Math.round((wrestler2Picks.length / totalPicks) * 100) : 0,
-        players: wrestler2Picks.map(p => 
-          players.find(pl => pl.id === p.player_id)?.display_name || "Unknown"
-        ),
-      },
-    };
-  }, [match.id, picks, players, wrestler1, wrestler2]);
-
-  return (
-    <motion.div ...>
-      {/* Status bar - keep as is */}
-      
-      {/* Match display */}
-      <div className="p-8">
-        <div className="flex items-center justify-center gap-8 md:gap-16">
-          {/* Wrestler 1 */}
-          <div className="flex flex-col items-center gap-4">
-            <WrestlerImage ... />
-            <span className="text-2xl font-bold">{wrestler1}</span>
-            
-            {/* NEW: Pick percentage */}
-            <div className="text-lg font-bold text-primary">
-              {pickStats.wrestler1.percentage}%
-            </div>
-            
-            {/* NEW: Player names who picked */}
-            <div className="text-sm text-muted-foreground text-center max-w-[150px]">
-              {pickStats.wrestler1.players.join(", ") || "No picks"}
-            </div>
-          </div>
-
-          {/* VS graphic - keep */}
-          
-          {/* Wrestler 2 - same structure as wrestler 1 */}
-        </div>
-
-        {/* NEW: Visual progress bar showing distribution */}
-        <div className="mt-8 flex h-3 rounded-full overflow-hidden bg-muted">
-          <div 
-            className="bg-primary/80 transition-all duration-500"
-            style={{ width: `${pickStats.wrestler1.percentage}%` }}
-          />
-          <div 
-            className="bg-secondary/80 transition-all duration-500"
-            style={{ width: `${pickStats.wrestler2.percentage}%` }}
-          />
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 ```
 
 ---
 
-## Files to Modify
+## Files to Modify/Create
 
 | File | Changes |
 |------|---------|
-| `src/pages/TvDisplay.tsx` | Move TvTabBar up in layout, pass additional helper functions |
-| `src/components/tv/TvViewNavigator.tsx` | Remove TvTabBar, remove duplicate title from renderNumberGrid, pass players/picks to ActiveMatchDisplay |
-| `src/components/tv/ActiveMatchDisplay.tsx` | Add players/picks props, show percentage bars and player lists |
+| `src/components/tv/TvLeaderboardBar.tsx` | **New** - Compact horizontal leaderboard |
+| `src/pages/TvDisplay.tsx` | Remove LeaderboardPanel, remove grid layout, add TvLeaderboardBar |
+| `src/components/tv/TvViewNavigator.tsx` | Remove ParticipantPicksView rendering |
+| `src/components/tv/RumblePropsDisplay.tsx` | Remove duplicate title header |
+| `src/components/tv/LeaderboardPanel.tsx` | Can be deleted (optional) |
 
 ---
 
@@ -290,8 +180,8 @@ export function ActiveMatchDisplay({ match, matchResults, players, picks }: Acti
 
 | Change | Benefit |
 |--------|---------|
-| Move tab bar up | More accessible navigation, visible while watching content |
-| Remove duplicate rumble title | Cleaner UI, title already in header |
-| Add pick percentages to matches | Shows how the group is split on predictions |
-| Add player names under picks | See exactly who picked whom |
+| Remove ParticipantPicksView | Eliminates redundancy, picks shown on match cards |
+| Horizontal leaderboard bar | Cleaner layout, always visible, no fiddly controls |
+| Remove side column | Content uses full screen width |
+| Fix duplicate headers | Cleaner UI, single source of truth for view title |
 
