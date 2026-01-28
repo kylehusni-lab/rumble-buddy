@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
-import { TvLeaderboardBar } from "@/components/tv/TvLeaderboardBar";
 import { TvViewNavigator, VIEWS, ViewType } from "@/components/tv/TvViewNavigator";
 import { TvHeaderStats } from "@/components/tv/TvHeaderStats";
 import { TvActivityTicker, ActivityEvent } from "@/components/tv/TvActivityTicker";
@@ -595,13 +594,6 @@ export default function TvDisplay() {
               return false;
             }}
           />
-        </div>
-      )}
-
-      {/* Horizontal Leaderboard Bar */}
-      {partyStatus !== "pre_event" && (
-        <div className="mb-4">
-          <TvLeaderboardBar players={players} />
         </div>
       )}
 
