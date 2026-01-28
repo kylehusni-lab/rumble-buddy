@@ -8,6 +8,7 @@ import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
 import { TvViewNavigator, VIEWS, ViewType } from "@/components/tv/TvViewNavigator";
 import { TvHeaderStats } from "@/components/tv/TvHeaderStats";
 import { TvActivityTicker, ActivityEvent } from "@/components/tv/TvActivityTicker";
+import { TvTabBar } from "@/components/tv/TvTabBar";
 import { Logo } from "@/components/Logo";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
@@ -566,6 +567,36 @@ export default function TvDisplay() {
           showRumbleStats={currentViewType === "rumble"}
         />
       </div>
+
+      {/* Tab Bar - Moved up directly below header */}
+      {partyStatus !== "pre_event" && (
+        <div className="mb-4">
+          <TvTabBar
+            views={VIEWS}
+            currentIndex={currentViewIndex}
+            onSelectView={handleSelectView}
+            isViewComplete={(view) => {
+              if (view.type === "undercard") {
+                return matchResults.some(r => r.match_id === view.id);
+              }
+              if (view.id === "mens") {
+                return matchResults.some(r => r.match_id === "mens_rumble_winner");
+              }
+              if (view.id === "womens") {
+                return matchResults.some(r => r.match_id === "womens_rumble_winner");
+              }
+              return false;
+            }}
+            isViewActive={(view) => {
+              if (view.type === "rumble") {
+                const numbers = view.id === "mens" ? mensNumbers : womensNumbers;
+                return numbers.some(n => n.entry_timestamp && !n.elimination_timestamp);
+              }
+              return false;
+            }}
+          />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className={currentViewType === "rumble-props" ? "flex-1" : "flex-1 grid grid-cols-12 gap-6"}>
