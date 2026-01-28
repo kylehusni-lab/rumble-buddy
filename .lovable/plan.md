@@ -1,187 +1,254 @@
 
 
-# TV Display Cleanup and Layout Optimization
+# TV Display Number Cell Redesign
 
 ## Overview
 
-This plan addresses several UI redundancies and layout optimizations for the TV display based on the screenshot:
-
-1. Remove the ParticipantPicksView panel (picks are now shown directly on match cards)
-2. Replace the collapsible LeaderboardPanel with a compact horizontal bar
-3. Fix duplicate headers in Rumble Props views
-4. Expand content to use full width without the side column
+Transform the Rumble entry grid cells from the current small circular image layout to a full-frame wrestler image design with a transparent name banner and player-assigned color coding. This change applies only to TV mode, preserving the existing mobile/picking view.
 
 ---
 
-## Current Issues
+## Current vs New Design
 
-Looking at the screenshot:
-- The leaderboard takes up right-side column space with expand/collapse/hide states
-- "Men's Rumble Props" appears in header, then "Men's Rumble Predictions" duplicates in content
-- ParticipantPicksView shows picks that are already visible on match cards
+```text
+CURRENT CELL:
++------------------+
+|  [#]             |
+|                  |
+|   ( o )  <- small circle photo
+|   Name           |
+|   [AB]  <- initials |
++------------------+
 
----
-
-## Proposed Changes
-
-### 1. Remove ParticipantPicksView
-
-The picks are now shown directly on the `ActiveMatchDisplay` component with percentage bars and player names. The ParticipantPicksView is redundant.
-
-**File: `src/components/tv/TvViewNavigator.tsx`**
-- Remove lines 335-345 that render ParticipantPicksView for undercard matches
-
-### 2. Create Simple Horizontal Leaderboard Bar
-
-Replace the complex collapsible panel with a compact inline bar that fits below the tab bar:
-
-**New Component: `src/components/tv/TvLeaderboardBar.tsx`**
-```
-[Trophy] 1. Kyle (0) | 2. Melanie (0) | 3. Mike (0) | 4. Jon (0) | 5. Chris (0) | 6. Steve (0)
-```
-
-Features:
-- Single horizontal row with all players
-- Gold/Silver/Bronze styling for top 3
-- Always visible, no collapse/expand controls
-- Compact pill badges for each player
-
-### 3. Remove Side Column Layout
-
-**File: `src/pages/TvDisplay.tsx`**
-- Remove the 12-column grid split
-- Make content full-width
-- Remove LeaderboardPanel import and rendering
-- Add new TvLeaderboardBar below the tab bar
-
-### 4. Fix Duplicate Title in RumblePropsDisplay
-
-**File: `src/components/tv/RumblePropsDisplay.tsx`**
-- Remove the "Men's/Women's Rumble Predictions" header since it's already shown in TvHeaderStats
-
----
-
-## New Layout Structure
-
-```
-+------------------------------------------------------------------+
-| [Logo] #9301                Men's Rumble Props    [Auto] [Full]  |
-+------------------------------------------------------------------+
-| [Match 1] [Match 2] [Match 3] [Men's] [M Props*] [Women's] [W Props] |
-+------------------------------------------------------------------+
-| [Trophy] 1. Kyle 0 | 2. Melanie 0 | 3. Mike 0 | 4. Jon 0 | ...   |
-+------------------------------------------------------------------+
-|                                                                   |
-|                     [FULL WIDTH CONTENT]                          |
-|                      (Props Grid Table)                           |
-|                                                                   |
-+------------------------------------------------------------------+
-| [Activity Ticker]                                                 |
-+------------------------------------------------------------------+
+NEW CELL:
++------------------+
+|  [#]             |
+|                  |
+|   FULL           |
+|   WRESTLER       |
+|   PHOTO          |
+|   COVERAGE       |
+|__________________|
+| [■] Rey Mysterio | <- color coded banner
++------------------+
 ```
 
 ---
 
-## Technical Details
+## Design Specifications
 
-### TvLeaderboardBar Component
+### 1. Full-Frame Wrestler Image
+- Image covers the entire cell using `object-cover`
+- Wrestler photo becomes the background
+- Rounded corners on the cell container
+
+### 2. Name Banner (Bottom)
+- Semi-transparent dark gradient overlay at bottom
+- Wrestler's first name displayed
+- Small color indicator dot/bar for player ownership
+
+### 3. Player Color Coding
+Instead of initials, each player gets a unique color from a predefined palette:
+
+```typescript
+const PLAYER_COLORS = [
+  { bg: "bg-blue-500", border: "border-blue-500", name: "Blue" },
+  { bg: "bg-orange-500", border: "border-orange-500", name: "Orange" },
+  { bg: "bg-purple-500", border: "border-purple-500", name: "Purple" },
+  { bg: "bg-cyan-500", border: "border-cyan-500", name: "Cyan" },
+  { bg: "bg-pink-500", border: "border-pink-500", name: "Pink" },
+  { bg: "bg-amber-500", border: "border-amber-500", name: "Amber" },
+  { bg: "bg-teal-500", border: "border-teal-500", name: "Teal" },
+  { bg: "bg-indigo-500", border: "border-indigo-500", name: "Indigo" },
+];
+```
+
+Colors are assigned based on player index in the party (consistent across all views).
+
+### 4. Active/Eliminated States (No Green/Red)
+
+**Active State:**
+- Golden glow border animation (uses existing primary/gold color)
+- Pulsing shadow effect
+- Full brightness image
+
+**Eliminated State:**
+- Grayscale filter on image
+- Reduced opacity (60%)
+- Diagonal X overlay
+- Muted border
+
+**Pending State:**
+- Empty cell with just the large entry number
+- No image, no banner
+
+---
+
+## Technical Implementation
+
+### New Component: `TvNumberCell.tsx`
+
+A separate TV-specific component that doesn't affect the existing `NumberCell.tsx` used elsewhere:
 
 ```tsx
-interface TvLeaderboardBarProps {
-  players: Player[];
+interface TvNumberCellProps {
+  number: number;
+  wrestlerName: string | null;
+  playerColor: { bg: string; border: string } | null;
+  status: "pending" | "active" | "eliminated";
+  scale?: number;
 }
 
-export function TvLeaderboardBar({ players }: TvLeaderboardBarProps) {
+export function TvNumberCell({
+  number,
+  wrestlerName,
+  playerColor,
+  status,
+  scale = 1.0,
+}: TvNumberCellProps) {
+  const firstName = wrestlerName?.split(" ")[0] || "";
+  const imageUrl = wrestlerName ? getWrestlerImageUrl(wrestlerName) : null;
+
+  // Pending state - just show number
+  if (status === "pending") {
+    return (
+      <div className="relative aspect-square rounded-xl bg-muted/30 border-2 border-muted flex items-center justify-center">
+        <div className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center text-sm font-bold">
+          {number}
+        </div>
+        <span className="text-3xl font-bold text-muted-foreground">{number}</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-card/80 backdrop-blur-sm rounded-xl px-4 py-3 border border-border">
-      <div className="flex items-center gap-4">
-        <Trophy className="w-5 h-5 text-primary" />
-        <span className="font-semibold text-sm text-muted-foreground">Leaderboard</span>
-        <div className="flex items-center gap-3 overflow-x-auto">
-          {players.map((player, index) => (
-            <div 
-              key={player.id}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-full",
-                index === 0 && "bg-primary/20 border border-primary",
-                index === 1 && "bg-muted/80",
-                index === 2 && "bg-muted/60",
-                index > 2 && "bg-muted/40"
-              )}
-            >
-              <span className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                index === 0 && "tv-rank-gold",
-                index === 1 && "tv-rank-silver",
-                index === 2 && "tv-rank-bronze",
-                index > 2 && "bg-muted text-muted-foreground"
-              )}>
-                {index + 1}
-              </span>
-              <span className="font-medium text-sm">{player.display_name}</span>
-              <span className="font-bold">{player.points}</span>
-            </div>
-          ))}
+    <div
+      className={cn(
+        "relative aspect-square rounded-xl overflow-hidden border-2 transition-all",
+        status === "active" && "border-primary animate-winner-glow",
+        status === "eliminated" && "border-muted opacity-60"
+      )}
+    >
+      {/* Number badge */}
+      <div className={cn(
+        "absolute top-1 left-1 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold z-20",
+        status === "active" && "bg-primary text-primary-foreground",
+        status === "eliminated" && "bg-muted text-muted-foreground"
+      )}>
+        {number}
+      </div>
+
+      {/* Full-frame wrestler image */}
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={wrestlerName}
+          className={cn(
+            "absolute inset-0 w-full h-full object-cover",
+            status === "eliminated" && "grayscale"
+          )}
+        />
+      )}
+
+      {/* Bottom banner with name + player color */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-8 pb-2 px-2 z-10">
+        <div className="flex items-center gap-1.5">
+          {/* Player color dot */}
+          {playerColor && (
+            <div className={cn("w-3 h-3 rounded-full shrink-0", playerColor.bg)} />
+          )}
+          <span className="text-white text-xs font-semibold truncate">
+            {firstName}
+          </span>
         </div>
       </div>
+
+      {/* Eliminated X overlay */}
+      {status === "eliminated" && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          <div className="w-full h-0.5 bg-white/60 rotate-45" />
+          <div className="absolute w-full h-0.5 bg-white/60 -rotate-45" />
+        </div>
+      )}
     </div>
   );
 }
 ```
 
-### Updated TvDisplay Layout
+### Player Color Assignment Logic
+
+Add a utility function to `TvViewNavigator.tsx`:
+
+```typescript
+const PLAYER_COLORS = [
+  { bg: "bg-blue-500", border: "border-blue-500" },
+  { bg: "bg-orange-500", border: "border-orange-500" },
+  { bg: "bg-purple-500", border: "border-purple-500" },
+  { bg: "bg-cyan-500", border: "border-cyan-500" },
+  { bg: "bg-pink-500", border: "border-pink-500" },
+  { bg: "bg-amber-500", border: "border-amber-500" },
+  { bg: "bg-teal-500", border: "border-teal-500" },
+  { bg: "bg-indigo-500", border: "border-indigo-500" },
+];
+
+const getPlayerColor = (playerId: string | null, players: Player[]) => {
+  if (!playerId) return null;
+  const index = players.findIndex(p => p.id === playerId);
+  if (index === -1) return null;
+  return PLAYER_COLORS[index % PLAYER_COLORS.length];
+};
+```
+
+### Update `renderNumberGrid()` in TvViewNavigator
+
+Replace `NumberCell` with `TvNumberCell` and pass the player color:
 
 ```tsx
-<div className="min-h-screen bg-background text-foreground tv-mode p-6 flex flex-col">
-  {/* Header - unchanged */}
-  
-  {/* Tab Bar */}
-  {partyStatus !== "pre_event" && (
-    <div className="mb-3">
-      <TvTabBar ... />
+const renderNumberGrid = (numbers: RumbleNumber[], rumbleId: string) => {
+  return (
+    <div className={cn("grid grid-cols-10", gridGapClass)}>
+      {numbers.map((num) => (
+        <TvNumberCell
+          key={num.number}
+          number={num.number}
+          wrestlerName={num.wrestler_name}
+          playerColor={getPlayerColor(num.assigned_to_player_id, players)}
+          status={getNumberStatus(num)}
+          scale={scale}
+        />
+      ))}
     </div>
-  )}
-  
-  {/* NEW: Horizontal Leaderboard Bar */}
-  {partyStatus !== "pre_event" && (
-    <div className="mb-4">
-      <TvLeaderboardBar players={players} />
-    </div>
-  )}
-
-  {/* Main Content - FULL WIDTH, no grid split */}
-  <div className="flex-1">
-    {partyStatus === "pre_event" ? (
-      <div>Waiting...</div>
-    ) : (
-      <TvViewNavigator ... />
-    )}
-  </div>
-
-  {/* Activity Ticker - unchanged */}
-</div>
+  );
+};
 ```
 
 ---
 
-## Files to Modify/Create
+## Files to Create/Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/tv/TvLeaderboardBar.tsx` | **New** - Compact horizontal leaderboard |
-| `src/pages/TvDisplay.tsx` | Remove LeaderboardPanel, remove grid layout, add TvLeaderboardBar |
-| `src/components/tv/TvViewNavigator.tsx` | Remove ParticipantPicksView rendering |
-| `src/components/tv/RumblePropsDisplay.tsx` | Remove duplicate title header |
-| `src/components/tv/LeaderboardPanel.tsx` | Can be deleted (optional) |
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/tv/TvNumberCell.tsx` | **Create** | New TV-specific number cell with full-frame image |
+| `src/components/tv/TvViewNavigator.tsx` | **Modify** | Use TvNumberCell, add player color assignment |
+| `src/lib/wrestler-data.ts` | **No change** | Already has `getWrestlerImageUrl` function |
+| `src/components/tv/NumberCell.tsx` | **No change** | Preserved for mobile/other views |
 
 ---
 
-## Summary
+## Visual States Summary
 
-| Change | Benefit |
-|--------|---------|
-| Remove ParticipantPicksView | Eliminates redundancy, picks shown on match cards |
-| Horizontal leaderboard bar | Cleaner layout, always visible, no fiddly controls |
-| Remove side column | Content uses full screen width |
-| Fix duplicate headers | Cleaner UI, single source of truth for view title |
+| State | Border | Image | Banner | Overlay |
+|-------|--------|-------|--------|---------|
+| **Pending** | Muted | None (just #) | None | None |
+| **Active** | Gold glow pulse | Full color | Name + color dot | None |
+| **Eliminated** | Muted | Grayscale 60% | Name + color dot | X stripes |
+
+---
+
+## Color Palette (Avoiding Green/Red)
+
+The 8 player colors ensure no collision with status colors:
+- Blue, Orange, Purple, Cyan, Pink, Amber, Teal, Indigo
+
+All visible against both light and dark backgrounds, and distinguishable from gold (active) and muted (eliminated) states.
 
