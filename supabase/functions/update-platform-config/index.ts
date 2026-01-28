@@ -1,10 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Get the signing secret (must match verify-admin-pin)
+async function getSigningSecret(): Promise<Uint8Array> {
+  const secretStr = Deno.env.get("PLATFORM_ADMIN_PIN") || "fallback-secret-key";
+  const encoder = new TextEncoder();
+  const data = encoder.encode(secretStr + "-jwt-signing-key-v1");
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(hashBuffer);
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -15,7 +25,7 @@ serve(async (req) => {
   try {
     const { token, mensEntrants, womensEntrants } = await req.json();
 
-    // Validate token exists and is not expired
+    // Validate token exists
     if (!token) {
       return new Response(
         JSON.stringify({ error: "Token is required" }),
@@ -23,22 +33,23 @@ serve(async (req) => {
       );
     }
 
-    // Parse token to check expiry (token format: timestamp-uuid)
-    const tokenParts = token.split("-");
-    if (tokenParts.length < 2) {
+    // Verify JWT signature and expiration
+    const secret = await getSigningSecret();
+    
+    try {
+      const { payload } = await jwtVerify(token, secret);
+      
+      // Verify role claim
+      if (payload.role !== "platform_admin") {
+        return new Response(
+          JSON.stringify({ error: "Invalid token role" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } catch (jwtError) {
+      console.error("JWT verification failed:", jwtError);
       return new Response(
-        JSON.stringify({ error: "Invalid token format" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const tokenTimestamp = parseInt(tokenParts[0], 10);
-    const tokenAge = Date.now() - tokenTimestamp;
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-    if (tokenAge > maxAge) {
-      return new Response(
-        JSON.stringify({ error: "Token expired" }),
+        JSON.stringify({ error: "Invalid or expired token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

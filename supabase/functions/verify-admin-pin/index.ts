@@ -1,9 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { SignJWT, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Get or create a signing secret
+async function getSigningSecret(): Promise<Uint8Array> {
+  const secretStr = Deno.env.get("PLATFORM_ADMIN_PIN") || "fallback-secret-key";
+  // Use a derived key from the admin PIN as the signing secret
+  const encoder = new TextEncoder();
+  const data = encoder.encode(secretStr + "-jwt-signing-key-v1");
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(hashBuffer);
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -38,15 +49,24 @@ serve(async (req) => {
       );
     }
 
-    // Generate a simple session token (timestamp + random)
-    const token = `${Date.now()}-${crypto.randomUUID()}`;
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    // Generate a signed JWT token
+    const secret = await getSigningSecret();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    const token = await new SignJWT({ 
+      role: "platform_admin",
+      iat: Math.floor(Date.now() / 1000),
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("24h")
+      .sign(secret);
 
     return new Response(
       JSON.stringify({
         valid: true,
         token,
-        expiresAt,
+        expiresAt: expiresAt.toISOString(),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

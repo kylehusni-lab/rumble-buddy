@@ -151,7 +151,7 @@ export default function SoloDashboard() {
                   {score} pts
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {player.email}
+                  {player.display_name}
                 </div>
               </div>
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">

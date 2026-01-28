@@ -63,39 +63,41 @@ export default function HostVerifyPin() {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from("parties")
-        .select("host_pin")
-        .eq("code", code)
-        .maybeSingle();
+      // Use secure RPC function instead of direct table query
+      const { data, error: rpcError } = await supabase
+        .rpc("verify_host_pin", { 
+          p_party_code: code, 
+          p_pin: pin 
+        });
 
-      if (fetchError) {
+      if (rpcError) {
+        console.error("PIN verification error:", rpcError);
         setError("Failed to verify PIN. Please try again.");
         clearInputs();
         return;
       }
 
-      if (!data) {
+      // Check if party exists
+      if (!data || data.length === 0) {
         setError("Group not found.");
         clearInputs();
         return;
       }
 
-      // If no PIN set, allow access and set this as the PIN
-      if (!data.host_pin) {
-        await supabase
-          .from("parties")
-          .update({ host_pin: pin })
-          .eq("code", code);
-        
-        localStorage.setItem(`party_${code}_pin`, pin);
-        navigate(`/host/setup/${code}`);
-        return;
-      }
+      const result = data[0];
 
-      // Verify against stored PIN
-      if (data.host_pin === pin) {
-        localStorage.setItem(`party_${code}_pin`, pin);
+      // If valid (either no PIN set and we set it, or PIN matches)
+      if (result.valid) {
+        // If no PIN was set, set it now
+        if (!result.has_pin) {
+          await supabase.rpc("set_host_pin", { 
+            p_party_code: code, 
+            p_pin: pin 
+          });
+        }
+        
+        // Store verification status (not the actual PIN for security)
+        localStorage.setItem(`party_${code}_pin`, "verified");
         navigate(`/host/setup/${code}`);
       } else {
         setError("Incorrect PIN. Please try again.");
