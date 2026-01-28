@@ -130,21 +130,33 @@ export async function seedDemoParty(
   partyCode: string,
   hostSessionId: string
 ): Promise<{ hostPlayerId: string; guestIds: string[] }> {
-  // 1. Create demo host as player (Kyle)
-  const { data: hostPlayer, error: hostError } = await supabase
+  const hostEmail = "kyle.husni@gmail.com";
+  
+  // 1. Create demo host as player (Kyle) - no .select() due to RLS
+  const { error: hostError } = await supabase
     .from("players")
     .insert({
       party_code: partyCode,
-      email: "kyle.husni@gmail.com",
+      email: hostEmail,
       display_name: "Kyle",
       session_id: hostSessionId,
-    })
-    .select("id")
-    .single();
+    });
 
-  if (hostError || !hostPlayer) throw hostError || new Error("Failed to create host player");
+  if (hostError) throw hostError;
 
-  // 2. Create 5 demo guests
+  // Lookup host ID using SECURITY DEFINER function
+  const { data: hostLookup, error: hostLookupError } = await supabase
+    .rpc('lookup_player_by_email', {
+      p_party_code: partyCode,
+      p_email: hostEmail
+    });
+
+  if (hostLookupError || !hostLookup?.[0]) {
+    throw hostLookupError || new Error("Failed to lookup host player");
+  }
+  const hostPlayerId = hostLookup[0].id;
+
+  // 2. Create 5 demo guests - no .select() due to RLS
   const guestInserts = DEMO_GUESTS.map((g) => ({
     party_code: partyCode,
     email: g.email,
@@ -152,19 +164,31 @@ export async function seedDemoParty(
     session_id: crypto.randomUUID(),
   }));
 
-  const { data: guests, error: guestsError } = await supabase
+  const { error: guestsError } = await supabase
     .from("players")
-    .insert(guestInserts)
-    .select("id");
+    .insert(guestInserts);
 
-  if (guestsError || !guests) throw guestsError || new Error("Failed to create guests");
+  if (guestsError) throw guestsError;
+
+  // Lookup each guest ID using SECURITY DEFINER function
+  const guestIds: string[] = [];
+  for (const guest of DEMO_GUESTS) {
+    const { data: guestLookup } = await supabase
+      .rpc('lookup_player_by_email', {
+        p_party_code: partyCode,
+        p_email: guest.email
+      });
+    if (guestLookup?.[0]?.id) {
+      guestIds.push(guestLookup[0].id);
+    }
+  }
 
   // 3. Generate picks for all players
-  const allPlayerIds = [hostPlayer.id, ...guests.map((g) => g.id)];
+  const allPlayerIds = [hostPlayerId, ...guestIds];
   await generateDemoPicksForPlayers(allPlayerIds);
 
   return {
-    hostPlayerId: hostPlayer.id,
-    guestIds: guests.map((g) => g.id),
+    hostPlayerId,
+    guestIds,
   };
 }
