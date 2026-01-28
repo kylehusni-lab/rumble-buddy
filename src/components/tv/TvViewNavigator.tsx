@@ -9,6 +9,8 @@ import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
 import { TvLeaderboardView } from "./TvLeaderboardView";
 import { RumbleSubTabs, RumbleSubView } from "./RumbleSubTabs";
 import { WrestlerImage } from "./WrestlerImage";
+import { UndercardMatchSelector } from "./UndercardMatchSelector";
+import { TvTabId } from "./TvTabBar";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
 import { cn } from "@/lib/utils";
@@ -50,6 +52,8 @@ interface Pick {
   prediction: string;
 }
 
+export type ViewType = "leaderboard" | "undercard" | "rumble";
+
 interface TvViewNavigatorProps {
   matchResults: MatchResult[];
   mensNumbers: RumbleNumber[];
@@ -58,31 +62,10 @@ interface TvViewNavigatorProps {
   picks: Pick[];
   getPlayerInitials: (id: string | null) => string;
   getNumberStatus: (num: RumbleNumber) => "pending" | "active" | "eliminated";
-}
-
-export type ViewType = "leaderboard" | "undercard" | "rumble";
-
-export interface View {
-  type: ViewType;
-  id: string;
-  title: string;
-  options?: readonly [string, string];
-  gender?: "mens" | "womens";
-}
-
-// Simplified views - rumble now includes sub-tabs for grid, props, chaos
-export const VIEWS: View[] = [
-  { type: "leaderboard", id: "leaderboard", title: "Leaderboard" },
-  { type: "undercard", id: "undercard_1", title: UNDERCARD_MATCHES[0].title, options: UNDERCARD_MATCHES[0].options },
-  { type: "undercard", id: "undercard_3", title: UNDERCARD_MATCHES[1].title, options: UNDERCARD_MATCHES[1].options },
-  { type: "rumble", id: "mens", title: "Men's Royal Rumble", gender: "mens" },
-  { type: "rumble", id: "womens", title: "Women's Royal Rumble", gender: "womens" },
-];
-
-interface TvViewNavigatorWithCallback extends TvViewNavigatorProps {
-  onViewChange?: (viewType: ViewType, viewIndex: number, viewTitle: string) => void;
-  currentViewIndex?: number;
-  onSelectView?: (index: number) => void;
+  // New consolidated navigation props
+  activeTab: TvTabId;
+  undercardMatchIndex: number;
+  onUndercardMatchChange: (index: number) => void;
 }
 
 export function TvViewNavigator({
@@ -93,73 +76,16 @@ export function TvViewNavigator({
   picks,
   getPlayerInitials,
   getNumberStatus,
-  onViewChange,
-  currentViewIndex: externalViewIndex,
-  onSelectView,
-}: TvViewNavigatorWithCallback) {
-  const [internalViewIndex, setInternalViewIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
-  
+  activeTab,
+  undercardMatchIndex,
+  onUndercardMatchChange,
+}: TvViewNavigatorProps) {
   // Sub-tab state for rumble views
   const [mensSubView, setMensSubView] = useState<RumbleSubView>("grid");
   const [womensSubView, setWomensSubView] = useState<RumbleSubView>("grid");
   
-  // Use external index if controlled, otherwise internal
-  const currentViewIndex = externalViewIndex ?? internalViewIndex;
-  const setCurrentViewIndex = onSelectView ?? setInternalViewIndex;
-  const currentView = VIEWS[currentViewIndex];
-  
   // Get responsive scale values
-  const { scale, photoSize, gridGapClass } = useTvScale();
-
-  // Check if a view is complete
-  const isViewComplete = useCallback((view: View): boolean => {
-    if (view.type === "undercard") {
-      return matchResults.some(r => r.match_id === view.id);
-    }
-    // Rumble is complete when winner is declared
-    if (view.id === "mens") {
-      return matchResults.some(r => r.match_id === "mens_rumble_winner");
-    }
-    if (view.id === "womens") {
-      return matchResults.some(r => r.match_id === "womens_rumble_winner");
-    }
-    return false;
-  }, [matchResults]);
-
-  // Get the result for a view
-  const getViewResult = useCallback((view: View): string | null => {
-    if (view.type === "undercard") {
-      const result = matchResults.find(r => r.match_id === view.id);
-      return result?.result || null;
-    }
-    if (view.id === "mens") {
-      const result = matchResults.find(r => r.match_id === "mens_rumble_winner");
-      return result?.result || null;
-    }
-    if (view.id === "womens") {
-      const result = matchResults.find(r => r.match_id === "womens_rumble_winner");
-      return result?.result || null;
-    }
-    return null;
-  }, [matchResults]);
-
-  // Find first incomplete view on match result change
-  useEffect(() => {
-    const firstIncompleteIndex = VIEWS.findIndex(v => !isViewComplete(v));
-    if (firstIncompleteIndex !== -1 && firstIncompleteIndex !== currentViewIndex) {
-      const timer = setTimeout(() => {
-        setDirection(firstIncompleteIndex > currentViewIndex ? 1 : -1);
-        setCurrentViewIndex(firstIncompleteIndex);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [matchResults, isViewComplete]);
-
-  // Notify parent of view changes
-  useEffect(() => {
-    onViewChange?.(currentView.type, currentViewIndex, currentView.title);
-  }, [currentViewIndex, onViewChange, currentView.type, currentView.title]);
+  const { scale, gridGapClass } = useTvScale();
 
   // Helper to get player name
   const getPlayerName = useCallback((playerId: string | null): string => {
@@ -168,35 +94,21 @@ export function TvViewNavigator({
     return player?.display_name || "Unknown";
   }, [players]);
 
-  // Keyboard navigation
+  // Keyboard navigation for undercard matches
   useEffect(() => {
+    if (activeTab !== "undercard") return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        goToPrevious();
-      } else if (e.key === "ArrowRight") {
-        goToNext();
-      } else if (e.key >= "1" && e.key <= "6") {
-        const index = parseInt(e.key) - 1;
-        if (index < VIEWS.length) {
-          setDirection(index > currentViewIndex ? 1 : -1);
-          setCurrentViewIndex(index);
-        }
+      if (e.key === "ArrowLeft" && undercardMatchIndex > 0) {
+        onUndercardMatchChange(undercardMatchIndex - 1);
+      } else if (e.key === "ArrowRight" && undercardMatchIndex < UNDERCARD_MATCHES.length - 1) {
+        onUndercardMatchChange(undercardMatchIndex + 1);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentViewIndex]);
-
-  const goToPrevious = () => {
-    setDirection(-1);
-    setCurrentViewIndex(prev => (prev === 0 ? VIEWS.length - 1 : prev - 1));
-  };
-
-  const goToNext = () => {
-    setDirection(1);
-    setCurrentViewIndex(prev => (prev === VIEWS.length - 1 ? 0 : prev + 1));
-  };
+  }, [activeTab, undercardMatchIndex, onUndercardMatchChange]);
 
   // Get player color based on their index in the players array
   const getPlayerColor = useCallback((playerId: string | null) => {
@@ -313,40 +225,45 @@ export function TvViewNavigator({
     );
   };
 
-  const renderCurrentView = () => {
-    if (currentView.type === "leaderboard") {
-      return <TvLeaderboardView players={players} />;
-    }
+  const renderContent = () => {
+    switch (activeTab) {
+      case "leaderboard":
+        return <TvLeaderboardView players={players} />;
 
-    if (currentView.type === "undercard" && currentView.options) {
-      const match = UNDERCARD_MATCHES.find(m => m.id === currentView.id);
-      if (match) {
+      case "undercard": {
+        const currentMatch = UNDERCARD_MATCHES[undercardMatchIndex];
+        if (!currentMatch) return null;
+
         return (
-          <ActiveMatchDisplay
-            match={match}
-            matchResults={matchResults}
-            players={players}
-            picks={picks}
-          />
+          <div className="space-y-4">
+            {/* Undercard match selector */}
+            <UndercardMatchSelector
+              selectedIndex={undercardMatchIndex}
+              onSelect={onUndercardMatchChange}
+              matchResults={matchResults}
+            />
+
+            {/* Active match display */}
+            <ActiveMatchDisplay
+              match={currentMatch}
+              matchResults={matchResults}
+              players={players}
+              picks={picks}
+            />
+          </div>
         );
       }
-    }
 
-    if (currentView.type === "rumble" && currentView.gender) {
-      return renderRumbleContent(currentView.gender);
-    }
+      case "mens":
+        return renderRumbleContent("mens");
 
-    return null;
+      case "womens":
+        return renderRumbleContent("womens");
+
+      default:
+        return null;
+    }
   };
-
-  // Check if view has active wrestlers (for rumble views)
-  const isViewActive = useCallback((view: View): boolean => {
-    if (view.type === "rumble") {
-      const numbers = view.id === "mens" ? mensNumbers : womensNumbers;
-      return numbers.some(n => n.entry_timestamp && !n.elimination_timestamp);
-    }
-    return false;
-  }, [mensNumbers, womensNumbers]);
 
   return (
     <div className="relative flex flex-col h-full">
@@ -354,13 +271,13 @@ export function TvViewNavigator({
       <div className="relative min-h-[400px] flex-1">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
-            key={currentViewIndex}
-            initial={{ opacity: 0, x: direction > 0 ? 100 : -100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: direction > 0 ? -100 : 100 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            key={activeTab + (activeTab === "undercard" ? `-${undercardMatchIndex}` : "")}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
           >
-            {renderCurrentView()}
+            {renderContent()}
           </motion.div>
         </AnimatePresence>
       </div>
