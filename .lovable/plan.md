@@ -1,174 +1,364 @@
 
-# Add Pick Completion Indicators to Solo Dashboard Tabs
+# Performance Optimization Plan for Solo and Party Mode
 
-This plan adds visual badges showing "X/Y" completion status on each tab in the Solo Dashboard, giving users a quick overview of their progress.
+This plan addresses performance issues across both solo mode and party mode by implementing comprehensive optimizations including component memoization, debounced syncing, and reduced animation overhead.
 
 ---
 
 ## Summary
 
-Add small completion badges beneath each tab label showing how many picks are complete out of the total for that category. Badges will turn green when all picks in a tab are complete.
-
----
-
-## Visual Design
-
-Each tab will show:
-- The existing icon and label
-- A small badge below showing completion (e.g., "3/5")
-- Badge turns green with a checkmark when 100% complete
-
-```
-┌─────────┬─────────┬─────────┬─────────┐
-│ Swords  │   #     │    #    │   Zap   │
-│ Matches │  Men's  │ Women's │  Chaos  │
-│  (3/5)  │  (9/9)  │  (7/9)  │ (10/12) │
-│         │   ✓     │         │         │
-└─────────┴─────────┴─────────┴─────────┘
-```
+Performance issues stem from:
+1. **Excessive cloud sync calls** - Every pick change triggers immediate API calls
+2. **Missing component memoization** - Card components re-render unnecessarily
+3. **React ref warnings** - `forwardRef` missing on some components causes console overhead
+4. **Confetti firing on every selection** - Should only fire on new selections
+5. **Framer Motion animations on every render** - Can be optimized with `layoutId` removal where not needed
+6. **Non-memoized calculations** - Filtering/sorting operations recalculated on every render
 
 ---
 
 ## Changes Overview
 
-### File: `src/pages/SoloDashboard.tsx`
+### 1. Debounce Cloud Sync in SoloPicks
 
-**1. Add a completion calculation function**
+**File:** `src/pages/SoloPicks.tsx`
 
-Create a `useMemo` hook that calculates completion counts for each tab:
-
-- **Matches Tab**: 3 undercard matches + 2 rumble winners = 5 total picks
-- **Men's Tab**: 5 rumble props + 4 final four = 9 total picks  
-- **Women's Tab**: 5 rumble props + 4 final four = 9 total picks
-- **Chaos Tab**: 6 men's chaos + 6 women's chaos = 12 total picks
+Currently every pick immediately calls `savePicksToCloud()`. Add debouncing to batch updates:
 
 ```tsx
-const tabCompletion = useMemo(() => {
-  const matchCards = CARD_CONFIG.filter(c => c.type === "match");
-  const matchesComplete = matchCards.filter(c => picks[c.id]).length;
-  const winnersComplete = (picks["mens_rumble_winner"] ? 1 : 0) + 
-                          (picks["womens_rumble_winner"] ? 1 : 0);
+// Add refs for debouncing
+const pendingPicksRef = useRef<Record<string, any>>({});
+const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+// Debounced save function
+const debouncedCloudSave = useCallback((newPicks: Record<string, any>) => {
+  pendingPicksRef.current = newPicks;
   
-  // Men's: 5 props + 4 final four
-  let mensComplete = 0;
-  RUMBLE_PROPS.forEach(prop => {
-    if (picks[`mens_${prop.id}`]) mensComplete++;
-  });
-  for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
-    if (picks[`mens_final_four_${i}`]) mensComplete++;
+  if (saveTimeoutRef.current) {
+    clearTimeout(saveTimeoutRef.current);
   }
   
-  // Women's: same structure
-  let womensComplete = 0;
-  RUMBLE_PROPS.forEach(prop => {
-    if (picks[`womens_${prop.id}`]) womensComplete++;
-  });
-  for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
-    if (picks[`womens_final_four_${i}`]) womensComplete++;
-  }
-  
-  // Chaos: 6 props x 2 genders
-  let chaosComplete = 0;
-  ["mens", "womens"].forEach(gender => {
-    CHAOS_PROPS.forEach((_, i) => {
-      if (picks[`${gender}_chaos_prop_${i + 1}`]) chaosComplete++;
-    });
-  });
-  
-  return {
-    matches: { complete: matchesComplete + winnersComplete, total: 5 },
-    mens: { complete: mensComplete, total: 9 },
-    womens: { complete: womensComplete, total: 9 },
-    chaos: { complete: chaosComplete, total: 12 },
+  saveTimeoutRef.current = setTimeout(() => {
+    savePicksToCloud(pendingPicksRef.current);
+    saveTimeoutRef.current = null;
+  }, 800); // 800ms debounce
+}, [savePicksToCloud]);
+
+// Cleanup on unmount
+useEffect(() => {
+  return () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      // Save any pending picks before unmount
+      if (Object.keys(pendingPicksRef.current).length > 0) {
+        savePicksToCloud(pendingPicksRef.current);
+      }
+    }
   };
-}, [picks]);
+}, [savePicksToCloud]);
 ```
 
-**2. Update the tabs array to include completion data**
+Replace `savePicksToCloud(newPicks)` calls with `debouncedCloudSave(newPicks)` in all handlers.
 
-Modify the tabs configuration to reference the completion stats:
+---
+
+### 2. Add forwardRef to MatchCard
+
+**File:** `src/components/picks/cards/MatchCard.tsx`
+
+Wrap component with `forwardRef` and `React.memo`:
 
 ```tsx
-const tabs = [
-  { id: "matches" as const, icon: Swords, label: "Matches" },
-  { id: "mens" as const, icon: Hash, label: "Men's" },
-  { id: "womens" as const, icon: Hash, label: "Women's" },
-  { id: "chaos" as const, icon: Zap, label: "Chaos" },
-];
+import React, { forwardRef, memo } from "react";
+
+interface MatchCardProps {
+  title: string;
+  options: readonly [string, string] | string[];
+  value: string | null;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}
+
+export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
+  function MatchCard({ title, options, value, onChange, disabled }, ref) {
+    return (
+      <div ref={ref} className="bg-card rounded-2xl...">
+        {/* existing content */}
+      </div>
+    );
+  }
+));
 ```
 
-**3. Update the tab button rendering**
+---
 
-Add completion badge display with conditional styling:
+### 3. Add forwardRef to ChaosPropsCard
+
+**File:** `src/components/picks/cards/ChaosPropsCard.tsx`
+
+Same pattern as MatchCard:
 
 ```tsx
-{tabs.map((tab) => {
-  const completion = tabCompletion[tab.id];
-  const isComplete = completion.complete === completion.total;
+import React, { forwardRef, memo } from "react";
+
+export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProps>(
+  function ChaosPropsCard({ title, gender, values, onChange, disabled }, ref) {
+    return (
+      <div ref={ref} className="bg-card rounded-2xl...">
+        {/* existing content */}
+      </div>
+    );
+  }
+));
+```
+
+---
+
+### 4. Add React.memo to RumbleWinnerCard with Conditional Confetti
+
+**File:** `src/components/picks/cards/RumbleWinnerCard.tsx`
+
+Memoize and only fire confetti on new selections:
+
+```tsx
+import React, { useState, memo, useRef, useCallback } from "react";
+
+export const RumbleWinnerCard = memo(function RumbleWinnerCard({ 
+  title, gender, value, onChange, disabled, customEntrants 
+}: RumbleWinnerCardProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const lastConfettiValue = useRef<string | null>(null);
   
-  return (
-    <button
-      key={tab.id}
-      onClick={() => setActiveTab(tab.id)}
-      className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-2 transition-colors relative ${
-        activeTab === tab.id
-          ? "text-primary"
-          : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      <tab.icon className="w-4 h-4" />
-      <span className="text-xs font-medium">{tab.label}</span>
-      <span className={`text-[10px] font-medium ${
-        isComplete 
-          ? "text-success" 
-          : "text-muted-foreground"
-      }`}>
-        {isComplete ? (
-          <span className="flex items-center gap-0.5">
-            <Check className="w-3 h-3" />
-            {completion.complete}/{completion.total}
-          </span>
-        ) : (
-          `${completion.complete}/${completion.total}`
-        )}
-      </span>
-      {activeTab === tab.id && (
-        <motion.div
-          layoutId="activeTab"
-          className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-        />
-      )}
-    </button>
-  );
-})}
+  const handleSelect = useCallback((wrestler: string) => {
+    if (disabled) return;
+    onChange(wrestler);
+    
+    // Only fire confetti if this is a new selection (not re-selecting same)
+    if (wrestler !== lastConfettiValue.current) {
+      lastConfettiValue.current = wrestler;
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#D4AF37', '#4B0082', '#FFD700'],
+      });
+    }
+  }, [disabled, onChange]);
+  
+  // ... rest of component
+});
 ```
 
-**4. Import Check icon**
+---
 
-Add `Check` to the lucide-react imports at the top of the file.
+### 5. Memoize RumblePropsCard Calculations
+
+**File:** `src/components/picks/cards/RumblePropsCard.tsx`
+
+The `filteredEntrants` calculation runs on every render. Add proper memoization:
+
+```tsx
+import React, { useState, useMemo, useCallback, memo } from "react";
+
+export const RumblePropsCard = memo(function RumblePropsCard({
+  title, gender, values, onChange, disabled, customEntrants,
+}: RumblePropsCardProps) {
+  // Memoize default entrants selection
+  const entrants = useMemo(() => {
+    const defaultEntrants = gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS;
+    return customEntrants && customEntrants.length > 0 ? customEntrants : defaultEntrants;
+  }, [gender, customEntrants]);
+
+  // Memoize filtered entrants - only recalculate when dependencies change
+  const filteredEntrants = useMemo(() => {
+    return entrants
+      .filter((name) => name.toLowerCase().includes(searchQuery.toLowerCase()))
+      .sort(sortEntrants);
+  }, [entrants, searchQuery]);
+  
+  // Memoize handlers
+  const handleWrestlerSelect = useCallback((wrestler: string) => {
+    if (!activePickerId || disabled) return;
+    onChange({ ...values, [activePickerId]: wrestler });
+    setActivePickerId(null);
+    setSearchQuery("");
+  }, [activePickerId, disabled, onChange, values]);
+  
+  // ... rest of component
+});
+```
+
+---
+
+### 6. Add Debounced Sync to PickCardStack (Party Mode)
+
+**File:** `src/components/picks/PickCardStack.tsx`
+
+Party mode currently saves on final submit, but add debounced local state persistence:
+
+```tsx
+// Add similar debounce pattern for localStorage saves if needed
+// Party mode already batches saves to DB on submit, which is good
+
+// But ensure handlers use useCallback:
+const handlePickUpdate = useCallback((cardId: string, value: any) => {
+  if (isLocked) return;
+  setPicks(prev => ({ ...prev, [cardId]: value }));
+  
+  // Auto-advance logic...
+}, [isLocked, currentCardIndex]);
+```
+
+---
+
+### 7. Optimize PlayerDashboard Realtime Subscriptions
+
+**File:** `src/pages/PlayerDashboard.tsx`
+
+The useEffect has too many dependencies causing re-subscription. Use refs pattern like TvDisplay:
+
+```tsx
+// Add refs to hold current state
+const picksRef = useRef<Pick[]>([]);
+const allNumbersRef = useRef<RumbleNumber[]>([]);
+const playersRef = useRef<typeof players>([]);
+
+// Keep refs in sync
+useEffect(() => { picksRef.current = picks; }, [picks]);
+useEffect(() => { allNumbersRef.current = allNumbers; }, [allNumbers]);
+useEffect(() => { playersRef.current = players; }, [players]);
+
+// Reduce useEffect dependencies to only essential ones
+useEffect(() => {
+  // ... realtime subscription setup
+  // Use refs.current instead of state in callbacks
+}, [code, session?.playerId, navigate]); // Remove partyStatus, players, allNumbers, picks
+```
+
+---
+
+### 8. Optimize HostControl Duration Timer
+
+**File:** `src/pages/HostControl.tsx`
+
+The `currentTime` state updates every second and may cause cascading re-renders. The component already does this correctly, but ensure ActiveWrestlerCard receives memoized duration:
+
+```tsx
+// In the render section, memoize duration calculation per wrestler
+const getWrestlerDuration = useCallback((entryTimestamp: string | null) => {
+  if (!entryTimestamp) return 0;
+  return Math.floor((currentTime - new Date(entryTimestamp).getTime()) / 1000);
+}, [currentTime]);
+```
+
+This is already optimized with `React.memo` on `ActiveWrestlerCard` using custom comparison.
+
+---
+
+### 9. Remove Unnecessary layoutId in SoloDashboard Tabs
+
+**File:** `src/pages/SoloDashboard.tsx`
+
+The `layoutId="activeTab"` causes Framer Motion to track and animate between tabs. For simple indicators, CSS transitions are lighter:
+
+```tsx
+// Replace:
+{activeTab === tab.id && (
+  <motion.div
+    layoutId="activeTab"
+    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+  />
+)}
+
+// With:
+<div className={cn(
+  "absolute bottom-0 left-0 right-0 h-0.5 transition-all duration-200",
+  activeTab === tab.id ? "bg-primary" : "bg-transparent"
+)} />
+```
+
+---
+
+### 10. Memoize Tab Content Components in SoloDashboard
+
+**File:** `src/pages/SoloDashboard.tsx`
+
+The inline tab components (`MatchesTab`, `RumbleTab`, `ChaosTab`) should be memoized:
+
+```tsx
+const MatchesTab = memo(function MatchesTab({ 
+  picks, 
+  results 
+}: { 
+  picks: Record<string, string>; 
+  results: Record<string, string>;
+}) {
+  // existing implementation
+});
+
+const RumbleTab = memo(function RumbleTab({ 
+  gender, 
+  picks, 
+  results 
+}: { 
+  gender: "mens" | "womens"; 
+  picks: Record<string, string>; 
+  results: Record<string, string>;
+}) {
+  // existing implementation
+});
+
+const ChaosTab = memo(function ChaosTab({ 
+  picks, 
+  results 
+}: { 
+  picks: Record<string, string>; 
+  results: Record<string, string>;
+}) {
+  // existing implementation
+});
+```
 
 ---
 
 ## Technical Details
 
-### Pick ID Structure Reference
+### Performance Improvements Expected
 
-| Tab | Pick IDs | Total |
-|-----|----------|-------|
-| Matches | `undercard_1`, `undercard_2`, `undercard_3`, `mens_rumble_winner`, `womens_rumble_winner` | 5 |
-| Men's | `mens_entrant_1`, `mens_entrant_30`, `mens_first_elimination`, `mens_most_eliminations`, `mens_longest_time`, `mens_final_four_1-4` | 9 |
-| Women's | `womens_entrant_1`, `womens_entrant_30`, `womens_first_elimination`, `womens_most_eliminations`, `womens_longest_time`, `womens_final_four_1-4` | 9 |
-| Chaos | `mens_chaos_prop_1-6`, `womens_chaos_prop_1-6` | 12 |
+| Issue | Before | After |
+|-------|--------|-------|
+| Solo cloud sync calls | ~40 per session | ~5-10 batched calls |
+| Console warnings | 3+ forwardRef errors/render | 0 errors |
+| Card re-renders | All cards on each pick | Only changed card |
+| Confetti overhead | Every click | First selection only |
+| Tab animations | Framer Motion layout calc | CSS transitions |
+| Dashboard re-renders | Full tree on subscription | Isolated to changed data |
 
-### Files Modified
+### Files to Modify
 
-- `src/pages/SoloDashboard.tsx` - Add completion calculation and badge rendering
+1. `src/pages/SoloPicks.tsx` - Add debounced cloud sync + cleanup
+2. `src/components/picks/cards/MatchCard.tsx` - Add forwardRef + memo
+3. `src/components/picks/cards/ChaosPropsCard.tsx` - Add forwardRef + memo  
+4. `src/components/picks/cards/RumbleWinnerCard.tsx` - Add memo + conditional confetti
+5. `src/components/picks/cards/RumblePropsCard.tsx` - Add memo + memoize calculations
+6. `src/components/picks/PickCardStack.tsx` - Add useCallback to handlers
+7. `src/pages/PlayerDashboard.tsx` - Optimize realtime effect dependencies with refs
+8. `src/pages/SoloDashboard.tsx` - Memoize tab components + replace layoutId
+
+### Implementation Order
+
+1. **Phase 1 - Quick Wins**: Add forwardRef to MatchCard, ChaosPropsCard (fixes console errors)
+2. **Phase 2 - Core Optimization**: Add React.memo wrappers to all card components
+3. **Phase 3 - Network**: Debounce cloud sync in SoloPicks
+4. **Phase 4 - Dashboard**: Optimize PlayerDashboard effect dependencies with refs pattern
+5. **Phase 5 - Polish**: Replace Framer Motion layoutId with CSS, memoize tab components
 
 ---
 
-## Implementation Notes
+## Risk Assessment
 
-- Uses `useMemo` for efficient recalculation only when picks change
-- Badge styling uses existing design tokens (text-success, text-muted-foreground)
-- Check icon only appears when tab is 100% complete
-- Tab height may increase slightly to accommodate the badge - consider reducing icon/label size slightly
+- **Low risk**: All changes are additive optimizations
+- **No data changes**: Picks will still save correctly, just batched
+- **No UI changes**: User experience remains identical, just faster
+- **Backward compatible**: Works with existing picks and cloud data
+- **Cleanup handled**: Debounce refs cleaned up on unmount with final save
