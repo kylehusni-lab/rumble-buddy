@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { UNDERCARD_MATCHES, RUMBLE_PROPS, CHAOS_PROPS, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { WrestlerPickerModal } from "@/components/WrestlerPickerModal";
 
 interface SinglePickEditModalProps {
@@ -92,7 +91,6 @@ export function SinglePickEditModal({
   customEntrants,
 }: SinglePickEditModalProps) {
   const [selectedValue, setSelectedValue] = useState(currentPick);
-  const [showWrestlerPicker, setShowWrestlerPicker] = useState(false);
 
   const config = getPickConfig(matchId, customEntrants);
 
@@ -103,11 +101,6 @@ export function SinglePickEditModal({
       onSave(matchId, selectedValue);
     }
     onClose();
-  };
-
-  const handleWrestlerSelect = (wrestler: string) => {
-    setSelectedValue(wrestler);
-    setShowWrestlerPicker(false);
   };
 
   // Binary options (match winner with 2 options)
@@ -150,11 +143,16 @@ export function SinglePickEditModal({
     );
   }
 
-  // Yes/No options (chaos props)
+  // Yes/No options (chaos props) - auto-save on selection
   if (config.type === "yesno") {
+    const handleSelect = (option: string) => {
+      onSave(matchId, option);
+      onClose();
+    };
+
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-xs">
           <DialogHeader>
             <DialogTitle className="text-center">{config.title}</DialogTitle>
           </DialogHeader>
@@ -162,10 +160,10 @@ export function SinglePickEditModal({
             {["YES", "NO"].map((option) => (
               <button
                 key={option}
-                onClick={() => setSelectedValue(option)}
+                onClick={() => handleSelect(option)}
                 className={cn(
                   "flex-1 p-4 rounded-xl border-2 text-center font-bold text-lg transition-all",
-                  selectedValue === option
+                  currentPick === option
                     ? option === "YES"
                       ? "border-success bg-success/10 text-success"
                       : "border-destructive bg-destructive/10 text-destructive"
@@ -176,65 +174,26 @@ export function SinglePickEditModal({
               </button>
             ))}
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button className="flex-1" onClick={handleSave} disabled={!selectedValue}>
-              Save
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
     );
   }
 
-  // Wrestler picker
+  // Wrestler picker - open directly without intermediate dialog
   if (config.type === "wrestler") {
     return (
-      <>
-        <Dialog open={isOpen && !showWrestlerPicker} onOpenChange={onClose}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="text-center">{config.title}</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <button
-                onClick={() => setShowWrestlerPicker(true)}
-                className={cn(
-                  "w-full p-4 rounded-xl border-2 text-center transition-all",
-                  selectedValue
-                    ? "border-primary bg-primary/10"
-                    : "border-dashed border-muted-foreground/50 bg-muted/30"
-                )}
-              >
-                {selectedValue ? (
-                  <div className="font-semibold text-primary">{selectedValue}</div>
-                ) : (
-                  <div className="text-muted-foreground">Tap to select wrestler</div>
-                )}
-              </button>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button className="flex-1" onClick={handleSave} disabled={!selectedValue}>
-                Save
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <WrestlerPickerModal
-          isOpen={showWrestlerPicker}
-          onClose={() => setShowWrestlerPicker(false)}
-          onSelect={handleWrestlerSelect}
-          title={`Select for ${config.title}`}
-          wrestlers={config.entrants}
-          triggerConfetti={false}
-        />
-      </>
+      <WrestlerPickerModal
+        isOpen={isOpen}
+        onClose={onClose}
+        onSelect={(wrestler) => {
+          onSave(matchId, wrestler);
+          onClose();
+        }}
+        title={config.title}
+        wrestlers={config.entrants}
+        currentSelection={currentPick}
+        triggerConfetti={false}
+      />
     );
   }
 
