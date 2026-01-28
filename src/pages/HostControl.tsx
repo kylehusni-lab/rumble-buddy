@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { isHostSession } from "@/lib/session";
+import { getPlayerSession } from "@/lib/session";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,6 @@ interface MatchResult {
 }
 
 interface PartyData {
-  host_session_id: string;
   status: string;
 }
 
@@ -130,21 +129,23 @@ export default function HostControl() {
 
     const fetchData = async () => {
       try {
-        // Fetch party data
+        // Verify host access via session (PIN check is the real security)
+        const session = getPlayerSession();
+        if (!session?.isHost || session.partyCode !== code) {
+          toast.error("You are not the host of this group");
+          navigate("/");
+          return;
+        }
+
+        // Fetch party data from public view (RLS blocks direct parties table access)
         const { data: partyData, error } = await supabase
-          .from("parties")
-          .select("host_session_id, status")
+          .from("parties_public")
+          .select("status")
           .eq("code", code)
           .single();
 
         if (error || !partyData) {
           toast.error("Group not found");
-          navigate("/");
-          return;
-        }
-
-        if (!isHostSession(partyData.host_session_id)) {
-          toast.error("You are not the host of this group");
           navigate("/");
           return;
         }
