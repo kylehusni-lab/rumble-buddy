@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy } from "lucide-react";
 import { ActiveMatchDisplay } from "./ActiveMatchDisplay";
-import { NumberCell } from "./NumberCell";
+import { TvNumberCell } from "./TvNumberCell";
 import { RumblePropsDisplay } from "./RumblePropsDisplay";
 import { ChaosPropsDisplay } from "./ChaosPropsDisplay";
 import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
@@ -12,6 +12,18 @@ import { WrestlerImage } from "./WrestlerImage";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
 import { cn } from "@/lib/utils";
+
+// Player color palette (avoiding green/red for status indication)
+const PLAYER_COLORS = [
+  { bg: "bg-blue-500", border: "border-blue-500" },
+  { bg: "bg-orange-500", border: "border-orange-500" },
+  { bg: "bg-purple-500", border: "border-purple-500" },
+  { bg: "bg-cyan-500", border: "border-cyan-500" },
+  { bg: "bg-pink-500", border: "border-pink-500" },
+  { bg: "bg-amber-500", border: "border-amber-500" },
+  { bg: "bg-teal-500", border: "border-teal-500" },
+  { bg: "bg-indigo-500", border: "border-indigo-500" },
+];
 
 interface MatchResult {
   match_id: string;
@@ -187,6 +199,14 @@ export function TvViewNavigator({
     setCurrentViewIndex(prev => (prev === VIEWS.length - 1 ? 0 : prev + 1));
   };
 
+  // Get player color based on their index in the players array
+  const getPlayerColor = useCallback((playerId: string | null) => {
+    if (!playerId) return null;
+    const index = players.findIndex(p => p.id === playerId);
+    if (index === -1) return null;
+    return PLAYER_COLORS[index % PLAYER_COLORS.length];
+  }, [players]);
+
   const renderNumberGrid = (numbers: RumbleNumber[], rumbleId: string) => {
     const winnerMatchId = rumbleId === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
     const winnerResult = matchResults.find(r => r.match_id === winnerMatchId);
@@ -198,14 +218,13 @@ export function TvViewNavigator({
       <div className="space-y-4">
         <div className={cn("grid grid-cols-10", gridGapClass)}>
           {numbers.map((num) => (
-            <NumberCell
+            <TvNumberCell
               key={num.number}
               number={num.number}
               wrestlerName={num.wrestler_name}
-              ownerInitials={getPlayerInitials(num.assigned_to_player_id)}
+              playerColor={getPlayerColor(num.assigned_to_player_id)}
               status={getNumberStatus(num)}
               scale={scale}
-              photoSize={photoSize}
             />
           ))}
         </div>
