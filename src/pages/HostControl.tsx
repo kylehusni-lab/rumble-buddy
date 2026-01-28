@@ -16,6 +16,7 @@ import { RumbleEntryControl } from "@/components/host/RumbleEntryControl";
 import { ActiveWrestlerCard } from "@/components/host/ActiveWrestlerCard";
 import { EliminationModal } from "@/components/host/EliminationModal";
 import { WinnerDeclarationModal } from "@/components/host/WinnerDeclarationModal";
+import { FinalFourConfirmationModal } from "@/components/host/FinalFourConfirmationModal";
 import { CollapsibleSection } from "@/components/host/CollapsibleSection";
 import { FixedTabNavigation } from "@/components/host/FixedTabNavigation";
 import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING, MATCH_IDS } from "@/lib/constants";
@@ -80,6 +81,13 @@ export default function HostControl() {
   // Bonus tracking
   const [mensFinalFourAwarded, setMensFinalFourAwarded] = useState(false);
   const [womensFinalFourAwarded, setWomensFinalFourAwarded] = useState(false);
+  
+  // Final Four confirmation modal
+  const [finalFourConfirmation, setFinalFourConfirmation] = useState<{
+    type: "mens" | "womens";
+    wrestlers: { number: number; wrestler_name: string; ownerName: string }[];
+    correctPredictionCount: number;
+  } | null>(null);
 
   // Match started tracking (for delayed timer on #1/#2)
   const [mensMatchStarted, setMensMatchStarted] = useState(false);
@@ -441,8 +449,8 @@ export default function HostControl() {
     }
   };
 
-  // Auto-score Final Four predictions
-  const handleScoreFinalFourPredictions = async (type: "mens" | "womens") => {
+  // Show Final Four confirmation dialog
+  const handleShowFinalFourConfirmation = async (type: "mens" | "womens") => {
     const numbers = type === "mens" ? mensNumbers : womensNumbers;
     const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
 
@@ -463,17 +471,85 @@ export default function HostControl() {
       return;
     }
 
+    // Calculate how many players have at least one correct Final Four pick
+    // A pick is correct if it matches ANY of the 4 final four wrestlers
+    const matchId = type === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
+    const { data: allFinalFourPicks } = await supabase
+      .from("picks")
+      .select("player_id, match_id, prediction")
+      .like("match_id", `${type}_final_four_%`);
+    
+    const playersWithCorrectPicks = new Set<string>();
+    allFinalFourPicks?.forEach(pick => {
+      if (finalFourNames.includes(pick.prediction)) {
+        playersWithCorrectPicks.add(pick.player_id);
+      }
+    });
+
+    setFinalFourConfirmation({
+      type,
+      wrestlers: active.map(n => ({
+        number: n.number,
+        wrestler_name: n.wrestler_name || "Unknown",
+        ownerName: getPlayerName(n.assigned_to_player_id),
+      })),
+      correctPredictionCount: playersWithCorrectPicks.size,
+    });
+  };
+
+  // Execute Final Four scoring after confirmation
+  const handleConfirmFinalFourScoring = async () => {
+    if (!finalFourConfirmation) return;
+
+    const { type, wrestlers } = finalFourConfirmation;
+    const finalFourNames = wrestlers.map(w => w.wrestler_name);
+
     try {
-      // Score each slot with the corresponding wrestler
+      // Fetch all Final Four picks for this type
+      const { data: allFinalFourPicks } = await supabase
+        .from("picks")
+        .select("player_id, match_id, prediction")
+        .like("match_id", `${type}_final_four_%`);
+
+      // Record the actual Final Four wrestlers in match_results for each slot
       for (let slot = 1; slot <= 4; slot++) {
         const propId = `${type}_final_four_${slot}`;
         const wrestler = finalFourNames[slot - 1];
         if (wrestler) {
-          await handleScoreRumbleProp(propId, wrestler);
+          await supabase.from("match_results").insert({
+            party_code: code!,
+            match_id: propId,
+            result: wrestler,
+          });
+        }
+      }
+
+      // Award points: For each player's pick, check if it matches ANY of the final four
+      // Group picks by player
+      const picksByPlayer = new Map<string, string[]>();
+      allFinalFourPicks?.forEach(pick => {
+        const existing = picksByPlayer.get(pick.player_id) || [];
+        existing.push(pick.prediction);
+        picksByPlayer.set(pick.player_id, existing);
+      });
+
+      // Award points for each correct pick
+      for (const [playerId, picks] of picksByPlayer) {
+        const correctPicks = picks.filter(pick => finalFourNames.includes(pick));
+        if (correctPicks.length > 0) {
+          const player = getPlayer(playerId);
+          if (player) {
+            const pointsToAward = correctPicks.length * SCORING.FINAL_FOUR_PICK;
+            await supabase
+              .from("players")
+              .update({ points: player.points + pointsToAward })
+              .eq("id", playerId);
+          }
         }
       }
 
       toast.success(`${type === "mens" ? "Men's" : "Women's"} Final Four predictions scored!`);
+      setFinalFourConfirmation(null);
     } catch (err) {
       console.error("Error scoring Final Four:", err);
       toast.error("Failed to score Final Four predictions");
@@ -1107,6 +1183,7 @@ export default function HostControl() {
                 derivedValue={mensDerivedProps.mens_entrant_1}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={mensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.MENS_ENTRANT_30}
@@ -1116,6 +1193,7 @@ export default function HostControl() {
                 derivedValue={mensDerivedProps.mens_entrant_30}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={mensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.MENS_FIRST_ELIMINATION}
@@ -1125,6 +1203,7 @@ export default function HostControl() {
                 derivedValue={mensDerivedProps.mens_first_elimination}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={mensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.MENS_MOST_ELIMINATIONS}
@@ -1134,6 +1213,7 @@ export default function HostControl() {
                 derivedValue={mensDerivedProps.mens_most_eliminations}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={mensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.MENS_LONGEST_TIME}
@@ -1143,6 +1223,7 @@ export default function HostControl() {
                 derivedValue={mensDerivedProps.mens_longest_time}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={mensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.MENS_NO_SHOW}
@@ -1168,7 +1249,7 @@ export default function HostControl() {
                 <Button
                   variant="gold"
                   className="w-full mb-3"
-                  onClick={() => handleScoreFinalFourPredictions("mens")}
+                  onClick={() => handleShowFinalFourConfirmation("mens")}
                 >
                   <Sparkles size={16} className="mr-2" />
                   Auto-Score Final Four Predictions
@@ -1184,6 +1265,7 @@ export default function HostControl() {
                   derivedValue={mensDerivedProps[`mens_final_four_${slot}`]}
                   onScore={handleScoreRumbleProp}
                   onReset={handleResetRumbleProp}
+                  availableWrestlers={mensEntrants}
                 />
               ))}
             </CollapsibleSection>
@@ -1238,6 +1320,7 @@ export default function HostControl() {
                 derivedValue={womensDerivedProps.womens_entrant_1}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={womensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.WOMENS_ENTRANT_30}
@@ -1247,6 +1330,7 @@ export default function HostControl() {
                 derivedValue={womensDerivedProps.womens_entrant_30}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={womensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.WOMENS_FIRST_ELIMINATION}
@@ -1256,6 +1340,7 @@ export default function HostControl() {
                 derivedValue={womensDerivedProps.womens_first_elimination}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={womensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.WOMENS_MOST_ELIMINATIONS}
@@ -1265,6 +1350,7 @@ export default function HostControl() {
                 derivedValue={womensDerivedProps.womens_most_eliminations}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={womensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.WOMENS_LONGEST_TIME}
@@ -1274,6 +1360,7 @@ export default function HostControl() {
                 derivedValue={womensDerivedProps.womens_longest_time}
                 onScore={handleScoreRumbleProp}
                 onReset={handleResetRumbleProp}
+                availableWrestlers={womensEntrants}
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.WOMENS_NO_SHOW}
@@ -1299,7 +1386,7 @@ export default function HostControl() {
                 <Button
                   variant="gold"
                   className="w-full mb-3"
-                  onClick={() => handleScoreFinalFourPredictions("womens")}
+                  onClick={() => handleShowFinalFourConfirmation("womens")}
                 >
                   <Sparkles size={16} className="mr-2" />
                   Auto-Score Final Four Predictions
@@ -1315,6 +1402,7 @@ export default function HostControl() {
                   derivedValue={womensDerivedProps[`womens_final_four_${slot}`]}
                   onScore={handleScoreRumbleProp}
                   onReset={handleResetRumbleProp}
+                  availableWrestlers={womensEntrants}
                 />
               ))}
             </CollapsibleSection>
@@ -1481,6 +1569,18 @@ export default function HostControl() {
           ironPersonName={winnerData.ironPerson ? getPlayerName(winnerData.ironPerson.assigned_to_player_id) : null}
           correctPredictionCount={winnerData.correctPredictionCount}
           onConfirm={handleConfirmWinner}
+        />
+      )}
+
+      {finalFourConfirmation && (
+        <FinalFourConfirmationModal
+          open={!!finalFourConfirmation}
+          onOpenChange={(open) => !open && setFinalFourConfirmation(null)}
+          type={finalFourConfirmation.type}
+          wrestlers={finalFourConfirmation.wrestlers}
+          correctPredictionCount={finalFourConfirmation.correctPredictionCount}
+          totalPlayers={players.length}
+          onConfirm={handleConfirmFinalFourScoring}
         />
       )}
     </div>
