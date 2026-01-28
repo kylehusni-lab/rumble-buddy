@@ -217,15 +217,6 @@ export function ActiveMatchDisplay({ match, matchResults, players, picks }: Acti
               </div>
             </div>
 
-            {/* Match title below */}
-            <motion.div
-              className="text-center mt-6"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              <h3 className="text-xl font-semibold text-muted-foreground">{match.title}</h3>
-            </motion.div>
           </motion.div>
         )}
       </div>

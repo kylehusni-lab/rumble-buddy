@@ -1,8 +1,8 @@
-import { Swords, Users, List, Check, Circle, Trophy } from "lucide-react";
+import { Swords, Users, Trophy, Check, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface View {
-  type: "leaderboard" | "undercard" | "rumble" | "rumble-props";
+  type: "leaderboard" | "undercard" | "rumble";
   id: string;
   title: string;
 }
@@ -15,15 +15,14 @@ interface TvTabBarProps {
   isViewActive?: (view: View) => boolean;
 }
 
+// Updated config for 6 views (Scores, 3 Matches, Men's, Women's)
 const VIEW_CONFIG: { icon: React.ElementType; label: string; shortcut: string }[] = [
   { icon: Trophy, label: "Scores", shortcut: "1" },
   { icon: Swords, label: "Match 1", shortcut: "2" },
   { icon: Swords, label: "Match 2", shortcut: "3" },
   { icon: Swords, label: "Match 3", shortcut: "4" },
   { icon: Users, label: "Men's", shortcut: "5" },
-  { icon: List, label: "M Props", shortcut: "6" },
-  { icon: Users, label: "Women's", shortcut: "7" },
-  { icon: List, label: "W Props", shortcut: "8" },
+  { icon: Users, label: "Women's", shortcut: "6" },
 ];
 
 export function TvTabBar({
