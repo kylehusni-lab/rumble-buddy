@@ -259,23 +259,31 @@ export function useSoloCloud() {
     }
   };
 
-  // Save picks to cloud
+  // Save picks to cloud using secure RPC function
   const savePicksToCloud = async (picks: Record<string, string>) => {
     const playerId = getStoredPlayerId();
     if (!playerId) return;
 
     try {
-      const records = Object.entries(picks).map(([match_id, prediction]) => ({
-        solo_player_id: playerId,
-        match_id,
-        prediction,
-      }));
-
-      const { error } = await supabase
-        .from('solo_picks')
-        .upsert(records, { onConflict: 'solo_player_id,match_id' });
-
-      if (error) throw error;
+      // Use secure RPC function for each pick (validates ownership and prevents post-scoring changes)
+      const results = await Promise.all(
+        Object.entries(picks).map(async ([match_id, prediction]) => {
+          const { data, error } = await supabase.rpc('save_solo_pick', {
+            p_player_id: playerId,
+            p_match_id: match_id,
+            p_prediction: prediction,
+          });
+          
+          if (error) throw error;
+          return data;
+        })
+      );
+      
+      // Check for any failures
+      const failures = results.flat().filter(r => r && !r.success);
+      if (failures.length > 0) {
+        console.warn('Some picks could not be saved:', failures.map(f => f.error_message));
+      }
     } catch (err) {
       console.error('Error saving picks to cloud:', err);
     }
