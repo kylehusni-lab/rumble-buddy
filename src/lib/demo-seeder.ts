@@ -2,11 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { UNDERCARD_MATCHES, CHAOS_PROPS, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "./constants";
 
 export const DEMO_GUESTS = [
-  { name: "Randy Savage", email: "randy@demo.local" },
-  { name: "Macho Man", email: "macho@demo.local" },
-  { name: "Hulk Hogan", email: "hulk@demo.local" },
-  { name: "Stone Cold", email: "stone@demo.local" },
-  { name: "The Rock", email: "rock@demo.local" },
+  { name: "Melanie", email: "melanie@demo.local" },
+  { name: "Mike", email: "mike@demo.local" },
+  { name: "Jon", email: "jon@demo.local" },
+  { name: "Chris", email: "chris@demo.local" },
+  { name: "Steve", email: "steve@demo.local" },
 ] as const;
 
 // Helper to get N unique random wrestlers
