@@ -30,8 +30,8 @@ export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
         +{SCORING.UNDERCARD_WINNER} pts if correct
       </div>
 
-      {/* Wrestler Options - stacked on mobile, side-by-side on desktop */}
-      <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-10 justify-center items-stretch md:items-center md:px-4 lg:px-12 relative">
+      {/* Wrestler Options - stacked layout for narrow container */}
+      <div className="flex-1 flex flex-col gap-4 justify-center items-stretch relative">
         {options.map((wrestler, index) => (
           <React.Fragment key={wrestler}>
             <motion.button
@@ -39,7 +39,7 @@ export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
               disabled={disabled}
               className={cn(
                 "relative p-4 sm:p-5 md:p-6 lg:p-8 rounded-xl border-2 transition-all flex-1",
-                "flex flex-row md:flex-col items-center gap-3 sm:gap-4 md:gap-4",
+                "flex flex-row items-center gap-3 sm:gap-4",
                 value === wrestler
                   ? "border-primary bg-primary/10 shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
                   : "border-border hover:border-muted-foreground",
@@ -50,7 +50,7 @@ export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
               {/* Wrestler Photo */}
               <div className={cn(
                 "rounded-full bg-muted overflow-hidden flex-shrink-0 border-2",
-                "w-14 h-14 sm:w-16 sm:h-16 md:w-24 md:h-24 lg:w-32 lg:h-32",
+                "w-14 h-14 sm:w-16 sm:h-16",
                 value === wrestler ? "border-primary" : "border-border"
               )}>
                 <img
@@ -65,10 +65,10 @@ export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
               </div>
 
               {/* Wrestler Name */}
-              <div className="flex-1 md:flex-none text-left md:text-center min-w-0">
+              <div className="flex-1 text-left min-w-0">
                 <div className={cn(
-                  "font-bold text-foreground truncate md:whitespace-normal",
-                  "text-sm sm:text-lg md:text-xl lg:text-2xl"
+                  "font-bold text-foreground truncate",
+                  "text-sm sm:text-lg"
                 )}>
                   {wrestler}
                 </div>
@@ -79,25 +79,22 @@ export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className={cn(
-                    "rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-primary-foreground",
-                    "w-7 h-7 sm:w-8 sm:h-8 md:absolute md:top-3 md:right-3 md:w-8 md:h-8"
-                  )}
+                  className="rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-primary-foreground w-7 h-7 sm:w-8 sm:h-8"
                 >
                   <Check className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} />
                 </motion.div>
               )}
             </motion.button>
             
-            {/* VS Divider - show on all screen sizes */}
+            {/* VS Divider */}
             {index === 0 && (
-              <div className="flex items-center justify-center flex-shrink-0 py-1 md:py-0">
+              <div className="flex items-center justify-center flex-shrink-0 py-1">
                 <div className="relative">
                   {/* Glowing background */}
                   <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-150" />
                   {/* VS badge */}
-                  <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 border-2 border-primary/50 flex items-center justify-center">
-                    <span className="text-sm sm:text-base md:text-xl lg:text-2xl font-black text-primary drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
+                  <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 border-2 border-primary/50 flex items-center justify-center">
+                    <span className="text-sm sm:text-base font-black text-primary drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
                       VS
                     </span>
                   </div>
