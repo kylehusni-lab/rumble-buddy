@@ -74,8 +74,7 @@ export interface View {
 export const VIEWS: View[] = [
   { type: "leaderboard", id: "leaderboard", title: "Leaderboard" },
   { type: "undercard", id: "undercard_1", title: UNDERCARD_MATCHES[0].title, options: UNDERCARD_MATCHES[0].options },
-  { type: "undercard", id: "undercard_2", title: UNDERCARD_MATCHES[1].title, options: UNDERCARD_MATCHES[1].options },
-  { type: "undercard", id: "undercard_3", title: UNDERCARD_MATCHES[2].title, options: UNDERCARD_MATCHES[2].options },
+  { type: "undercard", id: "undercard_3", title: UNDERCARD_MATCHES[1].title, options: UNDERCARD_MATCHES[1].options },
   { type: "rumble", id: "mens", title: "Men's Royal Rumble", gender: "mens" },
   { type: "rumble", id: "womens", title: "Women's Royal Rumble", gender: "womens" },
 ];
