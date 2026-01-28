@@ -128,13 +128,6 @@ export function ActiveMatchDisplay({ match, matchResults, players, picks }: Acti
             <div className="text-3xl font-bold text-primary">
               {pickStats.wrestler1.percentage}%
             </div>
-            
-            {/* Player names who picked */}
-            <div className="text-sm text-muted-foreground text-center max-w-[180px]">
-              {pickStats.wrestler1.players.length > 0 
-                ? pickStats.wrestler1.players.join(", ") 
-                : "No picks"}
-            </div>
           </motion.div>
 
           {/* VS graphic */}
@@ -180,44 +173,61 @@ export function ActiveMatchDisplay({ match, matchResults, players, picks }: Acti
             <div className="text-3xl font-bold text-primary">
               {pickStats.wrestler2.percentage}%
             </div>
-            
-            {/* Player names who picked */}
-            <div className="text-sm text-muted-foreground text-center max-w-[180px]">
-              {pickStats.wrestler2.players.length > 0 
-                ? pickStats.wrestler2.players.join(", ") 
-                : "No picks"}
-            </div>
           </motion.div>
         </div>
 
-        {/* Visual distribution bar */}
+        {/* 3D Visual distribution bar */}
         {pickStats.total > 0 && (
           <motion.div
-            className="mt-8 flex h-4 rounded-full overflow-hidden bg-muted"
+            className="mt-10"
             initial={{ opacity: 0, scaleX: 0 }}
             animate={{ opacity: 1, scaleX: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <div 
-              className="bg-primary transition-all duration-500"
-              style={{ width: `${pickStats.wrestler1.percentage}%` }}
-            />
-            <div 
-              className="bg-secondary transition-all duration-500"
-              style={{ width: `${pickStats.wrestler2.percentage}%` }}
-            />
+            {/* Player names above bars */}
+            <div className="flex justify-between mb-3 text-sm text-muted-foreground">
+              <span>{pickStats.wrestler1.players.join(", ") || "No picks"}</span>
+              <span>{pickStats.wrestler2.players.join(", ") || "No picks"}</span>
+            </div>
+            
+            {/* 3D Progress bar container */}
+            <div className="relative h-8 rounded-full overflow-hidden bg-muted/30 shadow-inner">
+              {/* Primary side (wrestler 1) - gold gradient with 3D effect */}
+              <div 
+                className="absolute inset-y-0 left-0 bg-gradient-to-b from-primary via-primary to-primary/70 transition-all duration-700 ease-out"
+                style={{ 
+                  width: `${pickStats.wrestler1.percentage}%`,
+                  boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2), 2px 0 8px rgba(0,0,0,0.3)'
+                }}
+              >
+                {/* Inner highlight for 3D effect */}
+                <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/20 to-transparent rounded-t-full" />
+              </div>
+              
+              {/* Secondary side (wrestler 2) - purple gradient with 3D effect */}
+              <div 
+                className="absolute inset-y-0 right-0 bg-gradient-to-b from-secondary via-secondary to-secondary/70 transition-all duration-700 ease-out"
+                style={{ 
+                  width: `${pickStats.wrestler2.percentage}%`,
+                  boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2), -2px 0 8px rgba(0,0,0,0.3)'
+                }}
+              >
+                {/* Inner highlight for 3D effect */}
+                <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/20 to-transparent rounded-t-full" />
+              </div>
+            </div>
+
+            {/* Match title below */}
+            <motion.div
+              className="text-center mt-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <h3 className="text-xl font-semibold text-muted-foreground">{match.title}</h3>
+            </motion.div>
           </motion.div>
         )}
-
-        {/* Match title */}
-        <motion.div
-          className="text-center mt-6"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <h3 className="text-xl font-semibold text-muted-foreground">{match.title}</h3>
-        </motion.div>
       </div>
     </motion.div>
   );
