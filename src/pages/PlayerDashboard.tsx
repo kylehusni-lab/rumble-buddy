@@ -11,7 +11,9 @@ import { BottomNavBar, TabId, TabBadge } from "@/components/dashboard/BottomNavB
 import { NumbersSection } from "@/components/dashboard/NumbersSection";
 import { MatchesSection } from "@/components/dashboard/MatchesSection";
 import { RumblePropsSection } from "@/components/dashboard/RumblePropsSection";
+import { SinglePickEditModal } from "@/components/dashboard/SinglePickEditModal";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 // Match ID groupings for each tab (chaos props now included in mens/womens)
 const TAB_MATCH_IDS: Record<Exclude<TabId, "numbers">, string[]> = {
   matches: ['undercard_1', 'undercard_2', 'undercard_3', 'mens_rumble_winner', 'womens_rumble_winner'],
@@ -102,6 +104,11 @@ export default function PlayerDashboard() {
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
   const [celebration, setCelebration] = useState<CelebrationData | null>(null);
   const [players, setPlayers] = useState<Array<{ id: string; display_name: string }>>([]);
+  
+  // Single pick edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingMatchId, setEditingMatchId] = useState("");
+  const [editingCurrentPick, setEditingCurrentPick] = useState("");
 
   // Track shown celebrations to avoid duplicates
   const shownCelebrations = useRef<Set<string>>(new Set());
@@ -402,8 +409,40 @@ export default function PlayerDashboard() {
   const canEditPicks = partyStatus === "pre_event";
 
   const handleEditPick = (matchId: string, currentPick: string) => {
-    // Navigate to picks page - could be enhanced with a modal later
-    navigate(`/player/picks/${code}`);
+    setEditingMatchId(matchId);
+    setEditingCurrentPick(currentPick);
+    setEditModalOpen(true);
+  };
+
+  const handleSavePick = async (matchId: string, newValue: string) => {
+    if (!session?.playerId) return;
+    
+    try {
+      const { error } = await supabase
+        .from("picks")
+        .upsert({
+          player_id: session.playerId,
+          match_id: matchId,
+          prediction: newValue,
+        }, { onConflict: "player_id,match_id" });
+
+      if (error) throw error;
+
+      // Update local state
+      setPicks(prev => {
+        const existing = prev.find(p => p.match_id === matchId);
+        if (existing) {
+          return prev.map(p => p.match_id === matchId ? { ...p, prediction: newValue } : p);
+        } else {
+          return [...prev, { match_id: matchId, prediction: newValue, points_awarded: null }];
+        }
+      });
+
+      toast.success("Pick updated!");
+    } catch (err) {
+      console.error("Error saving pick:", err);
+      toast.error("Failed to save pick");
+    }
   };
 
   const renderTabContent = () => {
@@ -522,6 +561,15 @@ export default function PlayerDashboard() {
           badges={calculateBadges(picks, results)}
         />
       </div>
+
+      {/* Single Pick Edit Modal */}
+      <SinglePickEditModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        matchId={editingMatchId}
+        currentPick={editingCurrentPick}
+        onSave={handleSavePick}
+      />
     </>
   );
 }
