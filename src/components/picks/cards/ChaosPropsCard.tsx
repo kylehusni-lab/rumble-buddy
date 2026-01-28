@@ -1,3 +1,4 @@
+import React, { forwardRef, memo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Zap, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,18 +13,19 @@ interface ChaosPropsCardProps {
   disabled?: boolean;
 }
 
-export function ChaosPropsCard({ title, gender, values, onChange, disabled }: ChaosPropsCardProps) {
-  const handlePropChange = (propId: string, value: "YES" | "NO") => {
+export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProps>(
+  function ChaosPropsCard({ title, gender, values, onChange, disabled }, ref) {
+  const handlePropChange = useCallback((propId: string, value: "YES" | "NO") => {
     if (disabled) return;
     const matchId = `${gender}_chaos_${propId}`;
     onChange({ ...values, [matchId]: value });
-  };
+  }, [disabled, gender, onChange, values]);
 
   const answeredCount = Object.values(values).filter(v => v !== null && v !== undefined).length;
   const allAnswered = answeredCount === 6;
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-220px)]">
+    <div ref={ref} className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-220px)]">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Zap className="w-6 h-6 text-primary" />
@@ -96,4 +98,5 @@ export function ChaosPropsCard({ title, gender, values, onChange, disabled }: Ch
       </ScrollArea>
     </div>
   );
-}
+  }
+));

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo, useRef, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Crown, Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ interface RumbleWinnerCardProps {
   customEntrants?: string[];
 }
 
-export function RumbleWinnerCard({ 
+export const RumbleWinnerCard = memo(function RumbleWinnerCard({ 
   title, 
   gender, 
   value, 
@@ -27,27 +27,37 @@ export function RumbleWinnerCard({
   customEntrants 
 }: RumbleWinnerCardProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const lastConfettiValue = useRef<string | null>(null);
   
   const defaultEntrants = gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS;
-  const entrants = customEntrants && customEntrants.length > 0 ? customEntrants : defaultEntrants;
+  const entrants = useMemo(() => 
+    customEntrants && customEntrants.length > 0 ? customEntrants : defaultEntrants,
+    [customEntrants, defaultEntrants]
+  );
   
   // Filter and alphabetize, keeping "Surprise/Other Entrant" at the end
-  const filteredEntrants = entrants
-    .filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort(sortEntrants);
+  const filteredEntrants = useMemo(() => 
+    entrants
+      .filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()))
+      .sort(sortEntrants),
+    [entrants, searchQuery]
+  );
 
-  const handleSelect = (wrestler: string) => {
+  const handleSelect = useCallback((wrestler: string) => {
     if (disabled) return;
     onChange(wrestler);
     
-    // Trigger confetti celebration
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#D4AF37', '#4B0082', '#FFD700'],
-    });
-  };
+    // Only fire confetti if this is a new selection
+    if (wrestler !== lastConfettiValue.current) {
+      lastConfettiValue.current = wrestler;
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#D4AF37', '#4B0082', '#FFD700'],
+      });
+    }
+  }, [disabled, onChange]);
 
   return (
     <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-220px)]">
@@ -162,4 +172,4 @@ export function RumbleWinnerCard({
       </ScrollArea>
     </div>
   );
-}
+});

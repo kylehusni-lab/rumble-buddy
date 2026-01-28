@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Save, Loader2, Home } from "lucide-react";
@@ -47,7 +47,25 @@ export default function SoloPicks() {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const minSwipeDistance = 50;
 
+  // Debouncing refs for cloud sync
+  const pendingPicksRef = useRef<Record<string, any>>({});
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const displayName = player?.display_name || "Me";
+
+  // Debounced cloud save function
+  const debouncedCloudSave = useCallback((newPicks: Record<string, any>) => {
+    pendingPicksRef.current = newPicks;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      savePicksToCloud(pendingPicksRef.current);
+      saveTimeoutRef.current = null;
+    }, 800);
+  }, [savePicksToCloud]);
 
   // Load existing picks on mount
   useEffect(() => {
@@ -56,6 +74,19 @@ export default function SoloPicks() {
       setPicks(existingPicks);
     }
   }, []);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        // Save any pending picks before unmount
+        if (Object.keys(pendingPicksRef.current).length > 0) {
+          savePicksToCloud(pendingPicksRef.current);
+        }
+      }
+    };
+  }, [savePicksToCloud]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -114,34 +145,34 @@ export default function SoloPicks() {
     }, 200);
   };
 
-  const handlePickUpdate = (cardId: string, value: any) => {
+  const handlePickUpdate = useCallback((cardId: string, value: any) => {
     const newPicks = { ...picks, [cardId]: value };
     setPicks(newPicks);
     saveSoloPicks(newPicks);
     
-    // Auto-sync to cloud
-    savePicksToCloud(newPicks);
+    // Debounced cloud sync
+    debouncedCloudSave(newPicks);
     
     // Auto-advance after selection (except for chaos props and rumble props)
     const card = CARD_CONFIG.find(c => c.id === cardId);
     if (card?.type !== "chaos-props" && card?.type !== "rumble-props" && currentCardIndex < TOTAL_CARDS - 1) {
       setTimeout(() => handleSwipe("right"), 300);
     }
-  };
+  }, [picks, currentCardIndex, debouncedCloudSave]);
 
-  const handleChaosPropsUpdate = (values: Record<string, "YES" | "NO" | null>) => {
+  const handleChaosPropsUpdate = useCallback((values: Record<string, "YES" | "NO" | null>) => {
     const newPicks = { ...picks, ...values };
     setPicks(newPicks);
     saveSoloPicks(newPicks);
-    savePicksToCloud(newPicks);
-  };
+    debouncedCloudSave(newPicks);
+  }, [picks, debouncedCloudSave]);
 
-  const handleRumblePropsUpdate = (values: Record<string, string | null>) => {
+  const handleRumblePropsUpdate = useCallback((values: Record<string, string | null>) => {
     const newPicks = { ...picks, ...values };
     setPicks(newPicks);
     saveSoloPicks(newPicks);
-    savePicksToCloud(newPicks);
-  };
+    debouncedCloudSave(newPicks);
+  }, [picks, debouncedCloudSave]);
 
   // Touch event handlers
   const onTouchStart = (e: React.TouchEvent) => {

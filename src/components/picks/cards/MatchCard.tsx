@@ -1,4 +1,4 @@
-import React from "react";
+import React, { forwardRef, memo } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,9 +13,10 @@ interface MatchCardProps {
   disabled?: boolean;
 }
 
-export function MatchCard({ title, options, value, onChange, disabled }: MatchCardProps) {
-  return (
-    <div className="bg-card rounded-2xl p-4 sm:p-6 md:p-8 shadow-card border border-border min-h-[300px] md:min-h-[400px] flex flex-col relative">
+export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
+  function MatchCard({ title, options, value, onChange, disabled }, ref) {
+    return (
+      <div ref={ref} className="bg-card rounded-2xl p-4 sm:p-6 md:p-8 shadow-card border border-border min-h-[300px] md:min-h-[400px] flex flex-col relative">
       {/* Header */}
       <div className="flex items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6 md:mb-8">
         <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
@@ -108,4 +109,5 @@ export function MatchCard({ title, options, value, onChange, disabled }: MatchCa
       </div>
     </div>
   );
-}
+  }
+));
