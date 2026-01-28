@@ -148,9 +148,9 @@ export default function HostControl() {
 
         setParty(partyData);
 
-        // Fetch players
+        // Fetch players (use public view to avoid exposing sensitive data)
         const { data: playersData } = await supabase
-          .from("players")
+          .from("players_public")
           .select("id, display_name, points")
           .eq("party_code", code);
         if (playersData) setPlayers(playersData);
@@ -223,7 +223,7 @@ export default function HostControl() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, async () => {
         const { data } = await supabase
-          .from("players")
+          .from("players_public")
           .select("id, display_name, points")
           .eq("party_code", code);
         if (data) setPlayers(data);

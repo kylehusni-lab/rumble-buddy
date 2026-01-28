@@ -130,9 +130,9 @@ export default function PlayerDashboard() {
         
         if (partyData) setPartyStatus(partyData.status);
 
-        // Fetch player data
+        // Fetch player data (use public view to avoid exposing sensitive data)
         const { data: playerData } = await supabase
-          .from("players")
+          .from("players_public")
           .select("points")
           .eq("id", session.playerId)
           .single();
@@ -141,7 +141,7 @@ export default function PlayerDashboard() {
 
         // Fetch all players for ranking
         const { data: allPlayersData } = await supabase
-          .from("players")
+          .from("players_public")
           .select("id, display_name, points")
           .eq("party_code", code)
           .order("points", { ascending: false });

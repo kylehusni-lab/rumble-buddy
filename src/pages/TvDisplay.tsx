@@ -109,7 +109,7 @@ export default function TvDisplay() {
       if (partyData) setPartyStatus(partyData.status);
 
       const { data: playersData } = await supabase
-        .from("players")
+        .from("players_public")
         .select("id, display_name, points")
         .eq("party_code", code)
         .order("points", { ascending: false });
@@ -163,7 +163,7 @@ export default function TvDisplay() {
           // Show reveal if event started within the last 2 minutes
           if (timeSinceStart < 120) {
             const { data: allPlayers } = await supabase
-              .from("players")
+              .from("players_public")
               .select("id, display_name")
               .eq("party_code", code)
               .order("joined_at");
@@ -231,7 +231,7 @@ export default function TvDisplay() {
 
     const loadRevealData = async () => {
       const { data: allPlayers } = await supabase
-        .from("players")
+        .from("players_public")
         .select("id, display_name")
         .eq("party_code", code)
         .order("joined_at");
@@ -272,7 +272,7 @@ export default function TvDisplay() {
         }
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, () => {
-        supabase.from("players").select("id, display_name, points").eq("party_code", code).order("points", { ascending: false }).then(({ data }) => {
+        supabase.from("players_public").select("id, display_name, points").eq("party_code", code).order("points", { ascending: false }).then(({ data }) => {
           if (data) setPlayers(data);
         });
       })
