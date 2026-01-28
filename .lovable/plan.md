@@ -1,80 +1,84 @@
 
-# Clear Database & Fix Demo Mode
+# Fix Demo Mode - RLS Policy Conflict
 
-## Overview
-Clear all existing test data from the database and update demo mode to use generic, non-confusing names instead of wrestler names.
+## Problem
+Demo mode fails with a 401 error when creating players because:
+1. The `players` table has an INSERT policy that allows inserts ✓
+2. BUT the SELECT policy has `qual: false` blocking ALL reads ✗
+3. The demo seeder uses `.select("id")` after insert, which triggers a read operation
+4. This read operation is blocked by RLS, causing the entire request to fail
 
-## Current Database State
-| Table | Records |
-|-------|---------|
-| parties | 52 |
-| players | 189 |
-| picks | 5,525 |
-| match_results | 21 |
-| rumble_numbers | 1,080 |
-| solo_players | 1 |
-| solo_picks | 37 |
+## Solution
+Use the existing `lookup_player_by_email` database function (SECURITY DEFINER) to retrieve player IDs after insert instead of using `.select()`.
 
-## Part 1: Clear All Data
+## File to Modify
 
-Will execute SQL commands to truncate all game data tables in the correct order (respecting dependencies):
-
-```sql
--- Clear in dependency order
-DELETE FROM picks;
-DELETE FROM rumble_numbers;
-DELETE FROM match_results;
-DELETE FROM players;
-DELETE FROM parties;
-DELETE FROM solo_picks;
-DELETE FROM solo_results;
-DELETE FROM solo_players;
-```
-
-## Part 2: Update Demo Names
-
-Change the demo guest names from wrestler names to generic friend names:
-
-**Before (confusing):**
-- Randy Savage
-- Macho Man
-- Hulk Hogan
-- Stone Cold
-- The Rock
-
-**After (clear):**
-- Melanie
-- Mike
-- Jon
-- Chris
-- Steve
-- Kyle (host - already set correctly)
-
-### File: `src/lib/demo-seeder.ts`
-
-Update the `DEMO_GUESTS` array:
-```typescript
-export const DEMO_GUESTS = [
-  { name: "Melanie", email: "melanie@demo.local" },
-  { name: "Mike", email: "mike@demo.local" },
-  { name: "Jon", email: "jon@demo.local" },
-  { name: "Chris", email: "chris@demo.local" },
-  { name: "Steve", email: "steve@demo.local" },
-] as const;
-```
-
-## Files to Modify
 | File | Changes |
 |------|---------|
-| `src/lib/demo-seeder.ts` | Update DEMO_GUESTS array with generic names |
+| `src/lib/demo-seeder.ts` | Remove `.select()` from inserts, use `lookup_player_by_email` to get IDs |
 
-## Database Operations
-| Operation | Description |
-|-----------|-------------|
-| DELETE | Clear all existing records from all game tables |
+## Technical Changes
+
+### `src/lib/demo-seeder.ts`
+
+**Before (lines 134-145):**
+```typescript
+const { data: hostPlayer, error: hostError } = await supabase
+  .from("players")
+  .insert({...})
+  .select("id")
+  .single();
+```
+
+**After:**
+```typescript
+// Insert without .select()
+const { error: hostError } = await supabase
+  .from("players")
+  .insert({
+    party_code: partyCode,
+    email: "kyle.husni@gmail.com",
+    display_name: "Kyle",
+    session_id: hostSessionId,
+  });
+
+if (hostError) throw hostError;
+
+// Use lookup function to get ID
+const { data: hostLookup, error: lookupError } = await supabase
+  .rpc('lookup_player_by_email', {
+    p_party_code: partyCode,
+    p_email: "kyle.husni@gmail.com"
+  });
+
+if (lookupError || !hostLookup?.[0]) throw lookupError || new Error("Failed to lookup host player");
+const hostPlayerId = hostLookup[0].id;
+```
+
+**For guests (lines 155-160):**
+```typescript
+// Insert all guests without .select()
+const { error: guestsError } = await supabase
+  .from("players")
+  .insert(guestInserts);
+
+if (guestsError) throw guestsError;
+
+// Lookup each guest by email to get IDs
+const guestIds: string[] = [];
+for (const guest of DEMO_GUESTS) {
+  const { data: guestLookup } = await supabase
+    .rpc('lookup_player_by_email', {
+      p_party_code: partyCode,
+      p_email: guest.email
+    });
+  if (guestLookup?.[0]?.id) {
+    guestIds.push(guestLookup[0].id);
+  }
+}
+```
 
 ## Result
-- Fresh database with no test data
-- Demo mode creates 6 players with clear, distinguishable names:
-  - **Kyle** (you/host)
-  - **Melanie**, **Mike**, **Jon**, **Chris**, **Steve** (guests)
+- Demo mode will successfully create all 6 players (Kyle + 5 guests)
+- Player IDs retrieved via secure database function instead of blocked SELECT
+- All 222 picks generated correctly for the demo party
