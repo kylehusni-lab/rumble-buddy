@@ -55,13 +55,15 @@ export default function PlayerJoin() {
     try {
       const sessionId = getSessionId();
 
-      // Check if player already exists with this email
-      const { data: existingPlayer } = await supabase
-        .from("players")
-        .select("id, display_name, session_id")
-        .eq("party_code", partyCode)
-        .eq("email", email.toLowerCase().trim())
-        .maybeSingle();
+      // Check if player already exists with this email using secure RPC function
+      // This prevents direct SELECT access to the players table which would expose emails
+      const { data: existingPlayers } = await supabase
+        .rpc("lookup_player_by_email", { 
+          p_party_code: partyCode, 
+          p_email: email.toLowerCase().trim() 
+        });
+
+      const existingPlayer = existingPlayers && existingPlayers.length > 0 ? existingPlayers[0] : null;
 
       let playerId: string;
 
