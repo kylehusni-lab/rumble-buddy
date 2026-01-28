@@ -83,6 +83,7 @@ export default function PlayerPicks() {
       existingPicks={existingPicks}
       mensEntrants={mensEntrants}
       womensEntrants={womensEntrants}
+      isHost={session?.isHost || false}
     />
   );
 }
