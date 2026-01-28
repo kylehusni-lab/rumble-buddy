@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Loader2, Save, Home } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { MatchCard } from "./cards/MatchCard";
 import { RumbleWinnerCard } from "./cards/RumbleWinnerCard";
@@ -275,8 +276,8 @@ export function PickCardStack({
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <div className="flex-1 flex flex-col max-w-lg mx-auto w-full">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col max-w-lg mx-auto w-full overflow-hidden">
         {/* Header with Home button FIRST */}
         <div className="py-2 px-4 border-b border-border flex items-center justify-between">
           <button
@@ -382,7 +383,7 @@ export function PickCardStack({
       )}
 
         {/* Navigation Controls */}
-        <div className="p-4 border-t border-border flex items-center justify-between gap-2 bg-card">
+        <div className="p-4 border-t border-border flex items-center justify-between bg-card shrink-0">
           {/* Back Button */}
           <Button
             variant="outline"
@@ -395,13 +396,13 @@ export function PickCardStack({
             Back
           </Button>
 
-          {/* Save Button - always visible */}
+          {/* Save Button - centered */}
           <Button
             onClick={handleSaveClick}
             disabled={isSubmitting || isLocked}
             variant={allPicksComplete && !isLocked ? "default" : "outline"}
             size="sm"
-            className={allPicksComplete && !isLocked ? "gold-shimmer" : ""}
+            className={cn("flex-1 max-w-[120px] mx-2", allPicksComplete && !isLocked && "gold-shimmer")}
           >
             {isSubmitting ? (
               <>
@@ -417,11 +418,6 @@ export function PickCardStack({
               </>
             )}
           </Button>
-
-          {/* Page Indicator */}
-          <span className="text-xs text-muted-foreground min-w-[40px] text-center">
-            {currentCardIndex + 1}/{TOTAL_CARDS}
-          </span>
 
           {/* Next Button */}
           <Button
