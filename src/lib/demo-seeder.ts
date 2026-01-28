@@ -26,7 +26,7 @@ export async function generateDemoPicksForPlayers(playerIds: string[]) {
   const womensEntrants = DEFAULT_WOMENS_ENTRANTS;
 
   for (const playerId of playerIds) {
-    // Undercard matches (3 picks)
+    // Undercard matches (2 picks)
     UNDERCARD_MATCHES.forEach((match) => {
       picks.push({
         player_id: playerId,
