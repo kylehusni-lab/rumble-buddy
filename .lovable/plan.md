@@ -1,103 +1,104 @@
 
-# Add Status Counts to Collapsible Section Headers
+# Fix Match Card Display on Desktop
 
-## Overview
-Add pick completion/status badges to the **Rumble Props** and **Final Four** collapsible section headers in the `RumblePropsSection` component. Currently, only the **Chaos Props** section shows status counts (e.g., "6 pending"). The user wants the same pattern applied to all collapsible sections.
+## Problem
+The Match Card appears broken on desktop because it's using viewport-based breakpoints (`md:`, `lg:`) that activate on wide screens, even though the card is constrained to a narrow `max-w-lg` (512px) container.
 
-## Current State
-- **Chaos Props**: Already shows "X pending" or checkmark with correct count
-- **Rumble Props**: No status badge (screenshot shows no count)
-- **Final Four**: No status badge (screenshot shows no count)
+Looking at the screenshot:
+- The card is in a narrow centered container (512px)
+- But the card is trying to use desktop layout (side-by-side wrestlers)
+- This causes awkward stretching and proportions
 
-## What to Add
-Display badges showing the status of picks within each section:
-- **If any picks are correct**: Show green badge with checkmark and correct count
-- **If no correct but some pending**: Show muted badge with "X pending"
-- **If all results in but none correct**: No badge needed (section is complete but unsuccessful)
+## Root Cause
+In `MatchCard.tsx`, the component uses responsive breakpoints like:
+- `md:flex-row` - switches to horizontal layout at 768px viewport
+- `md:w-24 md:h-24 lg:w-32 lg:h-32` - large images
+- `lg:gap-10 lg:px-12` - extra padding for large screens
 
-## Implementation Details
+But the parent container is constrained to 512px max-width, so these desktop styles don't make sense within the narrow container.
 
-### File: `src/components/dashboard/RumblePropsSection.tsx`
+## Solution
+Keep the mobile/stacked layout for the pick flow cards since they're always in a narrow container. Remove or adjust the desktop breakpoints that cause the awkward display.
 
-**1. Calculate stats for Rumble Props section (similar to existing chaosStats):**
-```typescript
-const propsStats = mainProps.reduce(
-  (acc, prop) => {
-    const matchId = `${prefix}_${prop.id}`;
-    const pick = picks.find(p => p.match_id === matchId);
-    if (!pick) return acc;
-    const result = results.find(r => r.match_id === matchId);
-    if (!result) {
-      acc.pending++;
-    } else if (result.result === pick.prediction) {
-      acc.correct++;
-    }
-    return acc;
-  },
-  { correct: 0, pending: 0 }
-);
-```
+### Changes to `src/components/picks/cards/MatchCard.tsx`
 
-**2. Calculate stats for Final Four section:**
-```typescript
-const finalFourStats = finalFourPicks.reduce(
-  (acc, pick, i) => {
-    if (!pick) return acc;
-    const matchId = `${prefix}_final_four_${i + 1}`;
-    const result = results.find(r => r.match_id === matchId);
-    if (!result) {
-      acc.pending++;
-    } else if (result.result === pick.prediction) {
-      acc.correct++;
-    }
-    return acc;
-  },
-  { correct: 0, pending: 0 }
-);
-```
-
-**3. Add badge to Rumble Props header (line ~171-174):**
-After `{title} Rumble Props`:
+**Line 34 - Remove `md:flex-row` and desktop gaps:**
 ```tsx
-{propsStats.correct > 0 && (
-  <span className="flex items-center gap-0.5 text-[10px] font-bold text-white point-badge px-1.5 py-0.5 rounded-full">
-    <Check size={10} />
-    {propsStats.correct}
-  </span>
-)}
-{propsStats.correct === 0 && propsStats.pending > 0 && (
-  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-    {propsStats.pending} pending
-  </span>
-)}
+// Before:
+<div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-10 justify-center items-stretch md:items-center md:px-4 lg:px-12 relative">
+
+// After:
+<div className="flex-1 flex flex-col gap-4 justify-center items-stretch relative">
 ```
 
-**4. Add badge to Final Four header (line ~209-212):**
-After `{title} Final Four`:
+**Line 41-42 - Keep horizontal layout for button content, remove desktop vertical switch:**
 ```tsx
-{finalFourStats.correct > 0 && (
-  <span className="flex items-center gap-0.5 text-[10px] font-bold text-white point-badge px-1.5 py-0.5 rounded-full">
-    <Check size={10} />
-    {finalFourStats.correct}
-  </span>
-)}
-{finalFourStats.correct === 0 && finalFourStats.pending > 0 && (
-  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-    {finalFourStats.pending} pending
-  </span>
-)}
+// Before:
+"flex flex-row md:flex-col items-center gap-3 sm:gap-4 md:gap-4",
+
+// After:
+"flex flex-row items-center gap-3 sm:gap-4",
 ```
 
-## Visual Result
-After implementation, all three collapsible sections will display consistent status badges:
-- **Men's Rumble Props** `5 pending` (or `✓ 2` if 2 correct)
-- **Men's Final Four** `4 pending` (or `✓ 3` if 3 correct)  
-- **Men's Chaos Props** `6 pending` (already implemented)
+**Line 51-54 - Use consistent image sizes:**
+```tsx
+// Before:
+"w-14 h-14 sm:w-16 sm:h-16 md:w-24 md:h-24 lg:w-32 lg:h-32",
+
+// After:
+"w-14 h-14 sm:w-16 sm:h-16",
+```
+
+**Line 68 - Keep left-aligned text:**
+```tsx
+// Before:
+<div className="flex-1 md:flex-none text-left md:text-center min-w-0">
+
+// After:
+<div className="flex-1 text-left min-w-0">
+```
+
+**Line 69-72 - Consistent text sizes:**
+```tsx
+// Before:
+"text-sm sm:text-lg md:text-xl lg:text-2xl"
+
+// After:
+"text-sm sm:text-lg"
+```
+
+**Line 83-84 - Checkmark positioning:**
+```tsx
+// Before:
+"w-7 h-7 sm:w-8 sm:h-8 md:absolute md:top-3 md:right-3 md:w-8 md:h-8"
+
+// After:
+"w-7 h-7 sm:w-8 sm:h-8"
+```
+
+**Lines 94-105 - VS divider stays compact:**
+```tsx
+// Before:
+<div className="flex items-center justify-center flex-shrink-0 py-1 md:py-0">
+  ...
+  <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full ...">
+    <span className="text-sm sm:text-base md:text-xl lg:text-2xl font-black ...">
+
+// After:
+<div className="flex items-center justify-center flex-shrink-0 py-1">
+  ...
+  <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full ...">
+    <span className="text-sm sm:text-base font-black ...">
+```
+
+## Result
+After these changes, the MatchCard will always display in a stacked/mobile layout that works well within the constrained 512px container, regardless of viewport size. This matches the intended design where the pick flow maintains a "mobile-first" appearance on all devices.
 
 ## Files to Modify
 | File | Changes |
 |------|---------|
-| `src/components/dashboard/RumblePropsSection.tsx` | Add `propsStats` and `finalFourStats` calculations, add badge JSX to headers |
+| `src/components/picks/cards/MatchCard.tsx` | Remove desktop breakpoints, keep mobile stacked layout |
 
-## Summary
-This is a straightforward enhancement that reuses the existing badge pattern from Chaos Props and applies it consistently to the Rumble Props and Final Four sections.
+## Visual Before/After
+- **Before**: Side-by-side wrestlers that look stretched in narrow container
+- **After**: Stacked wrestlers with horizontal row layout (image + name + checkmark) that fits the 512px container properly
