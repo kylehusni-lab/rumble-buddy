@@ -3,24 +3,66 @@ import { motion } from "framer-motion";
 import { WrestlerImage } from "./WrestlerImage";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 import { Check } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface MatchResult {
   match_id: string;
   result: string;
 }
 
+interface Player {
+  id: string;
+  display_name: string;
+  points: number;
+}
+
+interface Pick {
+  player_id: string;
+  match_id: string;
+  prediction: string;
+}
+
 interface ActiveMatchDisplayProps {
   match: typeof UNDERCARD_MATCHES[number];
   matchResults: MatchResult[];
+  players: Player[];
+  picks: Pick[];
 }
 
-export function ActiveMatchDisplay({ match, matchResults }: ActiveMatchDisplayProps) {
+export function ActiveMatchDisplay({ match, matchResults, players, picks }: ActiveMatchDisplayProps) {
   const result = useMemo(() => {
     return matchResults.find(r => r.match_id === match.id)?.result || null;
   }, [match.id, matchResults]);
 
   const [wrestler1, wrestler2] = match.options;
   const isComplete = !!result;
+
+  // Calculate pick distribution
+  const pickStats = useMemo(() => {
+    const matchPicks = picks.filter(p => p.match_id === match.id);
+    const totalPicks = matchPicks.length;
+    
+    const wrestler1Picks = matchPicks.filter(p => p.prediction === wrestler1);
+    const wrestler2Picks = matchPicks.filter(p => p.prediction === wrestler2);
+    
+    return {
+      wrestler1: {
+        count: wrestler1Picks.length,
+        percentage: totalPicks > 0 ? Math.round((wrestler1Picks.length / totalPicks) * 100) : 0,
+        players: wrestler1Picks.map(p => 
+          players.find(pl => pl.id === p.player_id)?.display_name || "Unknown"
+        ),
+      },
+      wrestler2: {
+        count: wrestler2Picks.length,
+        percentage: totalPicks > 0 ? Math.round((wrestler2Picks.length / totalPicks) * 100) : 0,
+        players: wrestler2Picks.map(p => 
+          players.find(pl => pl.id === p.player_id)?.display_name || "Unknown"
+        ),
+      },
+      total: totalPicks,
+    };
+  }, [match.id, picks, players, wrestler1, wrestler2]);
 
   return (
     <motion.div
@@ -55,7 +97,7 @@ export function ActiveMatchDisplay({ match, matchResults }: ActiveMatchDisplayPr
         <div className="flex items-center justify-center gap-8 md:gap-16">
           {/* Wrestler 1 */}
           <motion.div
-            className="flex flex-col items-center gap-4"
+            className="flex flex-col items-center gap-4 min-w-[200px]"
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
@@ -81,6 +123,18 @@ export function ActiveMatchDisplay({ match, matchResults }: ActiveMatchDisplayPr
             <span className={`text-2xl font-bold text-center ${result && result !== wrestler1 ? "opacity-50" : ""}`}>
               {wrestler1}
             </span>
+            
+            {/* Pick percentage */}
+            <div className="text-3xl font-bold text-primary">
+              {pickStats.wrestler1.percentage}%
+            </div>
+            
+            {/* Player names who picked */}
+            <div className="text-sm text-muted-foreground text-center max-w-[180px]">
+              {pickStats.wrestler1.players.length > 0 
+                ? pickStats.wrestler1.players.join(", ") 
+                : "No picks"}
+            </div>
           </motion.div>
 
           {/* VS graphic */}
@@ -95,7 +149,7 @@ export function ActiveMatchDisplay({ match, matchResults }: ActiveMatchDisplayPr
 
           {/* Wrestler 2 */}
           <motion.div
-            className="flex flex-col items-center gap-4"
+            className="flex flex-col items-center gap-4 min-w-[200px]"
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
@@ -121,12 +175,43 @@ export function ActiveMatchDisplay({ match, matchResults }: ActiveMatchDisplayPr
             <span className={`text-2xl font-bold text-center ${result && result !== wrestler2 ? "opacity-50" : ""}`}>
               {wrestler2}
             </span>
+            
+            {/* Pick percentage */}
+            <div className="text-3xl font-bold text-primary">
+              {pickStats.wrestler2.percentage}%
+            </div>
+            
+            {/* Player names who picked */}
+            <div className="text-sm text-muted-foreground text-center max-w-[180px]">
+              {pickStats.wrestler2.players.length > 0 
+                ? pickStats.wrestler2.players.join(", ") 
+                : "No picks"}
+            </div>
           </motion.div>
         </div>
 
+        {/* Visual distribution bar */}
+        {pickStats.total > 0 && (
+          <motion.div
+            className="mt-8 flex h-4 rounded-full overflow-hidden bg-muted"
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div 
+              className="bg-primary transition-all duration-500"
+              style={{ width: `${pickStats.wrestler1.percentage}%` }}
+            />
+            <div 
+              className="bg-secondary transition-all duration-500"
+              style={{ width: `${pickStats.wrestler2.percentage}%` }}
+            />
+          </motion.div>
+        )}
+
         {/* Match title */}
         <motion.div
-          className="text-center mt-8"
+          className="text-center mt-6"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}

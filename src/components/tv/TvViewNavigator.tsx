@@ -7,7 +7,6 @@ import { ParticipantPicksView } from "./ParticipantPicksView";
 import { RumblePropsDisplay } from "./RumblePropsDisplay";
 import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
 import { WrestlerImage } from "./WrestlerImage";
-import { TvTabBar } from "./TvTabBar";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
 import { cn } from "@/lib/utils";
@@ -183,7 +182,6 @@ export function TvViewNavigator({
   };
 
   const renderNumberGrid = (numbers: RumbleNumber[], title: string, rumbleId: string) => {
-    const activeCount = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length;
     const winnerMatchId = rumbleId === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
     const winnerResult = matchResults.find(r => r.match_id === winnerMatchId);
     const winnerNumber = winnerResult 
@@ -192,10 +190,7 @@ export function TvViewNavigator({
 
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">{title}</h2>
-          <span className="text-success text-lg font-semibold">Active: {activeCount}</span>
-        </div>
+        {/* Title removed - already shown in header */}
         <div className={cn("grid grid-cols-10", gridGapClass)}>
           {numbers.map((num) => (
             <NumberCell
@@ -277,6 +272,8 @@ export function TvViewNavigator({
           <ActiveMatchDisplay
             match={match}
             matchResults={matchResults}
+            players={players}
+            picks={picks}
           />
         );
       }
@@ -346,17 +343,6 @@ export function TvViewNavigator({
           />
         </div>
       )}
-
-      {/* Tab Bar Navigation */}
-      <div className="mt-6">
-        <TvTabBar
-          views={VIEWS}
-          currentIndex={currentViewIndex}
-          onSelectView={handleSelectView}
-          isViewComplete={isViewComplete}
-          isViewActive={isViewActive}
-        />
-      </div>
     </div>
   );
 }
