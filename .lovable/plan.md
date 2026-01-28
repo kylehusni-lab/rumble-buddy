@@ -1,109 +1,103 @@
-# Security Audit Remediation - COMPLETED ✅
+
+# Add Status Counts to Collapsible Section Headers
+
+## Overview
+Add pick completion/status badges to the **Rumble Props** and **Final Four** collapsible section headers in the `RumblePropsSection` component. Currently, only the **Chaos Props** section shows status counts (e.g., "6 pending"). The user wants the same pattern applied to all collapsible sections.
+
+## Current State
+- **Chaos Props**: Already shows "X pending" or checkmark with correct count
+- **Rumble Props**: No status badge (screenshot shows no count)
+- **Final Four**: No status badge (screenshot shows no count)
+
+## What to Add
+Display badges showing the status of picks within each section:
+- **If any picks are correct**: Show green badge with checkmark and correct count
+- **If no correct but some pending**: Show muted badge with "X pending"
+- **If all results in but none correct**: No badge needed (section is complete but unsuccessful)
+
+## Implementation Details
+
+### File: `src/components/dashboard/RumblePropsSection.tsx`
+
+**1. Calculate stats for Rumble Props section (similar to existing chaosStats):**
+```typescript
+const propsStats = mainProps.reduce(
+  (acc, prop) => {
+    const matchId = `${prefix}_${prop.id}`;
+    const pick = picks.find(p => p.match_id === matchId);
+    if (!pick) return acc;
+    const result = results.find(r => r.match_id === matchId);
+    if (!result) {
+      acc.pending++;
+    } else if (result.result === pick.prediction) {
+      acc.correct++;
+    }
+    return acc;
+  },
+  { correct: 0, pending: 0 }
+);
+```
+
+**2. Calculate stats for Final Four section:**
+```typescript
+const finalFourStats = finalFourPicks.reduce(
+  (acc, pick, i) => {
+    if (!pick) return acc;
+    const matchId = `${prefix}_final_four_${i + 1}`;
+    const result = results.find(r => r.match_id === matchId);
+    if (!result) {
+      acc.pending++;
+    } else if (result.result === pick.prediction) {
+      acc.correct++;
+    }
+    return acc;
+  },
+  { correct: 0, pending: 0 }
+);
+```
+
+**3. Add badge to Rumble Props header (line ~171-174):**
+After `{title} Rumble Props`:
+```tsx
+{propsStats.correct > 0 && (
+  <span className="flex items-center gap-0.5 text-[10px] font-bold text-white point-badge px-1.5 py-0.5 rounded-full">
+    <Check size={10} />
+    {propsStats.correct}
+  </span>
+)}
+{propsStats.correct === 0 && propsStats.pending > 0 && (
+  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+    {propsStats.pending} pending
+  </span>
+)}
+```
+
+**4. Add badge to Final Four header (line ~209-212):**
+After `{title} Final Four`:
+```tsx
+{finalFourStats.correct > 0 && (
+  <span className="flex items-center gap-0.5 text-[10px] font-bold text-white point-badge px-1.5 py-0.5 rounded-full">
+    <Check size={10} />
+    {finalFourStats.correct}
+  </span>
+)}
+{finalFourStats.correct === 0 && finalFourStats.pending > 0 && (
+  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+    {finalFourStats.pending} pending
+  </span>
+)}
+```
+
+## Visual Result
+After implementation, all three collapsible sections will display consistent status badges:
+- **Men's Rumble Props** `5 pending` (or `✓ 2` if 2 correct)
+- **Men's Final Four** `4 pending` (or `✓ 3` if 3 correct)  
+- **Men's Chaos Props** `6 pending` (already implemented)
+
+## Files to Modify
+| File | Changes |
+|------|---------|
+| `src/components/dashboard/RumblePropsSection.tsx` | Add `propsStats` and `finalFourStats` calculations, add badge JSX to headers |
 
 ## Summary
-
-Comprehensive security audit performed on 2026-01-28 with critical issues remediated.
-
----
-
-## ✅ COMPLETED - Phase 1 Critical Fixes
-
-### 1. RLS Enabled on All Tables ✅
-**Status:** FIXED
-
-- Enabled RLS on: `parties`, `picks`, `rumble_numbers`, `match_results`, `solo_players`, `solo_picks`, `solo_results`
-- Created secure views:
-  - `parties_public` - hides `host_pin`, `host_session_id`
-  - `solo_players_public` - hides `pin`, `email`
-  - `players_public` - hides `email`, `session_id`
-- All SELECT queries for sensitive tables now go through views or secure RPC
-
-### 2. Secure PIN Verification ✅
-**Status:** FIXED
-
-- Created `verify_host_pin(p_party_code, p_pin)` RPC function (SECURITY DEFINER)
-- Created `set_host_pin(p_party_code, p_pin)` RPC for first-time setup
-- Created `verify_solo_login(p_email, p_pin)` RPC for solo authentication
-- Created `register_solo_player(p_email, p_pin, p_display_name)` RPC for registration
-- PINs never exposed to client - all verification happens server-side
-
-### 3. Signed JWT Admin Tokens ✅
-**Status:** FIXED
-
-- `verify-admin-pin` edge function now generates signed JWT tokens (HS256)
-- `update-platform-config` verifies JWT signature before allowing changes
-- Tokens signed with derived key from admin PIN secret
-- Forging tokens without knowing the PIN is now cryptographically infeasible
-
-### 4. Database Input Validation ✅
-**Status:** FIXED
-
-- Email format constraint on `players` and `solo_players`
-- Display name length constraint (1-50 characters)
-- PIN format constraint (4-6 digits only)
-- Host PIN format constraint (4 digits only)
-
----
-
-## Known Acceptable Warnings
-
-The "RLS Policy Always True" linter warnings are **expected and acceptable** for this application:
-
-- App uses **session-based authentication** without Supabase Auth
-- Data isolation is achieved via `party_code` associations
-- Each party operates as an isolated data silo
-- Stricter RLS would require migrating to full Supabase Auth (out of scope for MVP)
-
----
-
-## Files Changed
-
-### Edge Functions
-| File | Change |
-|------|--------|
-| `supabase/functions/verify-admin-pin/index.ts` | JWT token signing with jose library |
-| `supabase/functions/update-platform-config/index.ts` | JWT signature verification |
-
-### Client Code
-| File | Change |
-|------|--------|
-| `src/pages/HostVerifyPin.tsx` | Uses `verify_host_pin` RPC |
-| `src/hooks/useSoloCloud.ts` | Uses `verify_solo_login` and `register_solo_player` RPCs |
-| `src/pages/SoloDashboard.tsx` | Removed email display (security) |
-
-### Database Migrations
-| Migration | Changes |
-|-----------|---------|
-| Enable RLS | `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` on 7 tables |
-| Secure Views | Created `parties_public`, `solo_players_public` |
-| RPC Functions | `verify_host_pin`, `set_host_pin`, `verify_solo_login`, `register_solo_player` |
-| Constraints | Email format, name length, PIN format validations |
-
----
-
-## Remaining Items (Future Phases)
-
-### Phase 2 - High Priority (Recommended)
-- [ ] Rate limiting on PIN attempts
-- [ ] Session expiration mechanism
-- [ ] More granular RLS policies (scope by party_code)
-
-### Phase 3 - Medium Priority
-- [ ] Tighten CORS to specific origins
-- [ ] Consider httpOnly cookies for sessions
-
-### Phase 4 - Low Priority
-- [ ] Remove console.error in production builds
-- [ ] Add CSRF protection
-
----
-
-## Security Improvements Summary
-
-| Category | Before | After |
-|----------|--------|-------|
-| RLS Coverage | 2/9 tables | 9/9 tables |
-| PIN Exposure | Plaintext in DB queries | Never sent to client |
-| Admin Tokens | Forgeable (timestamp+UUID) | Signed JWT (HS256) |
-| Input Validation | Party code only | Email, name, PIN formats |
-| Sensitive Views | None | 3 secure views created |
+This is a straightforward enhancement that reuses the existing badge pattern from Chaos Props and applies it consistently to the Rumble Props and Final Four sections.
