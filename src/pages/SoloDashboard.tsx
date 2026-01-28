@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { Trophy, Edit3, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
@@ -192,12 +193,10 @@ export default function SoloDashboard() {
                     `${completion.complete}/${completion.total}`
                   )}
                 </span>
-                {activeTab === tab.id && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                  />
-                )}
+                <div className={cn(
+                  "absolute bottom-0 left-0 right-0 h-0.5 transition-all duration-200",
+                  activeTab === tab.id ? "bg-primary" : "bg-transparent"
+                )} />
               </button>
             );
           })}
@@ -252,7 +251,7 @@ export default function SoloDashboard() {
 }
 
 // Matches Tab Component
-function MatchesTab({ 
+const MatchesTab = memo(function MatchesTab({ 
   picks, 
   results 
 }: { 
@@ -332,11 +331,11 @@ function MatchesTab({
       })}
     </div>
   );
-}
+});
 
 // Rumble Props Tab Component
-function RumbleTab({ 
-  gender, 
+const RumbleTab = memo(function RumbleTab({ 
+  gender,
   picks, 
   results 
 }: { 
@@ -406,10 +405,10 @@ function RumbleTab({
       </div>
     </div>
   );
-}
+});
 
 // Chaos Props Tab Component
-function ChaosTab({ 
+const ChaosTab = memo(function ChaosTab({
   picks, 
   results 
 }: { 
@@ -464,4 +463,4 @@ function ChaosTab({
       ))}
     </div>
   );
-}
+});

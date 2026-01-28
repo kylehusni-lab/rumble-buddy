@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Loader2, Save, Home } from "lucide-react";
@@ -107,7 +107,7 @@ export function PickCardStack({
     }, 200);
   };
 
-  const handlePickUpdate = (cardId: string, value: any) => {
+  const handlePickUpdate = useCallback((cardId: string, value: any) => {
     if (isLocked) return;
     
     setPicks(prev => ({ ...prev, [cardId]: value }));
@@ -117,17 +117,17 @@ export function PickCardStack({
     if (card?.type !== "chaos-props" && card?.type !== "rumble-props" && currentCardIndex < TOTAL_CARDS - 1) {
       setTimeout(() => handleSwipe("right"), 300);
     }
-  };
+  }, [isLocked, currentCardIndex, handleSwipe]);
 
-  const handleChaosPropsUpdate = (values: Record<string, "YES" | "NO" | null>) => {
+  const handleChaosPropsUpdate = useCallback((values: Record<string, "YES" | "NO" | null>) => {
     if (isLocked) return;
     setPicks(prev => ({ ...prev, ...values }));
-  };
+  }, [isLocked]);
 
-  const handleRumblePropsUpdate = (values: Record<string, string | null>) => {
+  const handleRumblePropsUpdate = useCallback((values: Record<string, string | null>) => {
     if (isLocked) return;
     setPicks(prev => ({ ...prev, ...values }));
-  };
+  }, [isLocked]);
 
   // Touch event handlers for swipe detection (without visual dragging)
   const onTouchStart = (e: React.TouchEvent) => {

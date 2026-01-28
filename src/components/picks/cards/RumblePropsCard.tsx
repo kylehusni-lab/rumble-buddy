@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { motion } from "framer-motion";
 import { Target, Users, Search, Check, X, Ban, Plus, Hash, Clock, Zap, Trophy, Timer, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ interface RumblePropsCardProps {
   customEntrants?: string[];
 }
 
-export function RumblePropsCard({
+export const RumblePropsCard = memo(function RumblePropsCard({
   title,
   gender,
   values,
@@ -54,11 +54,17 @@ export function RumblePropsCard({
   const [finalFourSelections, setFinalFourSelections] = useState<(string | null)[]>([null, null, null, null]);
 
   const defaultEntrants = gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS;
-  const entrants = customEntrants && customEntrants.length > 0 ? customEntrants : defaultEntrants;
+  const entrants = useMemo(() => 
+    customEntrants && customEntrants.length > 0 ? customEntrants : defaultEntrants,
+    [customEntrants, defaultEntrants]
+  );
 
-  const filteredEntrants = entrants
-    .filter((name) => name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort(sortEntrants);
+  const filteredEntrants = useMemo(() => 
+    entrants
+      .filter((name) => name.toLowerCase().includes(searchQuery.toLowerCase()))
+      .sort(sortEntrants),
+    [entrants, searchQuery]
+  );
 
   // Helper to get match_id for a prop
   const getMatchId = (propId: string) => `${gender}_${propId}`;
@@ -83,18 +89,18 @@ export function RumblePropsCard({
   const totalProps = RUMBLE_PROPS.length + 1; // 5 wrestler props + 1 Final Four group
   const completedGroups = completedWrestlerProps + (completedFinalFour === 4 ? 1 : 0);
 
-  const handleWrestlerSelect = (wrestler: string) => {
+  const handleWrestlerSelect = useCallback((wrestler: string) => {
     if (!activePickerId || disabled) return;
     onChange({ ...values, [activePickerId]: wrestler });
     setActivePickerId(null);
     setSearchQuery("");
-  };
+  }, [activePickerId, disabled, onChange, values]);
 
-  const openPicker = (matchId: string) => {
+  const openPicker = useCallback((matchId: string) => {
     if (disabled) return;
     setActivePickerId(matchId);
     setSearchQuery("");
-  };
+  }, [disabled]);
 
   // Final Four handlers
   const openFinalFourPicker = () => {
@@ -548,4 +554,4 @@ export function RumblePropsCard({
       </Dialog>
     </div>
   );
-}
+});
