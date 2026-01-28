@@ -14,9 +14,10 @@ export function HostHeader({ code, onMenuClick }: HostHeaderProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(code);
+    const joinUrl = `${window.location.origin}/player/join?code=${code}`;
+    navigator.clipboard.writeText(joinUrl);
     setCopied(true);
-    toast.success("Code copied!");
+    toast.success("Join link copied!");
     setTimeout(() => setCopied(false), 2000);
   };
 

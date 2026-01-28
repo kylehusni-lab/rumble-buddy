@@ -14,6 +14,7 @@ import { RumblePropsSection } from "@/components/dashboard/RumblePropsSection";
 import { SinglePickEditModal } from "@/components/dashboard/SinglePickEditModal";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 // Match ID groupings for each tab (chaos props now included in mens/womens)
 const TAB_MATCH_IDS: Record<Exclude<TabId, "numbers">, string[]> = {
   matches: ['undercard_1', 'undercard_2', 'undercard_3', 'mens_rumble_winner', 'womens_rumble_winner'],
@@ -89,6 +90,7 @@ export default function PlayerDashboard() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const session = getPlayerSession();
+  const { mensEntrants, womensEntrants } = usePlatformConfig();
 
   const [activeTab, setActiveTab] = useState<TabId>("matches");
   const [partyStatus, setPartyStatus] = useState<string>("pre_event");
@@ -569,6 +571,8 @@ export default function PlayerDashboard() {
         matchId={editingMatchId}
         currentPick={editingCurrentPick}
         onSave={handleSavePick}
+        mensEntrants={mensEntrants}
+        womensEntrants={womensEntrants}
       />
     </>
   );
