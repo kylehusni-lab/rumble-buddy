@@ -214,6 +214,12 @@ export default function HostSetup() {
     setIsStarting(true);
 
     try {
+      // Clear any existing rumble numbers first (handles retry scenarios)
+      await supabase
+        .from("rumble_numbers")
+        .delete()
+        .eq("party_code", code);
+
       // Distribute numbers for both rumbles
       await distributeNumbers("mens");
       await distributeNumbers("womens");
