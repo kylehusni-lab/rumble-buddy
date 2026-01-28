@@ -478,6 +478,13 @@ export type Database = {
           success: boolean
         }[]
       }
+      save_solo_pick: {
+        Args: { p_match_id: string; p_player_id: string; p_prediction: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
       set_host_pin: {
         Args: { p_party_code: string; p_pin: string }
         Returns: boolean
