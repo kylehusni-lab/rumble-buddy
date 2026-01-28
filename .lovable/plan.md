@@ -1,84 +1,54 @@
 
-# Fix Demo Mode - RLS Policy Conflict
+# Fix players_public View - RLS Permission Issue
 
 ## Problem
-Demo mode fails with a 401 error when creating players because:
-1. The `players` table has an INSERT policy that allows inserts ✓
-2. BUT the SELECT policy has `qual: false` blocking ALL reads ✗
-3. The demo seeder uses `.select("id")` after insert, which triggers a read operation
-4. This read operation is blocked by RLS, causing the entire request to fail
+The `players_public` view returns empty results because:
+1. The view is defined with `security_invoker=on` (uses caller's permissions)
+2. The `players` table has a SELECT policy: `USING (false)` (blocks ALL reads)
+3. When the app queries the view, the underlying SELECT fails due to RLS
+
+My direct SQL query worked because it ran with service_role permissions that bypass RLS.
 
 ## Solution
-Use the existing `lookup_player_by_email` database function (SECURITY DEFINER) to retrieve player IDs after insert instead of using `.select()`.
+Recreate the `players_public` view WITHOUT `security_invoker=on` so it runs with definer permissions and can read from the protected `players` table.
 
-## File to Modify
+## Database Migration
 
-| File | Changes |
-|------|---------|
-| `src/lib/demo-seeder.ts` | Remove `.select()` from inserts, use `lookup_player_by_email` to get IDs |
+```sql
+-- Drop and recreate the view WITHOUT security_invoker
+DROP VIEW IF EXISTS players_public;
 
-## Technical Changes
+CREATE VIEW players_public AS
+SELECT 
+  id,
+  party_code,
+  display_name,
+  points,
+  joined_at
+FROM players;
+-- Note: No WITH (security_invoker=on) means it uses definer permissions
 
-### `src/lib/demo-seeder.ts`
-
-**Before (lines 134-145):**
-```typescript
-const { data: hostPlayer, error: hostError } = await supabase
-  .from("players")
-  .insert({...})
-  .select("id")
-  .single();
+-- Grant SELECT on the view to anon and authenticated roles
+GRANT SELECT ON players_public TO anon, authenticated;
 ```
 
-**After:**
-```typescript
-// Insert without .select()
-const { error: hostError } = await supabase
-  .from("players")
-  .insert({
-    party_code: partyCode,
-    email: "kyle.husni@gmail.com",
-    display_name: "Kyle",
-    session_id: hostSessionId,
-  });
+## Why This Works
+- Without `security_invoker=on`, the view runs with the **definer's** permissions (the database owner)
+- The database owner has full access to the `players` table
+- The view only exposes safe columns (id, party_code, display_name, points, joined_at)
+- Sensitive columns (email, session_id) remain hidden
 
-if (hostError) throw hostError;
+## Files to Modify
+None - this is a database-only change.
 
-// Use lookup function to get ID
-const { data: hostLookup, error: lookupError } = await supabase
-  .rpc('lookup_player_by_email', {
-    p_party_code: partyCode,
-    p_email: "kyle.husni@gmail.com"
-  });
-
-if (lookupError || !hostLookup?.[0]) throw lookupError || new Error("Failed to lookup host player");
-const hostPlayerId = hostLookup[0].id;
-```
-
-**For guests (lines 155-160):**
-```typescript
-// Insert all guests without .select()
-const { error: guestsError } = await supabase
-  .from("players")
-  .insert(guestInserts);
-
-if (guestsError) throw guestsError;
-
-// Lookup each guest by email to get IDs
-const guestIds: string[] = [];
-for (const guest of DEMO_GUESTS) {
-  const { data: guestLookup } = await supabase
-    .rpc('lookup_player_by_email', {
-      p_party_code: partyCode,
-      p_email: guest.email
-    });
-  if (guestLookup?.[0]?.id) {
-    guestIds.push(guestLookup[0].id);
-  }
-}
-```
+## Database Operations
+| Operation | Description |
+|-----------|-------------|
+| DROP VIEW | Remove existing players_public view |
+| CREATE VIEW | Recreate without security_invoker option |
+| GRANT | Ensure anon/authenticated can read the view |
 
 ## Result
-- Demo mode will successfully create all 6 players (Kyle + 5 guests)
-- Player IDs retrieved via secure database function instead of blocked SELECT
-- All 222 picks generated correctly for the demo party
+- Demo mode will show all 6 players (Kyle, Melanie, Mike, Jon, Chris, Steve)
+- Host setup page will correctly display guest counts and pick status
+- All existing functionality remains the same
