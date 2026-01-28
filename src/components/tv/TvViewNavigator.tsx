@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Trophy } from "lucide-react";
 import { ActiveMatchDisplay } from "./ActiveMatchDisplay";
 import { NumberCell } from "./NumberCell";
-import { ParticipantPicksView } from "./ParticipantPicksView";
 import { RumblePropsDisplay } from "./RumblePropsDisplay";
 import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
 import { WrestlerImage } from "./WrestlerImage";
@@ -332,17 +331,6 @@ export function TvViewNavigator({
         </AnimatePresence>
       </div>
 
-      {/* Participant Picks - only show for undercard matches */}
-      {currentView.type === "undercard" && (
-        <div className="mt-6">
-          <ParticipantPicksView
-            players={players}
-            picks={picks}
-            matchResults={matchResults}
-            currentMatchId={currentView.id}
-          />
-        </div>
-      )}
     </div>
   );
 }
