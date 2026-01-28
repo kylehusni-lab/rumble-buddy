@@ -3,10 +3,10 @@ import { useParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
-import { TvViewNavigator, VIEWS, ViewType } from "@/components/tv/TvViewNavigator";
+import { TvViewNavigator } from "@/components/tv/TvViewNavigator";
 import { TvHeaderStats } from "@/components/tv/TvHeaderStats";
 import { TvActivityTicker, ActivityEvent } from "@/components/tv/TvActivityTicker";
-import { TvTabBar } from "@/components/tv/TvTabBar";
+import { TvTabBar, TvTabId } from "@/components/tv/TvTabBar";
 import { Logo } from "@/components/Logo";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
@@ -57,9 +57,10 @@ export default function TvDisplay() {
   
   const [showNumberReveal, setShowNumberReveal] = useState(false);
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
-  const [currentViewType, setCurrentViewType] = useState<ViewType>("undercard");
-  const [currentViewIndex, setCurrentViewIndex] = useState(0);
-  const [currentViewTitle, setCurrentViewTitle] = useState(VIEWS[0].title);
+  
+  // New consolidated navigation state
+  const [activeTab, setActiveTab] = useState<TvTabId>("leaderboard");
+  const [undercardMatchIndex, setUndercardMatchIndex] = useState(0);
   
   // Activity ticker state
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
@@ -108,11 +109,6 @@ export default function TvDisplay() {
   useEffect(() => {
     partyStatusRef.current = partyStatus;
   }, [partyStatus]);
-
-  // Check if we're in undercard phase (any undercard match not yet resolved)
-  const isUndercardPhase = UNDERCARD_MATCHES.some(m => 
-    !matchResults.some(r => r.match_id === m.id)
-  );
 
   // Effect 1: Initial data fetch (runs once per code change)
   useEffect(() => {
@@ -220,15 +216,6 @@ export default function TvDisplay() {
   useEffect(() => {
     if (!code) return;
 
-    // Helper functions that read from refs, not state
-    const getPlayerName = (playerId: string | null) => {
-      if (!playerId) return "Vacant";
-      const player = playersRef.current.find(p => p.id === playerId);
-      return player?.display_name || "Unknown";
-    };
-
-    // Note: Final Four celebration removed for seamless second-screen viewing
-
     const loadRevealData = async () => {
       const { data: allPlayers } = await supabase
         .from("players_public")
@@ -322,8 +309,6 @@ export default function TvDisplay() {
           const label = matchResult.match_id === "mens_rumble_winner" ? "Men's" : "Women's";
           addActivityEventRef.current("result", `${label} Rumble Winner: ${matchResult.result}!`);
         }
-        // Note: Celebration overlays removed for seamless second-screen viewing
-        // Winner and Iron Man events are still shown in the activity ticker
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "picks" }, () => {
         // Refresh picks when they change
@@ -357,33 +342,56 @@ export default function TvDisplay() {
   };
 
   // Calculate rumble stats
-  const activeWrestlerCount = currentViewType === "rumble" 
-    ? (currentViewIndex === 3 
-        ? mensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length
-        : womensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length)
+  const activeWrestlerCount = activeTab === "mens" 
+    ? mensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length
+    : activeTab === "womens"
+    ? womensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length
     : 0;
   
-  const totalEliminations = currentViewType === "rumble"
-    ? (currentViewIndex === 3
-        ? mensNumbers.filter(n => n.elimination_timestamp).length
-        : womensNumbers.filter(n => n.elimination_timestamp).length)
+  const totalEliminations = activeTab === "mens"
+    ? mensNumbers.filter(n => n.elimination_timestamp).length
+    : activeTab === "womens"
+    ? womensNumbers.filter(n => n.elimination_timestamp).length
     : 0;
 
-  // Handle view changes from navigator
-  const handleViewChange = useCallback((viewType: ViewType, viewIndex: number, viewTitle: string) => {
-    setCurrentViewType(viewType);
-    setCurrentViewIndex(viewIndex);
-    setCurrentViewTitle(viewTitle);
-  }, []);
-
-  // Handle manual view selection (pauses auto-rotate)
-  const handleSelectView = useCallback((index: number) => {
-    setCurrentViewIndex(index);
-    setCurrentViewTitle(VIEWS[index].title);
-    setCurrentViewType(VIEWS[index].type);
+  // Handle tab selection
+  const handleSelectTab = useCallback((tabId: TvTabId) => {
+    setActiveTab(tabId);
+    // Reset undercard index when switching tabs
+    if (tabId === "undercard") {
+      setUndercardMatchIndex(0);
+    }
     // Pause auto-rotate on manual navigation
     setAutoRotate(false);
   }, []);
+
+  // Check if a tab is complete
+  const isTabComplete = useCallback((tabId: TvTabId): boolean => {
+    switch (tabId) {
+      case "leaderboard":
+        return false; // Leaderboard is never "complete"
+      case "undercard":
+        return UNDERCARD_MATCHES.every(m => matchResults.some(r => r.match_id === m.id));
+      case "mens":
+        return matchResults.some(r => r.match_id === "mens_rumble_winner");
+      case "womens":
+        return matchResults.some(r => r.match_id === "womens_rumble_winner");
+      default:
+        return false;
+    }
+  }, [matchResults]);
+
+  // Check if a tab has active content
+  const isTabLive = useCallback((tabId: TvTabId): boolean => {
+    switch (tabId) {
+      case "mens":
+        return mensNumbers.some(n => n.entry_timestamp && !n.elimination_timestamp);
+      case "womens":
+        return womensNumbers.some(n => n.entry_timestamp && !n.elimination_timestamp);
+      default:
+        return false;
+    }
+  }, [mensNumbers, womensNumbers]);
 
   // Auto-rotate logic
   useEffect(() => {
@@ -395,8 +403,12 @@ export default function TvDisplay() {
       return;
     }
 
+    const tabs: TvTabId[] = ["leaderboard", "undercard", "mens", "womens"];
     autoRotateIntervalRef.current = setInterval(() => {
-      setCurrentViewIndex(prev => (prev === VIEWS.length - 1 ? 0 : prev + 1));
+      setActiveTab(prev => {
+        const currentIndex = tabs.indexOf(prev);
+        return tabs[(currentIndex + 1) % tabs.length];
+      });
     }, 30000); // 30 seconds
 
     return () => {
@@ -406,12 +418,20 @@ export default function TvDisplay() {
     };
   }, [autoRotate]);
 
-  // Keep view info in sync when currentViewIndex changes from auto-rotate
+  // Keyboard navigation for main tabs
   useEffect(() => {
-    const view = VIEWS[currentViewIndex];
-    setCurrentViewTitle(view.title);
-    setCurrentViewType(view.type);
-  }, [currentViewIndex]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tabs: TvTabId[] = ["leaderboard", "undercard", "mens", "womens"];
+      if (e.key >= "1" && e.key <= "4") {
+        const index = parseInt(e.key) - 1;
+        setActiveTab(tabs[index]);
+        setAutoRotate(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleRevealComplete = () => {
     setShowNumberReveal(false);
@@ -421,6 +441,22 @@ export default function TvDisplay() {
   const toggleAutoRotate = useCallback(() => {
     setAutoRotate(prev => !prev);
   }, []);
+
+  // Get current view title for header
+  const getCurrentViewTitle = (): string => {
+    switch (activeTab) {
+      case "leaderboard":
+        return "Leaderboard";
+      case "undercard":
+        return UNDERCARD_MATCHES[undercardMatchIndex]?.title || "Undercard";
+      case "mens":
+        return "Men's Royal Rumble";
+      case "womens":
+        return "Women's Royal Rumble";
+      default:
+        return "";
+    }
+  };
 
   return (
     <>
@@ -443,42 +479,24 @@ export default function TvDisplay() {
         </div>
         
         <TvHeaderStats
-          currentViewTitle={currentViewTitle}
+          currentViewTitle={getCurrentViewTitle()}
           activeWrestlerCount={activeWrestlerCount}
           totalEliminations={totalEliminations}
           lastActivityTime={lastActivityTime}
           autoRotate={autoRotate}
           onToggleAutoRotate={toggleAutoRotate}
-          showRumbleStats={currentViewType === "rumble"}
+          showRumbleStats={activeTab === "mens" || activeTab === "womens"}
         />
       </div>
 
-      {/* Tab Bar - Moved up directly below header */}
+      {/* Tab Bar - 4 consolidated tabs */}
       {partyStatus !== "pre_event" && (
-        <div className="mb-4">
+        <div className="mb-4 flex justify-center">
           <TvTabBar
-            views={VIEWS}
-            currentIndex={currentViewIndex}
-            onSelectView={handleSelectView}
-            isViewComplete={(view) => {
-              if (view.type === "undercard") {
-                return matchResults.some(r => r.match_id === view.id);
-              }
-              if (view.id === "mens") {
-                return matchResults.some(r => r.match_id === "mens_rumble_winner");
-              }
-              if (view.id === "womens") {
-                return matchResults.some(r => r.match_id === "womens_rumble_winner");
-              }
-              return false;
-            }}
-            isViewActive={(view) => {
-              if (view.type === "rumble") {
-                const numbers = view.id === "mens" ? mensNumbers : womensNumbers;
-                return numbers.some(n => n.entry_timestamp && !n.elimination_timestamp);
-              }
-              return false;
-            }}
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+            isTabComplete={isTabComplete}
+            isTabLive={isTabLive}
           />
         </div>
       )}
@@ -502,9 +520,9 @@ export default function TvDisplay() {
             picks={picks}
             getPlayerInitials={getPlayerInitials}
             getNumberStatus={getNumberStatus}
-            onViewChange={handleViewChange}
-            currentViewIndex={currentViewIndex}
-            onSelectView={handleSelectView}
+            activeTab={activeTab}
+            undercardMatchIndex={undercardMatchIndex}
+            onUndercardMatchChange={setUndercardMatchIndex}
           />
         )}
       </div>
