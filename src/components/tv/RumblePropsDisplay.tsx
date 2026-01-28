@@ -76,25 +76,25 @@ export function RumblePropsDisplay({ gender, players, picks, matchResults }: Rum
   };
 
   return (
-    <div className="space-y-6">
-      {/* Props Table - Full Width */}
+    <div className="h-full">
+      {/* Props Table - Full Width, Larger */}
       <div className="bg-card/50 border border-border rounded-xl overflow-hidden">
         <table className="w-full border-collapse">
           {/* Header Row - Player Names */}
           <thead>
             <tr className="bg-card/80">
-              <th className="p-3 text-left text-sm font-semibold text-muted-foreground border-b border-border/50 w-40">
+              <th className="p-4 text-left text-base font-semibold text-muted-foreground border-b border-border/50 w-44">
                 Prop
               </th>
               {players.map(player => (
                 <th 
                   key={player.id} 
-                  className="p-3 text-center text-sm font-semibold text-primary border-b border-border/50"
+                  className="p-4 text-center text-base font-semibold text-primary border-b border-border/50"
                 >
                   {player.display_name}
                 </th>
               ))}
-              <th className="p-3 text-center text-sm font-semibold text-success border-b border-border/50 w-28">
+              <th className="p-4 text-center text-base font-semibold text-success border-b border-border/50 w-32">
                 Result
               </th>
             </tr>
@@ -106,7 +106,7 @@ export function RumblePropsDisplay({ gender, players, picks, matchResults }: Rum
               const result = getResult(prop.id);
               return (
                 <tr key={prop.id} className="border-b border-border/30 hover:bg-card/30 transition-colors">
-                  <td className="p-3 text-sm font-medium text-foreground">
+                  <td className="p-4 text-base font-medium text-foreground">
                     {prop.label}
                   </td>
                   {players.map(player => {
@@ -114,14 +114,11 @@ export function RumblePropsDisplay({ gender, players, picks, matchResults }: Rum
                     return (
                       <td 
                         key={player.id} 
-                        className={cn("p-2 text-center transition-colors", getCellBg(prediction, result))}
+                        className={cn("p-3 text-center transition-colors", getCellBg(prediction, result))}
                       >
                         {prediction ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <WrestlerImage name={prediction} size="xs" />
-                            <span className="text-[10px] text-muted-foreground truncate max-w-[90px]">
-                              {prediction.split(' ')[0]}
-                            </span>
+                          <div className="flex justify-center">
+                            <WrestlerImage name={prediction} size="sm" />
                           </div>
                         ) : (
                           <span className="text-muted-foreground/50">—</span>
@@ -129,13 +126,10 @@ export function RumblePropsDisplay({ gender, players, picks, matchResults }: Rum
                       </td>
                     );
                   })}
-                  <td className="p-2 text-center bg-card/50">
+                  <td className="p-3 text-center bg-card/50">
                     {result ? (
-                      <div className="flex flex-col items-center gap-1">
-                        <WrestlerImage name={result} size="xs" />
-                        <span className="text-[10px] text-success font-semibold truncate max-w-[90px]">
-                          {result.split(' ')[0]}
-                        </span>
+                      <div className="flex justify-center">
+                        <WrestlerImage name={result} size="sm" />
                       </div>
                     ) : (
                       <span className="text-muted-foreground/50">TBD</span>
@@ -147,15 +141,15 @@ export function RumblePropsDisplay({ gender, players, picks, matchResults }: Rum
 
             {/* Final Four Row */}
             <tr className="border-b border-border/30 hover:bg-card/30 transition-colors">
-              <td className="p-3 text-sm font-medium text-foreground">
+              <td className="p-4 text-base font-medium text-foreground">
                 Final Four
               </td>
               {players.map(player => {
                 const fourPicks = getFinalFourPicks(player.id);
                 return (
-                  <td key={player.id} className="p-2">
+                  <td key={player.id} className="p-3">
                     {fourPicks.length > 0 ? (
-                      <div className="flex justify-center gap-1 flex-wrap">
+                      <div className="flex justify-center gap-1.5 flex-wrap">
                         {fourPicks.map((name, i) => (
                           <WrestlerImage key={i} name={name} size="xs" />
                         ))}
@@ -166,7 +160,7 @@ export function RumblePropsDisplay({ gender, players, picks, matchResults }: Rum
                   </td>
                 );
               })}
-              <td className="p-2 text-center bg-card/50">
+              <td className="p-3 text-center bg-card/50">
                 <span className="text-muted-foreground/50">—</span>
               </td>
             </tr>
