@@ -31,7 +31,7 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
   };
 
   const handleViewPicks = () => {
-    toast.info("View All Picks - Coming soon");
+    navigate(`/host/${code}/picks`);
     onOpenChange(false);
   };
 
