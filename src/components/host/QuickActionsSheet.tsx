@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Tv, Copy, ClipboardList, Hash, LogOut, Trophy, Edit3 } from "lucide-react";
+import { Tv, ClipboardList, Hash, LogOut, Trophy } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -71,15 +71,9 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
 
   const actions = [
     {
-      icon: Edit3,
-      title: "Make My Picks",
-      subtitle: "Submit your predictions",
-      onClick: handleMakeMyPicks,
-    },
-    {
       icon: Trophy,
-      title: "My Dashboard",
-      subtitle: "View your numbers & points",
+      title: "My Picks & Stats",
+      subtitle: "View & edit your predictions",
       onClick: handleMyDashboard,
     },
     {
@@ -87,12 +81,6 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
       title: "TV Display",
       subtitle: "Open in new tab",
       onClick: handleOpenTv,
-    },
-    {
-      icon: Copy,
-      title: "Copy Join Link",
-      subtitle: `Pre-filled with code ${code}`,
-      onClick: handleCopyCode,
     },
     {
       icon: ClipboardList,

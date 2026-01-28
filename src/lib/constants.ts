@@ -88,7 +88,7 @@ export const DEFAULT_MENS_ENTRANTS = [
   'Trick Williams',
   // Unconfirmed (prefixed with *)
   '*Seth Rollins',
-  '*Finn Bálor',
+  '*Finn Balor',
   '*Dominik Mysterio',
   '*Kofi Kingston',
   '*Xavier Woods',

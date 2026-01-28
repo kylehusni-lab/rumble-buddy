@@ -17,11 +17,12 @@ interface SinglePickEditModalProps {
   matchId: string;
   currentPick: string;
   onSave: (matchId: string, newValue: string) => void;
-  customEntrants?: string[];
+  mensEntrants?: string[];
+  womensEntrants?: string[];
 }
 
 // Determine the pick type and options based on matchId
-function getPickConfig(matchId: string, customEntrants?: string[]) {
+function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?: string[]) {
   // Undercard matches
   const undercardMatch = UNDERCARD_MATCHES.find(m => m.id === matchId);
   if (undercardMatch) {
@@ -35,11 +36,14 @@ function getPickConfig(matchId: string, customEntrants?: string[]) {
   // Rumble winner picks
   if (matchId === "mens_rumble_winner" || matchId === "womens_rumble_winner") {
     const gender = matchId.includes("mens") ? "mens" : "womens";
+    const entrants = gender === "mens" 
+      ? (mensEntrants || DEFAULT_MENS_ENTRANTS)
+      : (womensEntrants || DEFAULT_WOMENS_ENTRANTS);
     return {
       type: "wrestler" as const,
       title: gender === "mens" ? "Men's Rumble Winner" : "Women's Rumble Winner",
       gender,
-      entrants: customEntrants || (gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS),
+      entrants,
     };
   }
 
@@ -59,11 +63,14 @@ function getPickConfig(matchId: string, customEntrants?: string[]) {
   const rumblePropMatch = RUMBLE_PROPS.find(p => matchId.includes(p.id));
   if (rumblePropMatch) {
     const gender = matchId.includes("mens") ? "mens" : "womens";
+    const entrants = gender === "mens" 
+      ? (mensEntrants || DEFAULT_MENS_ENTRANTS)
+      : (womensEntrants || DEFAULT_WOMENS_ENTRANTS);
     return {
       type: "wrestler" as const,
       title: rumblePropMatch.title,
       gender,
-      entrants: customEntrants || (gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS),
+      entrants,
     };
   }
 
@@ -71,11 +78,14 @@ function getPickConfig(matchId: string, customEntrants?: string[]) {
   if (matchId.includes("final_four")) {
     const gender = matchId.includes("mens") ? "mens" : "womens";
     const slotNum = matchId.split("_").pop();
+    const entrants = gender === "mens" 
+      ? (mensEntrants || DEFAULT_MENS_ENTRANTS)
+      : (womensEntrants || DEFAULT_WOMENS_ENTRANTS);
     return {
       type: "wrestler" as const,
       title: `${gender === "mens" ? "Men's" : "Women's"} Final Four #${slotNum}`,
       gender,
-      entrants: customEntrants || (gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS),
+      entrants,
     };
   }
 
@@ -88,11 +98,12 @@ export function SinglePickEditModal({
   matchId,
   currentPick,
   onSave,
-  customEntrants,
+  mensEntrants,
+  womensEntrants,
 }: SinglePickEditModalProps) {
   const [selectedValue, setSelectedValue] = useState(currentPick);
 
-  const config = getPickConfig(matchId, customEntrants);
+  const config = getPickConfig(matchId, mensEntrants, womensEntrants);
 
   if (!config) return null;
 
