@@ -239,7 +239,7 @@ export function PickCardStack({
 
       setHasSubmitted(true);
       toast.success("Picks saved! Good luck! 🎉");
-      navigate(isHost ? `/host/${partyCode}` : `/player/dashboard/${partyCode}`);
+      navigate(isHost ? `/host/control/${partyCode}` : `/player/dashboard/${partyCode}`);
     } catch (err) {
       console.error("Error submitting picks:", err);
       toast.error("Failed to save picks. Please try again.");
@@ -283,7 +283,7 @@ export function PickCardStack({
         {/* Header with Back button */}
         <div className="py-2 px-4 border-b border-border flex items-center justify-between">
           <button
-            onClick={() => navigate(isHost ? `/host/${partyCode}` : `/player/dashboard/${partyCode}`)}
+            onClick={() => navigate(isHost ? `/host/control/${partyCode}` : `/player/dashboard/${partyCode}`)}
             className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors flex items-center gap-1"
             aria-label={isHost ? "Back to Host Control" : "Back to Dashboard"}
           >

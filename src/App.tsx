@@ -12,6 +12,7 @@ import HostVerifyPin from "./pages/HostVerifyPin";
 import HostSetup from "./pages/HostSetup";
 import HostControl from "./pages/HostControl";
 import TvDisplay from "./pages/TvDisplay";
+import ViewAllPicks from "./pages/ViewAllPicks";
 import PlatformAdmin from "./pages/PlatformAdmin";
 import PlatformAdminVerify from "./pages/PlatformAdminVerify";
 import Legal from "./pages/Legal";
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/host/verify-pin/:code" element={<HostVerifyPin />} />
           <Route path="/host/setup/:code" element={<HostSetup />} />
           <Route path="/host/control/:code" element={<HostControl />} />
+          <Route path="/host/:code/picks" element={<ViewAllPicks />} />
           <Route path="/tv/:code" element={<TvDisplay />} />
           <Route path="/platform-admin" element={<PlatformAdmin />} />
           <Route path="/platform-admin/verify" element={<PlatformAdminVerify />} />
