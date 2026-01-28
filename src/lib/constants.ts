@@ -9,7 +9,6 @@ export const EVENT_CONFIG = {
 
 export const UNDERCARD_MATCHES = [
   { id: 'undercard_1', title: 'Drew McIntyre vs Sami Zayn', options: ['Drew McIntyre', 'Sami Zayn'] },
-  { id: 'undercard_2', title: 'CM Punk vs Seth Rollins', options: ['CM Punk', 'Seth Rollins'] },
   { id: 'undercard_3', title: 'AJ Styles vs Gunther', options: ['AJ Styles', 'Gunther'] },
 ] as const;
 
@@ -179,7 +178,6 @@ export const FINAL_FOUR_SLOTS = 4;
 // Card configuration for the swipeable pick flow
 export const CARD_CONFIG = [
   { type: 'match', id: 'undercard_1', title: 'Drew McIntyre vs Sami Zayn', options: ['Drew McIntyre', 'Sami Zayn'] },
-  { type: 'match', id: 'undercard_2', title: 'CM Punk vs Seth Rollins', options: ['CM Punk', 'Seth Rollins'] },
   { type: 'match', id: 'undercard_3', title: 'AJ Styles vs Gunther', options: ['AJ Styles', 'Gunther'] },
   { type: 'rumble-winner', id: 'mens_rumble_winner', title: "Men's Royal Rumble Winner", gender: 'mens' },
   { type: 'rumble-props', id: 'mens_rumble_props', title: "Men's Rumble Props", gender: 'mens' },
