@@ -1,54 +1,95 @@
 
-# Fix players_public View - RLS Permission Issue
+# Streamline Edit Modal Flow
 
-## Problem
-The `players_public` view returns empty results because:
-1. The view is defined with `security_invoker=on` (uses caller's permissions)
-2. The `players` table has a SELECT policy: `USING (false)` (blocks ALL reads)
-3. When the app queries the view, the underlying SELECT fails due to RLS
+## Overview
+Simplify the pick editing experience by removing unnecessary intermediate steps for wrestler-based picks and chaos props.
 
-My direct SQL query worked because it ran with service_role permissions that bypass RLS.
+## Current Flow (Problem)
+- **Wrestler picks** (Rumble Winner, Rumble Props, Final Four): User clicks pencil → sees intermediate dialog with current value → taps "Select wrestler" button → WrestlerPickerModal opens → selects wrestler → closes picker → clicks Save
+- **Chaos Props**: Opens dialog → select YES/NO → clicks Save
 
-## Solution
-Recreate the `players_public` view WITHOUT `security_invoker=on` so it runs with definer permissions and can read from the protected `players` table.
+## Proposed Flow (Solution)
+- **Wrestler picks**: User clicks pencil → WrestlerPickerModal opens directly → selects wrestler → auto-saves and closes
+- **Chaos Props**: User clicks pencil → simple dialog with just YES/NO buttons → taps YES or NO → auto-saves and closes (no Save button needed)
 
-## Database Migration
+## File to Modify
 
-```sql
--- Drop and recreate the view WITHOUT security_invoker
-DROP VIEW IF EXISTS players_public;
+| File | Changes |
+|------|---------|
+| `src/components/dashboard/SinglePickEditModal.tsx` | Refactor wrestler and chaos prop flows |
 
-CREATE VIEW players_public AS
-SELECT 
-  id,
-  party_code,
-  display_name,
-  points,
-  joined_at
-FROM players;
--- Note: No WITH (security_invoker=on) means it uses definer permissions
+## Technical Changes
 
--- Grant SELECT on the view to anon and authenticated roles
-GRANT SELECT ON players_public TO anon, authenticated;
+### Wrestler Picker (Rumble Winner, Rumble Props, Final Four)
+- Skip the intermediate dialog entirely
+- Open `WrestlerPickerModal` immediately when `isOpen` is true
+- On wrestler selection, call `onSave()` directly and close
+
+### Chaos Props (YES/NO)
+- Remove the Cancel/Save buttons
+- Auto-save when user taps YES or NO
+- Simpler, faster interaction
+
+### Code Changes
+
+**For wrestler type:**
+```tsx
+if (config.type === "wrestler") {
+  return (
+    <WrestlerPickerModal
+      isOpen={isOpen}
+      onClose={onClose}
+      onSelect={(wrestler) => {
+        onSave(matchId, wrestler);
+        onClose();
+      }}
+      title={config.title}
+      wrestlers={config.entrants}
+      triggerConfetti={false}
+    />
+  );
+}
 ```
 
-## Why This Works
-- Without `security_invoker=on`, the view runs with the **definer's** permissions (the database owner)
-- The database owner has full access to the `players` table
-- The view only exposes safe columns (id, party_code, display_name, points, joined_at)
-- Sensitive columns (email, session_id) remain hidden
-
-## Files to Modify
-None - this is a database-only change.
-
-## Database Operations
-| Operation | Description |
-|-----------|-------------|
-| DROP VIEW | Remove existing players_public view |
-| CREATE VIEW | Recreate without security_invoker option |
-| GRANT | Ensure anon/authenticated can read the view |
+**For chaos props (yesno):**
+```tsx
+if (config.type === "yesno") {
+  const handleSelect = (option: string) => {
+    onSave(matchId, option);
+    onClose();
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-xs">
+        <DialogHeader>
+          <DialogTitle className="text-center">{config.title}</DialogTitle>
+        </DialogHeader>
+        <div className="flex gap-3 py-4">
+          {["YES", "NO"].map((option) => (
+            <button
+              key={option}
+              onClick={() => handleSelect(option)}
+              className={cn(
+                "flex-1 p-4 rounded-xl border-2 text-center font-bold text-lg transition-all",
+                currentPick === option
+                  ? option === "YES"
+                    ? "border-success bg-success/10 text-success"
+                    : "border-destructive bg-destructive/10 text-destructive"
+                  : "border-border bg-card hover:border-muted-foreground"
+              )}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
 
 ## Result
-- Demo mode will show all 6 players (Kyle, Melanie, Mike, Jon, Chris, Steve)
-- Host setup page will correctly display guest counts and pick status
-- All existing functionality remains the same
+- **Wrestler picks**: 2 taps instead of 4 (pencil → wrestler = done)
+- **Chaos props**: 2 taps instead of 3 (pencil → YES/NO = done)
+- More intuitive, faster editing experience
