@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
 import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
-import { TvViewNavigator } from "@/components/tv/TvViewNavigator";
+import { TvViewNavigator, VIEWS, ViewType } from "@/components/tv/TvViewNavigator";
+import { TvHeaderStats } from "@/components/tv/TvHeaderStats";
+import { TvActivityTicker, ActivityEvent } from "@/components/tv/TvActivityTicker";
 import { Logo } from "@/components/Logo";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
@@ -62,7 +64,17 @@ export default function TvDisplay() {
   const [showNumberReveal, setShowNumberReveal] = useState(false);
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
   const [celebration, setCelebration] = useState<CelebrationData | null>(null);
-  const [currentViewType, setCurrentViewType] = useState<"undercard" | "rumble" | "rumble-props">("undercard");
+  const [currentViewType, setCurrentViewType] = useState<ViewType>("undercard");
+  const [currentViewIndex, setCurrentViewIndex] = useState(0);
+  const [currentViewTitle, setCurrentViewTitle] = useState(VIEWS[0].title);
+  
+  // Activity ticker state
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
+  const [lastActivityTime, setLastActivityTime] = useState<Date | null>(null);
+  
+  // Auto-rotate state
+  const [autoRotate, setAutoRotate] = useState(false);
+  const autoRotateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Track shown celebrations to avoid duplicates
   const shownCelebrations = useRef<Set<string>>(new Set());
@@ -72,6 +84,23 @@ export default function TvDisplay() {
   const mensNumbersRef = useRef<RumbleNumber[]>([]);
   const womensNumbersRef = useRef<RumbleNumber[]>([]);
   const partyStatusRef = useRef<string>("pre_event");
+  
+  // Ref for activity event function
+  const addActivityEventRef = useRef<(type: ActivityEvent["type"], message: string) => void>(() => {});
+  
+  // Update addActivityEventRef when the function changes
+  useEffect(() => {
+    addActivityEventRef.current = (type: ActivityEvent["type"], message: string) => {
+      const event: ActivityEvent = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type,
+        message,
+        timestamp: new Date(),
+      };
+      setActivityEvents(prev => [event, ...prev].slice(0, 20));
+      setLastActivityTime(new Date());
+    };
+  }, []);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -278,19 +307,30 @@ export default function TvDisplay() {
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, (payload) => {
         const updated = payload.new as any;
+        const old = payload.old as any;
         
-        // Show entry overlay - use ref for player lookup
-        if (updated.entry_timestamp && !payload.old?.entry_timestamp) {
+        // Show entry overlay and add activity event
+        if (updated.entry_timestamp && !old?.entry_timestamp) {
           const player = playersRef.current.find(p => p.id === updated.assigned_to_player_id);
+          const ownerName = player?.display_name || "Vacant";
+          
           setShowOverlay({
             type: "entry",
             data: {
               number: updated.number,
               wrestler: updated.wrestler_name,
-              owner: player?.display_name || "Vacant",
+              owner: ownerName,
             },
           });
           setTimeout(() => setShowOverlay(null), 5000);
+          
+          // Add activity event for entry
+          addActivityEventRef.current("entry", `#${updated.number}: ${updated.wrestler_name} (${ownerName})`);
+        }
+        
+        // Add activity event for elimination
+        if (updated.elimination_timestamp && !old?.elimination_timestamp) {
+          addActivityEventRef.current("elimination", `${updated.wrestler_name} eliminated`);
         }
 
         // Refresh numbers and check for Final Four
@@ -324,6 +364,14 @@ export default function TvDisplay() {
           }
           return [...prev, matchResult];
         });
+        
+        // Add activity event for match results
+        if (matchResult.match_id.startsWith("undercard")) {
+          addActivityEventRef.current("result", `${matchResult.result} wins!`);
+        } else if (matchResult.match_id === "mens_rumble_winner" || matchResult.match_id === "womens_rumble_winner") {
+          const label = matchResult.match_id === "mens_rumble_winner" ? "Men's" : "Women's";
+          addActivityEventRef.current("result", `${label} Rumble Winner: ${matchResult.result}!`);
+        }
 
         // Check for winner celebration - use refs
         if (matchResult.match_id === "mens_rumble_winner" || matchResult.match_id === "womens_rumble_winner") {
@@ -407,6 +455,62 @@ export default function TvDisplay() {
     return "active";
   };
 
+  // Calculate rumble stats
+  const activeWrestlerCount = currentViewType === "rumble" 
+    ? (currentViewIndex === 3 
+        ? mensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length
+        : womensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length)
+    : 0;
+  
+  const totalEliminations = currentViewType === "rumble"
+    ? (currentViewIndex === 3
+        ? mensNumbers.filter(n => n.elimination_timestamp).length
+        : womensNumbers.filter(n => n.elimination_timestamp).length)
+    : 0;
+
+  // Handle view changes from navigator
+  const handleViewChange = useCallback((viewType: ViewType, viewIndex: number, viewTitle: string) => {
+    setCurrentViewType(viewType);
+    setCurrentViewIndex(viewIndex);
+    setCurrentViewTitle(viewTitle);
+  }, []);
+
+  // Handle manual view selection (pauses auto-rotate)
+  const handleSelectView = useCallback((index: number) => {
+    setCurrentViewIndex(index);
+    setCurrentViewTitle(VIEWS[index].title);
+    setCurrentViewType(VIEWS[index].type);
+    // Pause auto-rotate on manual navigation
+    setAutoRotate(false);
+  }, []);
+
+  // Auto-rotate logic
+  useEffect(() => {
+    if (!autoRotate) {
+      if (autoRotateIntervalRef.current) {
+        clearInterval(autoRotateIntervalRef.current);
+        autoRotateIntervalRef.current = null;
+      }
+      return;
+    }
+
+    autoRotateIntervalRef.current = setInterval(() => {
+      setCurrentViewIndex(prev => (prev === VIEWS.length - 1 ? 0 : prev + 1));
+    }, 30000); // 30 seconds
+
+    return () => {
+      if (autoRotateIntervalRef.current) {
+        clearInterval(autoRotateIntervalRef.current);
+      }
+    };
+  }, [autoRotate]);
+
+  // Keep view info in sync when currentViewIndex changes from auto-rotate
+  useEffect(() => {
+    const view = VIEWS[currentViewIndex];
+    setCurrentViewTitle(view.title);
+    setCurrentViewType(view.type);
+  }, [currentViewIndex]);
 
   const handleRevealComplete = () => {
     setShowNumberReveal(false);
@@ -416,6 +520,10 @@ export default function TvDisplay() {
   const handleCelebrationComplete = () => {
     setCelebration(null);
   };
+
+  const toggleAutoRotate = useCallback(() => {
+    setAutoRotate(prev => !prev);
+  }, []);
 
   return (
     <>
@@ -440,19 +548,29 @@ export default function TvDisplay() {
         )}
       </AnimatePresence>
 
-    <div className="min-h-screen bg-background text-foreground tv-mode p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-background text-foreground tv-mode p-6 flex flex-col">
+      {/* Enhanced Header */}
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           <Logo size="sm" />
-          <p className="text-muted-foreground text-lg">Party {code}</p>
+          <p className="text-muted-foreground text-lg font-mono">#{code}</p>
         </div>
+        
+        <TvHeaderStats
+          currentViewTitle={currentViewTitle}
+          activeWrestlerCount={activeWrestlerCount}
+          totalEliminations={totalEliminations}
+          lastActivityTime={lastActivityTime}
+          autoRotate={autoRotate}
+          onToggleAutoRotate={toggleAutoRotate}
+          showRumbleStats={currentViewType === "rumble"}
+        />
       </div>
 
-      {/* Hide sidebar leaderboard when viewing rumble-props (it's inline) */}
-      <div className={currentViewType === "rumble-props" ? "" : "grid grid-cols-12 gap-6"}>
-        {/* Main Content - full width on rumble-props, otherwise responsive */}
-        <div className={currentViewType === "rumble-props" ? "w-full" : `${mainColSpan} space-y-6`}>
+      {/* Main Content Area */}
+      <div className={currentViewType === "rumble-props" ? "flex-1" : "flex-1 grid grid-cols-12 gap-6"}>
+        {/* Main Content */}
+        <div className={currentViewType === "rumble-props" ? "w-full" : `${mainColSpan}`}>
           {partyStatus === "pre_event" ? (
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
@@ -462,19 +580,18 @@ export default function TvDisplay() {
               </div>
             </div>
           ) : (
-            <>
-              {/* Single View Navigator - shows one match/rumble at a time with synced picks */}
-              <TvViewNavigator
-                matchResults={matchResults}
-                mensNumbers={mensNumbers}
-                womensNumbers={womensNumbers}
-                players={players}
-                picks={picks}
-                getPlayerInitials={getPlayerInitials}
-                getNumberStatus={getNumberStatus}
-                onViewChange={setCurrentViewType}
-              />
-            </>
+            <TvViewNavigator
+              matchResults={matchResults}
+              mensNumbers={mensNumbers}
+              womensNumbers={womensNumbers}
+              players={players}
+              picks={picks}
+              getPlayerInitials={getPlayerInitials}
+              getNumberStatus={getNumberStatus}
+              onViewChange={handleViewChange}
+              currentViewIndex={currentViewIndex}
+              onSelectView={handleSelectView}
+            />
           )}
         </div>
 
@@ -485,6 +602,13 @@ export default function TvDisplay() {
           </div>
         )}
       </div>
+
+      {/* Activity Ticker */}
+      {partyStatus !== "pre_event" && (
+        <div className="mt-4">
+          <TvActivityTicker events={activityEvents} />
+        </div>
+      )}
 
       {/* Entry Overlay */}
       <AnimatePresence>

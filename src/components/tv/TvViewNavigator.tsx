@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Trophy } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Trophy } from "lucide-react";
 import { ActiveMatchDisplay } from "./ActiveMatchDisplay";
 import { NumberCell } from "./NumberCell";
 import { ParticipantPicksView } from "./ParticipantPicksView";
 import { RumblePropsDisplay } from "./RumblePropsDisplay";
 import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
 import { WrestlerImage } from "./WrestlerImage";
+import { TvTabBar } from "./TvTabBar";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
 import { cn } from "@/lib/utils";
@@ -47,11 +47,9 @@ interface TvViewNavigatorProps {
   getNumberStatus: (num: RumbleNumber) => "pending" | "active" | "eliminated";
 }
 
-type ViewType = "undercard" | "rumble" | "rumble-props";
+export type ViewType = "undercard" | "rumble" | "rumble-props";
 
-export type { ViewType };
-
-interface View {
+export interface View {
   type: ViewType;
   id: string;
   title: string;
@@ -59,7 +57,7 @@ interface View {
   gender?: "mens" | "womens";
 }
 
-const VIEWS: View[] = [
+export const VIEWS: View[] = [
   { type: "undercard", id: "undercard_1", title: UNDERCARD_MATCHES[0].title, options: UNDERCARD_MATCHES[0].options },
   { type: "undercard", id: "undercard_2", title: UNDERCARD_MATCHES[1].title, options: UNDERCARD_MATCHES[1].options },
   { type: "undercard", id: "undercard_3", title: UNDERCARD_MATCHES[2].title, options: UNDERCARD_MATCHES[2].options },
@@ -70,7 +68,9 @@ const VIEWS: View[] = [
 ];
 
 interface TvViewNavigatorWithCallback extends TvViewNavigatorProps {
-  onViewChange?: (viewType: ViewType) => void;
+  onViewChange?: (viewType: ViewType, viewIndex: number, viewTitle: string) => void;
+  currentViewIndex?: number;
+  onSelectView?: (index: number) => void;
 }
 
 export function TvViewNavigator({
@@ -82,9 +82,16 @@ export function TvViewNavigator({
   getPlayerInitials,
   getNumberStatus,
   onViewChange,
+  currentViewIndex: externalViewIndex,
+  onSelectView,
 }: TvViewNavigatorWithCallback) {
-  const [currentViewIndex, setCurrentViewIndex] = useState(0);
+  const [internalViewIndex, setInternalViewIndex] = useState(0);
   const [direction, setDirection] = useState(0);
+  
+  // Use external index if controlled, otherwise internal
+  const currentViewIndex = externalViewIndex ?? internalViewIndex;
+  const setCurrentViewIndex = onSelectView ?? setInternalViewIndex;
+  const currentView = VIEWS[currentViewIndex];
   
   // Get responsive scale values
   const { scale, photoSize, gridGapClass } = useTvScale();
@@ -135,8 +142,8 @@ export function TvViewNavigator({
 
   // Notify parent of view changes
   useEffect(() => {
-    onViewChange?.(currentView.type);
-  }, [currentViewIndex, onViewChange]);
+    onViewChange?.(currentView.type, currentViewIndex, currentView.title);
+  }, [currentViewIndex, onViewChange, currentView.type, currentView.title]);
 
   // Helper to get player name
   const getPlayerName = useCallback((playerId: string | null): string => {
@@ -174,8 +181,6 @@ export function TvViewNavigator({
     setDirection(1);
     setCurrentViewIndex(prev => (prev === VIEWS.length - 1 ? 0 : prev + 1));
   };
-
-  const currentView = VIEWS[currentViewIndex];
 
   const renderNumberGrid = (numbers: RumbleNumber[], title: string, rumbleId: string) => {
     const activeCount = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length;
@@ -299,43 +304,24 @@ export function TvViewNavigator({
   const result = getViewResult(currentView);
   const isComplete = isViewComplete(currentView);
 
+  // Check if view has active wrestlers (for rumble views)
+  const isViewActive = useCallback((view: View): boolean => {
+    if (view.type === "rumble") {
+      const numbers = view.id === "mens" ? mensNumbers : womensNumbers;
+      return numbers.some(n => n.entry_timestamp && !n.elimination_timestamp);
+    }
+    return false;
+  }, [mensNumbers, womensNumbers]);
+
+  const handleSelectView = (index: number) => {
+    setDirection(index > currentViewIndex ? 1 : -1);
+    setCurrentViewIndex(index);
+  };
+
   return (
-    <div className="relative">
-      {/* Navigation Header */}
-      <div className="flex items-center justify-between mb-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={goToPrevious}
-          className="h-12 w-12 rounded-full bg-card/80 hover:bg-card border border-border"
-        >
-          <ChevronLeft className="h-6 w-6" />
-        </Button>
-
-        {/* View Counter & Status */}
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-sm text-muted-foreground">
-            {currentViewIndex + 1} / {VIEWS.length}
-          </span>
-          {isComplete && result && (
-            <span className="text-xs font-semibold text-success uppercase">
-              Winner: {result}
-            </span>
-          )}
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={goToNext}
-          className="h-12 w-12 rounded-full bg-card/80 hover:bg-card border border-border"
-        >
-          <ChevronRight className="h-6 w-6" />
-        </Button>
-      </div>
-
+    <div className="relative flex flex-col h-full">
       {/* View Content with Animation */}
-      <div className="relative min-h-[400px]">
+      <div className="relative min-h-[400px] flex-1">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={currentViewIndex}
@@ -361,30 +347,15 @@ export function TvViewNavigator({
         </div>
       )}
 
-      {/* Dot Indicators */}
-      <div className="flex justify-center gap-2 mt-6">
-        {VIEWS.map((view, index) => {
-          const complete = isViewComplete(view);
-          return (
-            <button
-              key={view.id}
-              onClick={() => {
-                setDirection(index > currentViewIndex ? 1 : -1);
-                setCurrentViewIndex(index);
-              }}
-              className={`
-                w-3 h-3 rounded-full transition-all duration-200
-                ${index === currentViewIndex 
-                  ? "bg-primary scale-125" 
-                  : complete 
-                    ? "bg-success/50 hover:bg-success" 
-                    : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                }
-              `}
-              aria-label={`Go to ${view.title}`}
-            />
-          );
-        })}
+      {/* Tab Bar Navigation */}
+      <div className="mt-6">
+        <TvTabBar
+          views={VIEWS}
+          currentIndex={currentViewIndex}
+          onSelectView={handleSelectView}
+          isViewComplete={isViewComplete}
+          isViewActive={isViewActive}
+        />
       </div>
     </div>
   );
