@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Loader2, Save, Home } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Save, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { MatchCard } from "./cards/MatchCard";
@@ -32,6 +32,7 @@ interface PickCardStackProps {
   existingPicks: Record<string, string>;
   mensEntrants: string[];
   womensEntrants: string[];
+  isHost?: boolean;
 }
 
 export function PickCardStack({
@@ -42,6 +43,7 @@ export function PickCardStack({
   existingPicks,
   mensEntrants,
   womensEntrants,
+  isHost = false,
 }: PickCardStackProps) {
   const navigate = useNavigate();
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -237,7 +239,7 @@ export function PickCardStack({
 
       setHasSubmitted(true);
       toast.success("Picks saved! Good luck! 🎉");
-      navigate(`/player/dashboard/${partyCode}`);
+      navigate(isHost ? `/host/${partyCode}` : `/player/dashboard/${partyCode}`);
     } catch (err) {
       console.error("Error submitting picks:", err);
       toast.error("Failed to save picks. Please try again.");
@@ -278,14 +280,14 @@ export function PickCardStack({
   return (
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       <div className="flex-1 flex flex-col max-w-lg mx-auto w-full overflow-hidden">
-        {/* Header with Home button FIRST */}
+        {/* Header with Back button */}
         <div className="py-2 px-4 border-b border-border flex items-center justify-between">
           <button
-            onClick={() => navigate(`/player/dashboard/${partyCode}`)}
-            className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
-            aria-label="Back to Dashboard"
+            onClick={() => navigate(isHost ? `/host/${partyCode}` : `/player/dashboard/${partyCode}`)}
+            className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors flex items-center gap-1"
+            aria-label={isHost ? "Back to Host Control" : "Back to Dashboard"}
           >
-            <Home className="w-5 h-5 text-muted-foreground" />
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
           </button>
           <div className="text-center flex-1">
             <div className="text-sm text-muted-foreground">Group {partyCode}</div>
