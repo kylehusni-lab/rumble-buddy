@@ -102,6 +102,9 @@ export default function Index() {
 
       if (error) throw error;
 
+      // Store status in localStorage for future reads (RLS blocks SELECT on parties)
+      localStorage.setItem(`party_${groupCode}_status`, "pre_event");
+
       setPlayerSession({
         sessionId,
         partyCode: groupCode,
@@ -133,6 +136,9 @@ export default function Index() {
       });
 
       if (partyError) throw partyError;
+
+      // Store status in localStorage for future reads (RLS blocks SELECT on parties)
+      localStorage.setItem(`party_${demoCode}_status`, "pre_event");
 
       const { hostPlayerId } = await seedDemoParty(demoCode, sessionId);
 

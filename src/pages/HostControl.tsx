@@ -137,25 +137,16 @@ export default function HostControl() {
           return;
         }
 
-        // Fetch party data from public view (RLS blocks direct parties table access)
-        const { data: partyData, error } = await supabase
-          .from("parties_public")
-          .select("status")
-          .eq("code", code)
-          .single();
-
-        if (error || !partyData) {
-          toast.error("Group not found");
-          navigate("/");
-          return;
-        }
-
-        if (partyData.status === "pre_event") {
+        // Check party status from localStorage (set during creation/start)
+        const partyStatus = localStorage.getItem(`party_${code}_status`) || "pre_event";
+        
+        // Redirect if event hasn't started yet
+        if (partyStatus === "pre_event") {
           navigate(`/host/setup/${code}`);
           return;
         }
 
-        setParty(partyData);
+        setParty({ status: partyStatus });
 
         // Fetch players (use public view to avoid exposing sensitive data)
         const { data: playersData } = await supabase
