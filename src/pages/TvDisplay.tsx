@@ -60,7 +60,7 @@ export default function TvDisplay() {
   const [womensNumbers, setWomensNumbers] = useState<RumbleNumber[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
   const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
-  const [showOverlay, setShowOverlay] = useState<{ type: "entry" | "result"; data: any } | null>(null);
+  
   const [showNumberReveal, setShowNumberReveal] = useState(false);
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
   const [celebration, setCelebration] = useState<CelebrationData | null>(null);
@@ -309,22 +309,10 @@ export default function TvDisplay() {
         const updated = payload.new as any;
         const old = payload.old as any;
         
-        // Show entry overlay and add activity event
+        // Add activity event for entry (no overlay animation)
         if (updated.entry_timestamp && !old?.entry_timestamp) {
           const player = playersRef.current.find(p => p.id === updated.assigned_to_player_id);
           const ownerName = player?.display_name || "Vacant";
-          
-          setShowOverlay({
-            type: "entry",
-            data: {
-              number: updated.number,
-              wrestler: updated.wrestler_name,
-              owner: ownerName,
-            },
-          });
-          setTimeout(() => setShowOverlay(null), 5000);
-          
-          // Add activity event for entry
           addActivityEventRef.current("entry", `#${updated.number}: ${updated.wrestler_name} (${ownerName})`);
         }
         
@@ -630,48 +618,6 @@ export default function TvDisplay() {
         </div>
       )}
 
-      {/* Entry Overlay */}
-      <AnimatePresence>
-        {showOverlay?.type === "entry" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
-          >
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.5, opacity: 0 }}
-              className="text-center"
-            >
-              <motion.div
-                className="text-9xl font-black text-primary mb-4"
-                initial={{ y: 50 }}
-                animate={{ y: 0 }}
-              >
-                #{showOverlay.data.number}
-              </motion.div>
-              <motion.div
-                className="text-5xl font-bold mb-4"
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                {showOverlay.data.wrestler}
-              </motion.div>
-              <motion.div
-                className="text-2xl text-muted-foreground"
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                Owned by {showOverlay.data.owner}
-              </motion.div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
     </>
   );
