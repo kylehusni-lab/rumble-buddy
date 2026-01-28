@@ -1,5 +1,4 @@
 import { WrestlerImage } from "./WrestlerImage";
-import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Player {
@@ -33,10 +32,7 @@ interface PropConfig {
 }
 
 export function RumblePropsDisplay({ gender, players, picks, matchResults }: RumblePropsDisplayProps) {
-  const title = gender === "mens" ? "Men's" : "Women's";
-  
-  // Sort players by points for leaderboard
-  const sortedPlayers = [...players].sort((a, b) => b.points - a.points);
+  // Define props to display - reordered: #1, #30, First Elim, Most Elim, Iron
   
   // Define props to display - reordered: #1, #30, First Elim, Most Elim, Iron
   const wrestlerProps: PropConfig[] = [
@@ -81,47 +77,6 @@ export function RumblePropsDisplay({ gender, players, picks, matchResults }: Rum
 
   return (
     <div className="space-y-6">
-      {/* Section Header removed - title shown in TvHeaderStats */}
-      
-      {/* Leaderboard Row - Inline at top */}
-      <div className="bg-card/80 border border-border rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Trophy className="w-5 h-5 text-primary" />
-          <span className="font-semibold text-lg">Leaderboard</span>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {sortedPlayers.map((player, index) => (
-            <div
-              key={player.id}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg flex-shrink-0",
-                index === 0 && "bg-primary/20 border border-primary",
-                index === 1 && "bg-muted/80",
-                index === 2 && "bg-muted/60",
-                index > 2 && "bg-muted/40"
-              )}
-            >
-              <div className={cn(
-                "w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold",
-                index === 0 && "tv-rank-gold",
-                index === 1 && "tv-rank-silver",
-                index === 2 && "tv-rank-bronze",
-                index > 2 && "bg-muted text-muted-foreground"
-              )}>
-                {index + 1}
-              </div>
-              <span className="font-medium text-sm">{player.display_name}</span>
-              <span className={cn(
-                "font-bold ml-1",
-                index === 0 && "text-primary"
-              )}>
-                {player.points}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Props Table - Full Width */}
       <div className="bg-card/50 border border-border rounded-xl overflow-hidden">
         <table className="w-full border-collapse">
