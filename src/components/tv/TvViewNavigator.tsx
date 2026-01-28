@@ -4,8 +4,10 @@ import { Trophy } from "lucide-react";
 import { ActiveMatchDisplay } from "./ActiveMatchDisplay";
 import { NumberCell } from "./NumberCell";
 import { RumblePropsDisplay } from "./RumblePropsDisplay";
+import { ChaosPropsDisplay } from "./ChaosPropsDisplay";
 import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
 import { TvLeaderboardView } from "./TvLeaderboardView";
+import { RumbleSubTabs, RumbleSubView } from "./RumbleSubTabs";
 import { WrestlerImage } from "./WrestlerImage";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
@@ -46,7 +48,7 @@ interface TvViewNavigatorProps {
   getNumberStatus: (num: RumbleNumber) => "pending" | "active" | "eliminated";
 }
 
-export type ViewType = "leaderboard" | "undercard" | "rumble" | "rumble-props";
+export type ViewType = "leaderboard" | "undercard" | "rumble";
 
 export interface View {
   type: ViewType;
@@ -56,15 +58,14 @@ export interface View {
   gender?: "mens" | "womens";
 }
 
+// Simplified views - rumble now includes sub-tabs for grid, props, chaos
 export const VIEWS: View[] = [
   { type: "leaderboard", id: "leaderboard", title: "Leaderboard" },
   { type: "undercard", id: "undercard_1", title: UNDERCARD_MATCHES[0].title, options: UNDERCARD_MATCHES[0].options },
   { type: "undercard", id: "undercard_2", title: UNDERCARD_MATCHES[1].title, options: UNDERCARD_MATCHES[1].options },
   { type: "undercard", id: "undercard_3", title: UNDERCARD_MATCHES[2].title, options: UNDERCARD_MATCHES[2].options },
-  { type: "rumble", id: "mens", title: "Men's Royal Rumble" },
-  { type: "rumble-props", id: "mens_props", title: "Men's Rumble Props", gender: "mens" },
-  { type: "rumble", id: "womens", title: "Women's Royal Rumble" },
-  { type: "rumble-props", id: "womens_props", title: "Women's Rumble Props", gender: "womens" },
+  { type: "rumble", id: "mens", title: "Men's Royal Rumble", gender: "mens" },
+  { type: "rumble", id: "womens", title: "Women's Royal Rumble", gender: "womens" },
 ];
 
 interface TvViewNavigatorWithCallback extends TvViewNavigatorProps {
@@ -87,6 +88,10 @@ export function TvViewNavigator({
 }: TvViewNavigatorWithCallback) {
   const [internalViewIndex, setInternalViewIndex] = useState(0);
   const [direction, setDirection] = useState(0);
+  
+  // Sub-tab state for rumble views
+  const [mensSubView, setMensSubView] = useState<RumbleSubView>("grid");
+  const [womensSubView, setWomensSubView] = useState<RumbleSubView>("grid");
   
   // Use external index if controlled, otherwise internal
   const currentViewIndex = externalViewIndex ?? internalViewIndex;
@@ -159,7 +164,7 @@ export function TvViewNavigator({
         goToPrevious();
       } else if (e.key === "ArrowRight") {
         goToNext();
-      } else if (e.key >= "1" && e.key <= "8") {
+      } else if (e.key >= "1" && e.key <= "6") {
         const index = parseInt(e.key) - 1;
         if (index < VIEWS.length) {
           setDirection(index > currentViewIndex ? 1 : -1);
@@ -182,7 +187,7 @@ export function TvViewNavigator({
     setCurrentViewIndex(prev => (prev === VIEWS.length - 1 ? 0 : prev + 1));
   };
 
-  const renderNumberGrid = (numbers: RumbleNumber[], title: string, rumbleId: string) => {
+  const renderNumberGrid = (numbers: RumbleNumber[], rumbleId: string) => {
     const winnerMatchId = rumbleId === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
     const winnerResult = matchResults.find(r => r.match_id === winnerMatchId);
     const winnerNumber = winnerResult 
@@ -191,7 +196,6 @@ export function TvViewNavigator({
 
     return (
       <div className="space-y-4">
-        {/* Title removed - already shown in header */}
         <div className={cn("grid grid-cols-10", gridGapClass)}>
           {numbers.map((num) => (
             <NumberCell
@@ -209,11 +213,9 @@ export function TvViewNavigator({
         {/* Enhanced Winner Display - show when declared */}
         {winnerNumber && winnerNumber.wrestler_name && (
           <div className="relative mt-8 p-8 bg-gradient-to-r from-primary/30 via-primary/15 to-primary/30 rounded-2xl border-4 border-primary overflow-hidden animate-scale-in">
-            {/* Animated glow effect - CSS-based instead of Framer Motion infinite loop */}
             <div className="absolute inset-0 rounded-2xl bg-primary/20 animate-glow-pulse" />
             
             <div className="relative z-10 flex flex-col items-center gap-4">
-              {/* Trophy + WINNER label */}
               <div className="flex items-center gap-2">
                 <Trophy className="w-8 h-8 text-primary" />
                 <span className="text-2xl font-black text-primary uppercase tracking-widest animate-winner-pulse">
@@ -222,7 +224,6 @@ export function TvViewNavigator({
                 <Trophy className="w-8 h-8 text-primary" />
               </div>
               
-              {/* Large wrestler photo with animated border - CSS-based shadow pulse */}
               <div className="relative animate-winner-glow">
                 <WrestlerImage 
                   name={winnerNumber.wrestler_name} 
@@ -231,17 +232,14 @@ export function TvViewNavigator({
                 />
               </div>
               
-              {/* Winner name - large */}
               <div className="text-4xl font-black text-primary tracking-tight">
                 {winnerNumber.wrestler_name}
               </div>
               
-              {/* Entry number and owner */}
               <div className="text-lg text-muted-foreground">
                 Entry #{winnerNumber.number} • Owned by {getPlayerName(winnerNumber.assigned_to_player_id)}
               </div>
               
-              {/* Points awarded */}
               <motion.div 
                 className="text-2xl font-bold text-success"
                 initial={{ scale: 0 }}
@@ -254,13 +252,45 @@ export function TvViewNavigator({
           </div>
         )}
 
-        {/* Winner Predictions Panel - always shown for Rumble views */}
+        {/* Winner Predictions Panel */}
         <RumbleWinnerPredictions
           gender={rumbleId as "mens" | "womens"}
           players={players}
           picks={picks}
           matchResults={matchResults}
         />
+      </div>
+    );
+  };
+
+  const renderRumbleContent = (gender: "mens" | "womens") => {
+    const numbers = gender === "mens" ? mensNumbers : womensNumbers;
+    const subView = gender === "mens" ? mensSubView : womensSubView;
+    const setSubView = gender === "mens" ? setMensSubView : setWomensSubView;
+
+    return (
+      <div className="space-y-4">
+        {/* Sub-tabs */}
+        <RumbleSubTabs value={subView} onChange={setSubView} />
+        
+        {/* Content based on sub-tab */}
+        {subView === "grid" && renderNumberGrid(numbers, gender)}
+        {subView === "props" && (
+          <RumblePropsDisplay
+            gender={gender}
+            players={players}
+            picks={picks}
+            matchResults={matchResults}
+          />
+        )}
+        {subView === "chaos" && (
+          <ChaosPropsDisplay
+            gender={gender}
+            players={players}
+            picks={picks}
+            matchResults={matchResults}
+          />
+        )}
       </div>
     );
   };
@@ -284,27 +314,12 @@ export function TvViewNavigator({
       }
     }
 
-    if (currentView.type === "rumble") {
-      const numbers = currentView.id === "mens" ? mensNumbers : womensNumbers;
-      return renderNumberGrid(numbers, currentView.title, currentView.id);
-    }
-
-    if (currentView.type === "rumble-props" && currentView.gender) {
-      return (
-        <RumblePropsDisplay
-          gender={currentView.gender}
-          players={players}
-          picks={picks}
-          matchResults={matchResults}
-        />
-      );
+    if (currentView.type === "rumble" && currentView.gender) {
+      return renderRumbleContent(currentView.gender);
     }
 
     return null;
   };
-
-  const result = getViewResult(currentView);
-  const isComplete = isViewComplete(currentView);
 
   // Check if view has active wrestlers (for rumble views)
   const isViewActive = useCallback((view: View): boolean => {
@@ -314,11 +329,6 @@ export function TvViewNavigator({
     }
     return false;
   }, [mensNumbers, womensNumbers]);
-
-  const handleSelectView = (index: number) => {
-    setDirection(index > currentViewIndex ? 1 : -1);
-    setCurrentViewIndex(index);
-  };
 
   return (
     <div className="relative flex flex-col h-full">
@@ -336,7 +346,6 @@ export function TvViewNavigator({
           </motion.div>
         </AnimatePresence>
       </div>
-
     </div>
   );
 }
