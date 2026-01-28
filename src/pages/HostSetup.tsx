@@ -65,16 +65,26 @@ export default function HostSetup() {
           return;
         }
 
-        // Check party status from localStorage (set during creation/start)
-        const partyStatus = localStorage.getItem(`party_${code}_status`) || "pre_event";
-        
+        // Fetch party data from public view (definer permissions bypass RLS)
+        const { data: partyData, error } = await supabase
+          .from("parties_public")
+          .select("status")
+          .eq("code", code)
+          .single();
+
+        if (error || !partyData) {
+          toast.error("Group not found");
+          navigate("/");
+          return;
+        }
+
         // Redirect if event already started
-        if (partyStatus !== "pre_event") {
+        if (partyData.status !== "pre_event") {
           navigate(`/host/control/${code}`);
           return;
         }
 
-        setParty({ status: partyStatus });
+        setParty(partyData);
 
         // Fetch players (use public view to avoid exposing sensitive data)
         const { data: playersData } = await supabase
@@ -218,9 +228,6 @@ export default function HostSetup() {
         .eq("code", code);
 
       if (error) throw error;
-
-      // Store status in localStorage for future reads
-      localStorage.setItem(`party_${code}_status`, "live");
 
       toast.success("Event started! Numbers distributed! 🎉");
       navigate(`/host/control/${code}`);
