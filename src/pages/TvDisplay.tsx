@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
-import { LeaderboardPanel } from "@/components/tv/LeaderboardPanel";
+import { TvLeaderboardBar } from "@/components/tv/TvLeaderboardBar";
 import { TvViewNavigator, VIEWS, ViewType } from "@/components/tv/TvViewNavigator";
 import { TvHeaderStats } from "@/components/tv/TvHeaderStats";
 import { TvActivityTicker, ActivityEvent } from "@/components/tv/TvActivityTicker";
@@ -598,39 +598,36 @@ export default function TvDisplay() {
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className={currentViewType === "rumble-props" ? "flex-1" : "flex-1 grid grid-cols-12 gap-6"}>
-        {/* Main Content */}
-        <div className={currentViewType === "rumble-props" ? "w-full" : `${mainColSpan}`}>
-          {partyStatus === "pre_event" ? (
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <Logo size="lg" className="mx-auto mb-4" />
-                <h2 className="text-3xl font-bold mb-2">Waiting for Event to Start</h2>
-                <p className="text-muted-foreground">{players.length} players ready</p>
-              </div>
-            </div>
-          ) : (
-            <TvViewNavigator
-              matchResults={matchResults}
-              mensNumbers={mensNumbers}
-              womensNumbers={womensNumbers}
-              players={players}
-              picks={picks}
-              getPlayerInitials={getPlayerInitials}
-              getNumberStatus={getNumberStatus}
-              onViewChange={handleViewChange}
-              currentViewIndex={currentViewIndex}
-              onSelectView={handleSelectView}
-            />
-          )}
+      {/* Horizontal Leaderboard Bar */}
+      {partyStatus !== "pre_event" && (
+        <div className="mb-4">
+          <TvLeaderboardBar players={players} />
         </div>
+      )}
 
-        {/* Leaderboard - hidden when viewing rumble-props */}
-        {currentViewType !== "rumble-props" && (
-          <div className={sideColSpan}>
-            <LeaderboardPanel players={players} />
+      {/* Main Content Area - Full Width */}
+      <div className="flex-1">
+        {partyStatus === "pre_event" ? (
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <Logo size="lg" className="mx-auto mb-4" />
+              <h2 className="text-3xl font-bold mb-2">Waiting for Event to Start</h2>
+              <p className="text-muted-foreground">{players.length} players ready</p>
+            </div>
           </div>
+        ) : (
+          <TvViewNavigator
+            matchResults={matchResults}
+            mensNumbers={mensNumbers}
+            womensNumbers={womensNumbers}
+            players={players}
+            picks={picks}
+            getPlayerInitials={getPlayerInitials}
+            getNumberStatus={getNumberStatus}
+            onViewChange={handleViewChange}
+            currentViewIndex={currentViewIndex}
+            onSelectView={handleSelectView}
+          />
         )}
       </div>
 

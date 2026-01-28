@@ -81,8 +81,7 @@ export function RumblePropsDisplay({ gender, players, picks, matchResults }: Rum
 
   return (
     <div className="space-y-6">
-      {/* Section Header */}
-      <h2 className="text-3xl font-bold text-center">{title} Rumble Predictions</h2>
+      {/* Section Header removed - title shown in TvHeaderStats */}
       
       {/* Leaderboard Row - Inline at top */}
       <div className="bg-card/80 border border-border rounded-xl p-4">
