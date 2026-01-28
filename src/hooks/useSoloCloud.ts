@@ -1,4 +1,5 @@
 // Solo mode cloud sync hook with email + PIN authentication
+// Uses secure RPC functions for login/register (never exposes PINs client-side)
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +9,6 @@ const SOLO_PLAYER_ID_KEY = 'rumble_solo_player_id';
 
 export interface SoloPlayer {
   id: string;
-  email: string;
   display_name: string;
   created_at: string;
 }
@@ -46,7 +46,7 @@ export function useSoloCloud() {
     localStorage.removeItem(SOLO_PLAYER_ID_KEY);
   };
 
-  // Load player from stored ID
+  // Load player from stored ID using the public view
   const loadPlayer = useCallback(async () => {
     const playerId = getStoredPlayerId();
     if (!playerId) {
@@ -55,8 +55,9 @@ export function useSoloCloud() {
     }
 
     try {
+      // Use the public view that doesn't expose PIN or email
       const { data, error } = await supabase
-        .from('solo_players')
+        .from('solo_players_public')
         .select('*')
         .eq('id', playerId)
         .maybeSingle();
@@ -91,46 +92,47 @@ export function useSoloCloud() {
     }
   }, []);
 
-  // Register new player
+  // Register new player using secure RPC
   const register = async (email: string, pin: string, displayName: string): Promise<boolean> => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      // Check if email already exists
-      const { data: existing } = await supabase
-        .from('solo_players')
-        .select('id')
-        .eq('email', email.toLowerCase().trim())
-        .maybeSingle();
-
-      if (existing) {
-        setState(prev => ({ ...prev, isLoading: false, error: 'Email already registered. Try signing in instead.' }));
-        return false;
-      }
-
-      // Create new player
+      // Use secure RPC function for registration
       const { data, error } = await supabase
-        .from('solo_players')
-        .insert({
-          email: email.toLowerCase().trim(),
-          pin,
-          display_name: displayName.trim() || 'Me',
-        })
-        .select()
-        .single();
+        .rpc('register_solo_player', {
+          p_email: email,
+          p_pin: pin,
+          p_display_name: displayName,
+        });
 
       if (error) throw error;
 
-      setStoredPlayerId(data.id);
+      if (!data || data.length === 0) {
+        setState(prev => ({ ...prev, isLoading: false, error: 'Registration failed. Please try again.' }));
+        return false;
+      }
+
+      const result = data[0];
+
+      if (!result.success) {
+        setState(prev => ({ ...prev, isLoading: false, error: result.error_message || 'Registration failed.' }));
+        return false;
+      }
+
+      setStoredPlayerId(result.id);
       setSoloSession({
-        displayName: data.display_name,
-        createdAt: data.created_at,
+        displayName: result.display_name,
+        createdAt: result.created_at,
       });
 
       setState({
         isLoading: false,
         isAuthenticated: true,
-        player: data,
+        player: {
+          id: result.id,
+          display_name: result.display_name,
+          created_at: result.created_at,
+        },
         error: null,
       });
 
@@ -142,39 +144,50 @@ export function useSoloCloud() {
     }
   };
 
-  // Login with email + PIN
+  // Login with email + PIN using secure RPC
   const login = async (email: string, pin: string): Promise<boolean> => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
+      // Use secure RPC function for login (never exposes PIN client-side)
       const { data, error } = await supabase
-        .from('solo_players')
-        .select('*')
-        .eq('email', email.toLowerCase().trim())
-        .eq('pin', pin)
-        .maybeSingle();
+        .rpc('verify_solo_login', {
+          p_email: email,
+          p_pin: pin,
+        });
 
       if (error) throw error;
 
-      if (!data) {
+      if (!data || data.length === 0 || !data[0].valid) {
         setState(prev => ({ ...prev, isLoading: false, error: 'Invalid email or PIN' }));
         return false;
       }
 
-      setStoredPlayerId(data.id);
+      const result = data[0];
+
+      if (!result.id) {
+        setState(prev => ({ ...prev, isLoading: false, error: 'Account not found' }));
+        return false;
+      }
+
+      setStoredPlayerId(result.id);
       setSoloSession({
-        displayName: data.display_name,
-        createdAt: data.created_at,
+        displayName: result.display_name,
+        createdAt: result.created_at,
       });
 
       // Load picks from cloud
-      await syncPicksFromCloud(data.id);
-      await syncResultsFromCloud(data.id);
+      await syncPicksFromCloud(result.id);
+      await syncResultsFromCloud(result.id);
 
       setState({
         isLoading: false,
         isAuthenticated: true,
-        player: data,
+        player: {
+          id: result.id,
+          display_name: result.display_name,
+          created_at: result.created_at,
+        },
         error: null,
       });
 

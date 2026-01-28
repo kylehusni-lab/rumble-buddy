@@ -44,6 +44,13 @@ export type Database = {
             referencedRelation: "parties"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "match_results_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties_public"
+            referencedColumns: ["code"]
+          },
         ]
       }
       parties: {
@@ -181,6 +188,13 @@ export type Database = {
             referencedRelation: "parties"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "players_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties_public"
+            referencedColumns: ["code"]
+          },
         ]
       }
       rumble_numbers: {
@@ -239,6 +253,13 @@ export type Database = {
             referencedRelation: "parties"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "rumble_numbers_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties_public"
+            referencedColumns: ["code"]
+          },
         ]
       }
       solo_picks: {
@@ -272,6 +293,13 @@ export type Database = {
             columns: ["solo_player_id"]
             isOneToOne: false
             referencedRelation: "solo_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solo_picks_solo_player_id_fkey"
+            columns: ["solo_player_id"]
+            isOneToOne: false
+            referencedRelation: "solo_players_public"
             referencedColumns: ["id"]
           },
         ]
@@ -333,10 +361,44 @@ export type Database = {
             referencedRelation: "solo_players"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "solo_results_solo_player_id_fkey"
+            columns: ["solo_player_id"]
+            isOneToOne: false
+            referencedRelation: "solo_players_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
+      parties_public: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          event_started_at: string | null
+          mens_rumble_entrants: Json | null
+          status: string | null
+          womens_rumble_entrants: Json | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string | null
+          event_started_at?: string | null
+          mens_rumble_entrants?: Json | null
+          status?: string | null
+          womens_rumble_entrants?: Json | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string | null
+          event_started_at?: string | null
+          mens_rumble_entrants?: Json | null
+          status?: string | null
+          womens_rumble_entrants?: Json | null
+        }
+        Relationships: []
+      }
       players_public: {
         Row: {
           display_name: string | null
@@ -367,7 +429,35 @@ export type Database = {
             referencedRelation: "parties"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "players_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties_public"
+            referencedColumns: ["code"]
+          },
         ]
+      }
+      solo_players_public: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -376,6 +466,36 @@ export type Database = {
         Returns: {
           display_name: string
           id: string
+        }[]
+      }
+      register_solo_player: {
+        Args: { p_display_name: string; p_email: string; p_pin: string }
+        Returns: {
+          created_at: string
+          display_name: string
+          error_message: string
+          id: string
+          success: boolean
+        }[]
+      }
+      set_host_pin: {
+        Args: { p_party_code: string; p_pin: string }
+        Returns: boolean
+      }
+      verify_host_pin: {
+        Args: { p_party_code: string; p_pin: string }
+        Returns: {
+          has_pin: boolean
+          valid: boolean
+        }[]
+      }
+      verify_solo_login: {
+        Args: { p_email: string; p_pin: string }
+        Returns: {
+          created_at: string
+          display_name: string
+          id: string
+          valid: boolean
         }[]
       }
     }
