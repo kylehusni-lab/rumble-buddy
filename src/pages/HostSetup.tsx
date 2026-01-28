@@ -86,9 +86,9 @@ export default function HostSetup() {
 
         setParty(partyData);
 
-        // Fetch players
+        // Fetch players (use public view to avoid exposing sensitive data)
         const { data: playersData } = await supabase
-          .from("players")
+          .from("players_public")
           .select("id, display_name")
           .eq("party_code", code)
           .order("joined_at");
@@ -122,7 +122,7 @@ export default function HostSetup() {
       .channel(`host-setup-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, async () => {
         const { data } = await supabase
-          .from("players")
+          .from("players_public")
           .select("id, display_name")
           .eq("party_code", code)
           .order("joined_at");

@@ -112,6 +112,13 @@ export type Database = {
             referencedRelation: "players"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "picks_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       platform_config: {
@@ -219,6 +226,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "rumble_numbers_assigned_to_player_id_fkey"
+            columns: ["assigned_to_player_id"]
+            isOneToOne: false
+            referencedRelation: "players_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rumble_numbers_party_code_fkey"
             columns: ["party_code"]
             isOneToOne: false
@@ -323,7 +337,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      players_public: {
+        Row: {
+          display_name: string | null
+          id: string | null
+          joined_at: string | null
+          party_code: string | null
+          points: number | null
+        }
+        Insert: {
+          display_name?: string | null
+          id?: string | null
+          joined_at?: string | null
+          party_code?: string | null
+          points?: number | null
+        }
+        Update: {
+          display_name?: string | null
+          id?: string | null
+          joined_at?: string | null
+          party_code?: string | null
+          points?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_party_code_fkey"
+            columns: ["party_code"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never
