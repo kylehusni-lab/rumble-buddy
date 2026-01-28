@@ -126,11 +126,44 @@ export function RumblePropsSection({ picks, results, gender, onEditPick, canEdit
   // Main props (excluding Final Four)
   const mainProps = RUMBLE_PROPS.filter(p => !p.id.includes("final_four"));
 
+  // Calculate stats for Rumble Props section
+  const propsStats = mainProps.reduce(
+    (acc, prop) => {
+      const matchId = `${prefix}_${prop.id}`;
+      const pick = picks.find(p => p.match_id === matchId);
+      if (!pick) return acc;
+      const result = results.find(r => r.match_id === matchId);
+      if (!result) {
+        acc.pending++;
+      } else if (result.result === pick.prediction) {
+        acc.correct++;
+      }
+      return acc;
+    },
+    { correct: 0, pending: 0 }
+  );
+
   // Final Four picks
   const finalFourPicks = Array.from({ length: FINAL_FOUR_SLOTS }, (_, i) => {
     const matchId = `${prefix}_final_four_${i + 1}`;
     return picks.find(p => p.match_id === matchId);
   });
+
+  // Calculate stats for Final Four section
+  const finalFourStats = finalFourPicks.reduce(
+    (acc, pick, i) => {
+      if (!pick) return acc;
+      const matchId = `${prefix}_final_four_${i + 1}`;
+      const result = results.find(r => r.match_id === matchId);
+      if (!result) {
+        acc.pending++;
+      } else if (result.result === pick.prediction) {
+        acc.correct++;
+      }
+      return acc;
+    },
+    { correct: 0, pending: 0 }
+  );
 
   // Chaos props for this gender
   const chaosPicksData = CHAOS_PROPS.map((prop, index) => {
@@ -171,6 +204,17 @@ export function RumblePropsSection({ picks, results, gender, onEditPick, canEdit
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
               <Target size={14} className="text-primary" />
               {title} Rumble Props
+              {propsStats.correct > 0 && (
+                <span className="flex items-center gap-0.5 text-[10px] font-bold text-white point-badge px-1.5 py-0.5 rounded-full">
+                  <Check size={10} />
+                  {propsStats.correct}
+                </span>
+              )}
+              {propsStats.correct === 0 && propsStats.pending > 0 && (
+                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                  {propsStats.pending} pending
+                </span>
+              )}
             </h3>
             <ChevronDown 
               size={16} 
@@ -209,6 +253,17 @@ export function RumblePropsSection({ picks, results, gender, onEditPick, canEdit
             <h3 className="text-sm font-bold text-secondary-foreground flex items-center gap-2">
               <Users size={14} className="text-secondary" />
               {title} Final Four
+              {finalFourStats.correct > 0 && (
+                <span className="flex items-center gap-0.5 text-[10px] font-bold text-white point-badge px-1.5 py-0.5 rounded-full">
+                  <Check size={10} />
+                  {finalFourStats.correct}
+                </span>
+              )}
+              {finalFourStats.correct === 0 && finalFourStats.pending > 0 && (
+                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                  {finalFourStats.pending} pending
+                </span>
+              )}
             </h3>
             <ChevronDown 
               size={16} 
