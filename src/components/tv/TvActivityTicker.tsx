@@ -36,12 +36,7 @@ export function TvActivityTicker({ events, className }: TvActivityTickerProps) {
   }, [events.length, isPaused]);
 
   if (events.length === 0) {
-    return (
-      <div className={cn("flex items-center justify-center py-3 bg-card/50 rounded-lg border border-border", className)}>
-        <Circle className="w-3 h-3 text-muted-foreground animate-pulse mr-2" />
-        <span className="text-sm text-muted-foreground">Waiting for action...</span>
-      </div>
-    );
+    return null;
   }
 
   return (
