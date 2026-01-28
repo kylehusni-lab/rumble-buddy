@@ -371,7 +371,13 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      lookup_player_by_email: {
+        Args: { p_email: string; p_party_code: string }
+        Returns: {
+          display_name: string
+          id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
