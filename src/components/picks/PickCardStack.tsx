@@ -276,31 +276,32 @@ export function PickCardStack({
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Progress Bar */}
-      <ProgressBar
-        currentIndex={currentCardIndex}
-        completionStatus={cardCompletionStatus}
-        onJumpToCard={setCurrentCardIndex}
-      />
-
-      {/* Header with Home button, Group Code & Name */}
-      <div className="flex items-center justify-between py-2 px-1 border-b border-border">
-        <button
-          onClick={() => navigate(`/player/dashboard/${partyCode}`)}
-          className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Back to Dashboard"
-        >
-          <Home className="w-5 h-5" />
-        </button>
-        <div className="text-center flex-1">
-          <div className="text-sm text-muted-foreground">Group {partyCode}</div>
-          <div className="font-bold text-primary">Hey {displayName}!</div>
+      <div className="flex-1 flex flex-col max-w-lg mx-auto w-full">
+        {/* Header with Home button FIRST */}
+        <div className="py-2 px-4 border-b border-border flex items-center justify-between">
+          <button
+            onClick={() => navigate(`/player/dashboard/${partyCode}`)}
+            className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
+            aria-label="Back to Dashboard"
+          >
+            <Home className="w-5 h-5 text-muted-foreground" />
+          </button>
+          <div className="text-center flex-1">
+            <div className="text-sm text-muted-foreground">Group {partyCode}</div>
+            <div className="font-bold text-primary">Hey {displayName}!</div>
+          </div>
+          <div className="w-9" /> {/* Spacer for balance */}
         </div>
-        <div className="w-9" /> {/* Spacer for balance */}
-      </div>
 
-      {/* Card Container */}
-      <div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0 overflow-hidden">
+        {/* Progress Bar SECOND */}
+        <ProgressBar
+          currentIndex={currentCardIndex}
+          completionStatus={cardCompletionStatus}
+          onJumpToCard={setCurrentCardIndex}
+        />
+
+        {/* Card Container */}
+        <div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0 overflow-hidden">
         <AnimatePresence mode="wait" custom={swipeDirection}>
           <motion.div
             key={currentCardIndex}
@@ -380,63 +381,60 @@ export function PickCardStack({
         </motion.div>
       )}
 
-      {/* Navigation Controls */}
-      <div className="p-4 border-t border-border flex items-center justify-between bg-card">
-        <Button
-          variant="ghost"
-          onClick={() => handleSwipe("left")}
-          disabled={currentCardIndex === 0}
-          className="flex items-center gap-2"
-        >
-          <ChevronLeft className="w-5 h-5" />
-          Back
-        </Button>
-
-        <div className="text-sm text-muted-foreground">
-          {currentCardIndex + 1} / {TOTAL_CARDS}
-        </div>
-
-        {!isLastCard ? (
+        {/* Navigation Controls */}
+        <div className="p-4 border-t border-border flex items-center justify-between gap-2 bg-card">
+          {/* Back Button */}
           <Button
-            variant="ghost"
-            onClick={() => handleSwipe("right")}
-            className="flex items-center gap-2"
+            variant="outline"
+            size="sm"
+            onClick={() => handleSwipe("left")}
+            disabled={currentCardIndex === 0}
+            className="flex items-center gap-1 min-w-[80px]"
           >
-            Next
-            <ChevronRight className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
+            Back
           </Button>
-        ) : (
+
+          {/* Save Button - always visible */}
           <Button
             onClick={handleSaveClick}
             disabled={isSubmitting || isLocked}
+            variant={allPicksComplete && !isLocked ? "default" : "outline"}
+            size="sm"
             className={allPicksComplete && !isLocked ? "gold-shimmer" : ""}
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Saving...
               </>
             ) : isLocked ? (
               "Locked 🔒"
             ) : (
               <>
-                <Save className="w-4 h-4 mr-2" />
+                <Save className="w-4 h-4" />
                 Save
               </>
             )}
           </Button>
-        )}
-      </div>
 
-      {/* Back to Dashboard */}
-      <div className="p-2 text-center border-t border-border">
-        <Button 
-          variant="link" 
-          onClick={() => navigate(`/player/dashboard/${partyCode}`)}
-          className="text-muted-foreground"
-        >
-          ← Back to Dashboard
-        </Button>
+          {/* Page Indicator */}
+          <span className="text-xs text-muted-foreground min-w-[40px] text-center">
+            {currentCardIndex + 1}/{TOTAL_CARDS}
+          </span>
+
+          {/* Next Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleSwipe("right")}
+            disabled={currentCardIndex === TOTAL_CARDS - 1}
+            className="flex items-center gap-1 min-w-[80px]"
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
       
       {/* Incomplete Picks Warning Dialog */}
