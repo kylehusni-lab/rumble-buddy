@@ -6,7 +6,6 @@ import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data
 import { RUMBLE_PROPS, FINAL_FOUR_SLOTS, SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
 import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
 import { getBlockedWrestlers, getBlockedReason } from "@/lib/pick-validation";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -162,7 +161,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
+      <div className="flex-1 min-h-0 -mx-2 px-2 overflow-y-auto">
         <div className="space-y-3 sm:space-y-4 pb-20">
           {/* Wrestler Props Grid - 2 columns on mobile, 3 on larger screens */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
@@ -273,7 +272,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
             </button>
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Single Wrestler Picker Modal */}
       <Dialog open={!!activePickerId} onOpenChange={(open) => !open && setActivePickerId(null)}>
@@ -326,9 +325,8 @@ export const RumblePropsCard = memo(function RumblePropsCard({
           </div>
 
           {/* Wrestler Grid */}
-          <div className="flex-1 mt-4 min-h-0 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3 pb-4">
+          <div className="flex-1 mt-4 min-h-0 overflow-y-auto">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3 pb-4">
               {filteredEntrants.map((wrestler) => {
                 const isSelected = activePickerId ? values[activePickerId] === wrestler : false;
                 const isBlocked = blockedWrestlers.has(wrestler);
@@ -411,10 +409,9 @@ export const RumblePropsCard = memo(function RumblePropsCard({
                   );
                 }
                 
-                return wrestlerButton;
-              })}
-              </div>
-            </ScrollArea>
+              return wrestlerButton;
+            })}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -476,7 +473,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
           </div>
 
           {/* Wrestler Grid */}
-          <ScrollArea className="flex-1 mt-2">
+          <div className="flex-1 mt-2 min-h-0 overflow-y-auto">
             <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3 pb-4">
               {filteredEntrants.map((wrestler) => {
                 const isSelected = finalFourSelections.includes(wrestler);
@@ -543,10 +540,10 @@ export const RumblePropsCard = memo(function RumblePropsCard({
                       {getEntrantDisplayName(wrestler)}
                     </span>
                   </motion.button>
-                );
-              })}
+              );
+            })}
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Save Button */}
           <Button
