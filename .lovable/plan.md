@@ -1,169 +1,206 @@
-# Security & Authentication Architecture Rework
 
-**Status: Phase 1 Complete ✅**
+# Go-Live Readiness: Consolidated Implementation Plan
 
-## Problem Summary
+## Summary
 
-The current system uses a custom authentication pattern (session IDs + PINs stored in localStorage) without real Supabase Auth. This creates several issues:
+This plan addresses four critical issues discovered during testing:
 
-- **RLS Friction**: Policies can't use `auth.uid()` since there's no authenticated user, forcing workarounds like restrictive `SELECT USING (false)` policies with public views
-- **Fragile Session Management**: Session IDs in localStorage can be lost, spoofed, or cleared
-- **Overly Permissive Writes**: Many tables allow anyone to INSERT/UPDATE/DELETE with `true` conditions
-- **Complex Workarounds**: The current design requires constant switching between tables and views, plus RPC functions for almost every operation
+1. **Group Mode Bug**: Women's Rumble picks showing Men's wrestlers due to substring matching error
+2. **Solo Mode Bug**: Hardcoded entrant lists instead of dynamic platform config
+3. **TV Display Bug**: Stuck in "Waiting" mode after event starts due to RLS blocking realtime subscription
+4. **Security Hardening**: Rate limiting, CORS restrictions, and input validation for Edge Functions
 
-## Proposed Solution: Hybrid Approach
+---
 
-Implement **Supabase Anonymous Auth** combined with the existing PIN system. This gives you real authenticated users without requiring email/password signup, while keeping the simple UX.
+## Part 1: Group Mode Edit Modal Bug (P0 - Critical)
 
-### Why Anonymous Auth?
+### Problem
+In `SinglePickEditModal.tsx`, the gender detection uses `matchId.includes("mens")` which incorrectly matches "womens" strings because "wo**mens**" contains "mens".
 
-- **Real `auth.uid()`**: RLS can properly scope data access to the authenticated user
-- **Session Persistence**: Supabase handles session refresh and persistence
-- **No UX Change**: Users still just enter a name + code - no passwords needed
-- **Demo Mode Compatible**: Anonymous users work perfectly for testing
-- **Upgrade Path**: Anonymous users can later link their account to email if desired
-
-## Architecture Changes
-
-### 1. Authentication Flow
-
-**Group Mode (Players/Guests):**
+```javascript
+"womens_rumble_winner".includes("mens")  // returns TRUE (bug!)
 ```
-1. User enters group code + name + email
-2. App calls supabase.auth.signInAnonymously()
-3. On success, create/update player record with auth.uid()
-4. RLS uses auth.uid() to scope all player data access
-```
-
-**Group Mode (Hosts):**
-```
-1. Host creates group (automatically creates anonymous auth session)
-2. Host sets 4-digit PIN (stored hashed in parties table)
-3. On return, host enters PIN to verify ownership
-4. PIN verification links to the original auth user OR upgrades session
-```
-
-**Solo Mode:**
-```
-1. User can sign in anonymously OR with email/PIN (for cross-device sync)
-2. Anonymous users get full functionality on that device
-3. Email+PIN users can access from any device
-```
-
-**Demo Mode:**
-```
-1. Creates anonymous session automatically
-2. Seeds demo data linked to the anonymous user
-3. Works exactly as before - no changes needed
-```
-
-### 2. Database Schema Changes
-
-**Add `user_id` column to key tables:**
-
-| Table | Change |
-|-------|--------|
-| `parties` | Add `host_user_id uuid references auth.users(id)` |
-| `players` | Add `user_id uuid references auth.users(id)` |
-| `solo_players` | Add `user_id uuid references auth.users(id)` |
-
-**Note:** Keep existing `session_id` columns temporarily for migration, then deprecate.
-
-### 3. RLS Policy Redesign
-
-**Replace the current confusing pattern with simple, secure policies:**
-
-| Table | SELECT | INSERT | UPDATE | DELETE |
-|-------|--------|--------|--------|--------|
-| `parties` | `auth.uid() = host_user_id` (hosts only) | `auth.uid() IS NOT NULL` | `auth.uid() = host_user_id` | None |
-| `players` | Players in same party can see each other | Own record only | Own record only | None |
-| `picks` | Own picks + party members (after event) | Own record only | Own record (if not scored) | None |
-| `rumble_numbers` | Party members can read | Host only | Host only | Host only |
-
-**Keep public views for truly public data** (leaderboard, TV display) but fix with `security_invoker=on`.
-
-### 4. Code Changes
-
-**Session Management:**
-- Replace custom `getSessionId()` with `supabase.auth.getSession()`
-- Replace `setPlayerSession()` with storing supplementary data after auth
-- Use `supabase.auth.onAuthStateChange()` for session persistence
-
-**Data Queries:**
-- Remove most `parties_public` view usage - query `parties` directly
-- RLS automatically scopes data based on `auth.uid()`
-
-**RPC Functions:**
-- Keep PIN verification RPCs (still needed for host access)
-- Simplify `save_solo_pick` and similar - RLS handles ownership
-
-## Migration Strategy
-
-**Phase 1 - Add Anonymous Auth (non-breaking):**
-1. Add `user_id` columns (nullable initially)
-2. Implement anonymous sign-in on all entry points
-3. Populate `user_id` on new records
-4. Add new RLS policies alongside existing ones
-
-**Phase 2 - Backfill & Migrate:**
-1. Create migration script to link existing sessions to anonymous users
-2. Update RLS to prefer `user_id` when available
-3. Remove dependency on `session_id`
-
-**Phase 3 - Cleanup:**
-1. Make `user_id` non-nullable
-2. Drop legacy `session_id` columns
-3. Remove old RLS policies
-4. Remove public views (if no longer needed)
-
-## Demo Mode Compatibility
-
-Demo mode will continue to work seamlessly:
-- `seedDemoParty()` creates anonymous session automatically
-- Demo players are created with their own anonymous auth sessions
-- PIN "0000" works as before for host access
-- All existing demo functionality preserved
-
-## Technical Implementation Details
 
 ### Files to Modify
+| File | Change |
+|------|--------|
+| `src/components/dashboard/SinglePickEditModal.tsx` | Fix gender detection in 4 places |
 
-**New/Updated Files:**
-- `src/lib/auth.ts` - New auth utilities wrapping Supabase Auth
-- `src/hooks/useAuth.ts` - React hook for auth state
-- `src/lib/session.ts` - Refactor to use Supabase sessions
-- `src/pages/PlayerJoin.tsx` - Add anonymous sign-in
-- `src/pages/Index.tsx` - Add anonymous sign-in on group create
-- `src/pages/SoloSetup.tsx` - Support both anonymous and email auth
-- `src/lib/demo-seeder.ts` - Create anonymous sessions for demo users
+### Technical Changes
 
-**Database Migrations:**
-- Add `user_id` columns to `parties`, `players`, `solo_players`
-- Update RLS policies (add new, keep old for transition)
-- Fix views with `security_invoker=on`
-- Create helper function `is_party_member(party_code)` for RLS
+The fix reverses the logic to check for "womens" first in 4 locations (lines 38, 52, 65, 79):
 
-### Security Improvements
+```typescript
+// Before (buggy)
+const gender = matchId.includes("mens") ? "mens" : "womens";
 
-1. **Hashed PINs**: Store host PINs using bcrypt (already partially done via RPC)
-2. **Rate Limiting**: Add rate limiting to PIN verification (edge function)
-3. **Session Rotation**: Supabase handles secure session rotation automatically
-4. **Audit Trail**: `auth.users` provides built-in audit capabilities
+// After (fixed)
+const gender = matchId.includes("womens") ? "womens" : "mens";
+```
 
-## Benefits
+---
 
-| Before | After |
-|--------|-------|
-| Custom session management | Built-in Supabase session handling |
-| Can't use `auth.uid()` in RLS | Full RLS capability with `auth.uid()` |
-| `SELECT USING (false)` + views pattern | Direct table access with proper RLS |
-| 11 "RLS always true" warnings | Properly scoped write policies |
-| Fragile localStorage sessions | Persistent, secure auth tokens |
+## Part 2: Solo Mode Picks Fix (P0 - Bug)
 
-## Rollback Plan
+### Problem
+`SoloPicks.tsx` uses hardcoded `DEFAULT_MENS_ENTRANTS` and `DEFAULT_WOMENS_ENTRANTS` constants instead of fetching from `usePlatformConfig()`. This means Solo mode won't reflect entrant updates made via Platform Admin.
 
-If issues arise:
-1. `user_id` columns are nullable - old `session_id` logic still works
-2. Old RLS policies kept during transition - can revert by removing new policies
-3. No data migration required for rollback - just code changes
+### Files to Modify
+| File | Change |
+|------|--------|
+| `src/pages/SoloPicks.tsx` | Add `usePlatformConfig` hook, update entrant props |
 
+### Technical Changes
+
+1. Replace hardcoded constants import with `usePlatformConfig` hook
+2. Add `configLoading` to the loading state check
+3. Update `RumbleWinnerCard` and `RumblePropsCard` props to use dynamic entrants
+
+```typescript
+// Add hook
+const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
+
+// Update loading check
+if (isLoading || configLoading || !isAuthenticated) { ... }
+
+// Update card props
+customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
+```
+
+---
+
+## Part 3: TV Display Realtime Fix (P0 - Critical)
+
+### Problem
+After the host clicks "Start Event", the TV display stays stuck on "Waiting for Event to Start" screen. This happens because:
+
+1. The TV display subscribes to realtime updates on the `parties` table
+2. Current RLS policy only allows hosts to SELECT from `parties` (`auth.uid() = host_user_id`)
+3. Realtime subscriptions require SELECT access to work
+4. Even when opened by the host, the realtime subscription may fail silently
+
+### Solution
+Add a SELECT policy allowing party members to read the `parties` table. This enables realtime subscriptions for the TV display while maintaining security (only authenticated party members can read).
+
+### Database Migration Required
+
+```sql
+-- Allow party members to read party data for realtime subscriptions
+CREATE POLICY "Party members can read their party"
+ON public.parties FOR SELECT
+USING (
+  auth.uid() = host_user_id 
+  OR public.is_party_member(code)
+);
+```
+
+### Alternative Solution (Fallback)
+As a backup, add polling to the TV display that checks party status every 5 seconds while in pre_event state:
+
+```typescript
+// Add polling fallback for party status
+useEffect(() => {
+  if (!code || partyStatus !== "pre_event") return;
+  
+  const interval = setInterval(async () => {
+    const { data } = await supabase
+      .from("parties_public")
+      .select("status")
+      .eq("code", code)
+      .single();
+    
+    if (data?.status && data.status !== "pre_event") {
+      setPartyStatus(data.status);
+      // Trigger number reveal if just went live
+      if (data.status === "live") {
+        await loadRevealData();
+      }
+    }
+  }, 5000);
+  
+  return () => clearInterval(interval);
+}, [code, partyStatus]);
+```
+
+---
+
+## Part 4: Security Hardening (P1)
+
+### 4a. Rate Limiting for Admin PIN Verification
+
+Prevent brute-force attacks on the 4-digit platform admin PIN.
+
+| File | Change |
+|------|--------|
+| `supabase/functions/verify-admin-pin/index.ts` | Add IP-based rate limiting (5 attempts per 15 min) |
+
+### 4b. CORS Restriction
+
+Replace wildcard CORS with allowed origins only.
+
+| Files | Change |
+|-------|--------|
+| `supabase/functions/verify-admin-pin/index.ts` | Restrict to app domain origins |
+| `supabase/functions/update-platform-config/index.ts` | Restrict to app domain origins |
+
+### 4c. Input Validation for Platform Config
+
+| File | Change |
+|------|--------|
+| `supabase/functions/update-platform-config/index.ts` | Validate array size (max 100) and string lengths (max 100 chars) |
+
+---
+
+## Implementation Order
+
+| Step | Task | Priority | Type |
+|------|------|----------|------|
+| 1 | Fix `SinglePickEditModal.tsx` gender detection (4 lines) | P0 | Bug fix |
+| 2 | Fix `SoloPicks.tsx` to use `usePlatformConfig` | P0 | Bug fix |
+| 3 | Add RLS policy for party members to read parties + polling fallback for TV | P0 | Bug fix |
+| 4 | Add rate limiting to `verify-admin-pin` | P1 | Security |
+| 5 | Tighten CORS on both edge functions | P1 | Security |
+| 6 | Add input validation to `update-platform-config` | P1 | Security |
+
+---
+
+## Files Summary
+
+| File | Changes |
+|------|---------|
+| `src/components/dashboard/SinglePickEditModal.tsx` | Fix gender detection (lines 38, 52, 65, 79) |
+| `src/pages/SoloPicks.tsx` | Add `usePlatformConfig`, update loading check, update entrant props |
+| `src/pages/TvDisplay.tsx` | Add polling fallback for party status during pre_event |
+| `supabase/functions/verify-admin-pin/index.ts` | Add rate limiting, restrict CORS origins |
+| `supabase/functions/update-platform-config/index.ts` | Restrict CORS origins, add input validation |
+
+### Database Migration
+| Change | Description |
+|--------|-------------|
+| Add SELECT policy on `parties` | Allow party members (not just host) to read party data for realtime |
+
+---
+
+## Supabase Linter Notes
+
+The 10 "Anonymous Access Policies" warnings remain **expected behavior** because:
+- The app uses Supabase Anonymous Auth as the primary authentication method
+- All users sign in anonymously, then their `auth.uid()` is used for RLS scoping
+- These warnings indicate the policies work for anonymous users, which is correct
+
+---
+
+## Testing Checklist
+
+After implementation:
+- [ ] Group mode (party 4605): Click edit on "Women's Winner" - verify Women's wrestlers displayed
+- [ ] Group mode: Click edit on "Men's Winner" - verify Men's wrestlers displayed
+- [ ] Group mode: Edit Women's Rumble Props (Final Four, First Elim, etc.) - verify Women's wrestlers
+- [ ] Group mode: Edit Men's Rumble Props - verify Men's wrestlers
+- [ ] Solo mode: Navigate to Women's Rumble Winner card - verify Women's wrestlers
+- [ ] Solo mode: Navigate to Women's Rumble Props - verify Women's wrestlers
+- [ ] **TV Display**: Open TV in new tab, then click "Start Event" in Host Setup - verify TV transitions from waiting to live view
+- [ ] **TV Display**: Verify number reveal animation plays after event start
+- [ ] Platform Admin: Test rate limiting (fail PIN 5 times, verify 429 response)
+- [ ] Platform Admin: Verify CORS blocks requests from unauthorized origins
+- [ ] Demo mode: Full flow verification with 6 players
