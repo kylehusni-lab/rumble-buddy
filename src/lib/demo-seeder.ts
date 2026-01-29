@@ -122,7 +122,11 @@ export async function generateDemoPicksForPlayers(playerIds: string[]) {
     });
   }
 
-  const { error } = await supabase.from("picks").insert(picks);
+  // Use secure RPC function that bypasses RLS for demo picks
+  // Pass the array directly - Supabase will convert to JSONB
+  const { error } = await supabase.rpc('seed_demo_picks', {
+    p_picks: picks
+  });
   if (error) throw error;
 }
 
@@ -133,57 +137,43 @@ export async function seedDemoParty(
 ): Promise<{ hostPlayerId: string; guestIds: string[] }> {
   const hostEmail = "kyle.husni@gmail.com";
   
-  // 1. Create demo host as player (Kyle) - no .select() due to RLS
-  const { error: hostError } = await supabase
-    .from("players")
-    .insert({
-      party_code: partyCode,
-      email: hostEmail,
-      display_name: "Kyle",
-      session_id: hostSessionId,
-      user_id: hostUserId || null,
+  // 1. Create demo host as player (Kyle) using RPC (bypasses RLS for user_id linking)
+  const { data: hostPlayerId, error: hostError } = await supabase
+    .rpc('seed_demo_player', {
+      p_party_code: partyCode,
+      p_email: hostEmail,
+      p_display_name: "Kyle",
+      p_session_id: hostSessionId,
     });
 
   if (hostError) throw hostError;
+  if (!hostPlayerId) throw new Error("Failed to create host player");
 
-  // Lookup host ID using SECURITY DEFINER function
-  const { data: hostLookup, error: hostLookupError } = await supabase
-    .rpc('lookup_player_by_email', {
-      p_party_code: partyCode,
-      p_email: hostEmail
-    });
-
-  if (hostLookupError || !hostLookup?.[0]) {
-    throw hostLookupError || new Error("Failed to lookup host player");
+  // If we have a host user ID, update the player record
+  if (hostUserId) {
+    await supabase
+      .from("players")
+      .update({ user_id: hostUserId })
+      .eq("id", hostPlayerId);
   }
-  const hostPlayerId = hostLookup[0].id;
 
-  // 2. Create 5 demo guests - no .select() due to RLS
-  const guestInserts = DEMO_GUESTS.map((g) => ({
-    party_code: partyCode,
-    email: g.email,
-    display_name: g.name,
-    session_id: crypto.randomUUID(),
-  }));
-
-  const { error: guestsError } = await supabase
-    .from("players")
-    .insert(guestInserts);
-
-  if (guestsError) throw guestsError;
-
-  // Lookup each guest ID using SECURITY DEFINER function
+  // 2. Create 5 demo guests using RPC (bypasses RLS)
   const guestIds: string[] = [];
   for (const guest of DEMO_GUESTS) {
-    const { data: guestLookup } = await supabase
-      .rpc('lookup_player_by_email', {
+    const { data: guestId, error: guestError } = await supabase
+      .rpc('seed_demo_player', {
         p_party_code: partyCode,
-        p_email: guest.email
+        p_email: guest.email,
+        p_display_name: guest.name,
+        p_session_id: crypto.randomUUID(),
       });
-    if (guestLookup?.[0]?.id) {
-      guestIds.push(guestLookup[0].id);
+    
+    if (guestError) throw guestError;
+    if (guestId) {
+      guestIds.push(guestId);
     }
   }
+
 
   // 3. Generate picks for all players
   const allPlayerIds = [hostPlayerId, ...guestIds];
