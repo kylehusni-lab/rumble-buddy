@@ -4,12 +4,15 @@ import { AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { TvViewNavigator } from "@/components/tv/TvViewNavigator";
-import { TvHeaderStats } from "@/components/tv/TvHeaderStats";
+import { TvUnifiedHeader, RumbleSubView } from "@/components/tv/TvUnifiedHeader";
 import { TvActivityTicker, ActivityEvent } from "@/components/tv/TvActivityTicker";
-import { TvTabBar, TvTabId } from "@/components/tv/TvTabBar";
+import { TvScorePopup } from "@/components/tv/TvScorePopup";
+import { TvTabId } from "@/components/tv/TvTabBar";
 import { Logo } from "@/components/Logo";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
+import { useAutoHideHeader } from "@/hooks/useAutoHideHeader";
+import { useTvScoreQueue } from "@/hooks/useTvScoreQueue";
 
 interface Player {
   id: string;
@@ -58,6 +61,12 @@ export default function TvDisplay() {
   
   // Responsive scaling hook
   const { mainColSpan, sideColSpan } = useTvScale();
+  
+  // Auto-hide header hook
+  const { isVisible: isHeaderVisible, showHeader } = useAutoHideHeader();
+  
+  // Score popup queue
+  const { currentPopup, addScoreEvent } = useTvScoreQueue();
 
   const [partyStatus, setPartyStatus] = useState<string>("pre_event");
   const [players, setPlayers] = useState<Player[]>([]);
@@ -69,13 +78,16 @@ export default function TvDisplay() {
   const [showNumberReveal, setShowNumberReveal] = useState(false);
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
   
-  // New consolidated navigation state
+  // Navigation state
   const [activeTab, setActiveTab] = useState<TvTabId>("leaderboard");
   const [undercardMatchIndex, setUndercardMatchIndex] = useState(0);
   
+  // Sub-view state for rumble tabs (lifted to parent for header control)
+  const [mensSubView, setMensSubView] = useState<RumbleSubView>("grid");
+  const [womensSubView, setWomensSubView] = useState<RumbleSubView>("grid");
+  
   // Activity ticker state
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
-  const [lastActivityTime, setLastActivityTime] = useState<Date | null>(null);
   
   // Auto-rotate state
   const [autoRotate, setAutoRotate] = useState(false);
@@ -90,7 +102,10 @@ export default function TvDisplay() {
   // Ref for activity event function
   const addActivityEventRef = useRef<(type: ActivityEvent["type"], message: string) => void>(() => {});
   
-  // Update addActivityEventRef when the function changes
+  // Ref for score popup function
+  const addScoreEventRef = useRef<(points: number, playerName: string) => void>(() => {});
+  
+  // Update refs when functions change
   useEffect(() => {
     addActivityEventRef.current = (type: ActivityEvent["type"], message: string) => {
       const event: ActivityEvent = {
@@ -100,9 +115,12 @@ export default function TvDisplay() {
         timestamp: new Date(),
       };
       setActivityEvents(prev => [event, ...prev].slice(0, 20));
-      setLastActivityTime(new Date());
     };
   }, []);
+  
+  useEffect(() => {
+    addScoreEventRef.current = addScoreEvent;
+  }, [addScoreEvent]);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -298,7 +316,7 @@ export default function TvDisplay() {
 
       if (allPlayers && allNumbers) {
         const playerData: PlayerWithNumbers[] = allPlayers.map(p => ({
-          playerName: p.display_name,
+          playerName: p.display_name || "",
           mensNumbers: allNumbers
             .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
             .map(n => n.number)
@@ -328,18 +346,23 @@ export default function TvDisplay() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, () => {
         supabase.from("players_public").select("id, display_name, points").eq("party_code", code).order("points", { ascending: false }).then(({ data }) => {
-          if (data) setPlayers(data);
+          if (data) setPlayers(data as Player[]);
         });
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, (payload) => {
         const updated = payload.new as any;
         const old = payload.old as any;
         
-        // Add activity event for entry (no overlay animation)
+        // Add activity event for entry
         if (updated.entry_timestamp && !old?.entry_timestamp) {
           const player = playersRef.current.find(p => p.id === updated.assigned_to_player_id);
           const ownerName = player?.display_name || "Vacant";
           addActivityEventRef.current("entry", `#${updated.number}: ${updated.wrestler_name} (${ownerName})`);
+          
+          // Show score popup for entry points
+          if (player) {
+            addScoreEventRef.current(5, player.display_name);
+          }
         }
         
         // Add activity event for elimination
@@ -409,19 +432,6 @@ export default function TvDisplay() {
     return "active";
   };
 
-  // Calculate rumble stats
-  const activeWrestlerCount = activeTab === "mens" 
-    ? mensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length
-    : activeTab === "womens"
-    ? womensNumbers.filter(n => n.entry_timestamp && !n.elimination_timestamp).length
-    : 0;
-  
-  const totalEliminations = activeTab === "mens"
-    ? mensNumbers.filter(n => n.elimination_timestamp).length
-    : activeTab === "womens"
-    ? womensNumbers.filter(n => n.elimination_timestamp).length
-    : 0;
-
   // Handle tab selection
   const handleSelectTab = useCallback((tabId: TvTabId) => {
     setActiveTab(tabId);
@@ -432,34 +442,6 @@ export default function TvDisplay() {
     // Pause auto-rotate on manual navigation
     setAutoRotate(false);
   }, []);
-
-  // Check if a tab is complete
-  const isTabComplete = useCallback((tabId: TvTabId): boolean => {
-    switch (tabId) {
-      case "leaderboard":
-        return false; // Leaderboard is never "complete"
-      case "undercard":
-        return UNDERCARD_MATCHES.every(m => matchResults.some(r => r.match_id === m.id));
-      case "mens":
-        return matchResults.some(r => r.match_id === "mens_rumble_winner");
-      case "womens":
-        return matchResults.some(r => r.match_id === "womens_rumble_winner");
-      default:
-        return false;
-    }
-  }, [matchResults]);
-
-  // Check if a tab has active content
-  const isTabLive = useCallback((tabId: TvTabId): boolean => {
-    switch (tabId) {
-      case "mens":
-        return mensNumbers.some(n => n.entry_timestamp && !n.elimination_timestamp);
-      case "womens":
-        return womensNumbers.some(n => n.entry_timestamp && !n.elimination_timestamp);
-      default:
-        return false;
-    }
-  }, [mensNumbers, womensNumbers]);
 
   // Auto-rotate logic
   useEffect(() => {
@@ -510,22 +492,6 @@ export default function TvDisplay() {
     setAutoRotate(prev => !prev);
   }, []);
 
-  // Get current view title for header
-  const getCurrentViewTitle = (): string => {
-    switch (activeTab) {
-      case "leaderboard":
-        return "Leaderboard";
-      case "undercard":
-        return UNDERCARD_MATCHES[undercardMatchIndex]?.title || "Undercard";
-      case "mens":
-        return "Men's Royal Rumble";
-      case "womens":
-        return "Women's Royal Rumble";
-      default:
-        return "";
-    }
-  };
-
   return (
     <>
       {/* Number Reveal Animation */}
@@ -538,71 +504,62 @@ export default function TvDisplay() {
         )}
       </AnimatePresence>
 
-    <div className="min-h-screen bg-background text-foreground tv-mode p-6 flex flex-col">
-      {/* Enhanced Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <Logo size="sm" />
-          <p className="text-muted-foreground text-lg font-mono">#{code}</p>
-        </div>
-        
-        <TvHeaderStats
-          currentViewTitle={getCurrentViewTitle()}
-          activeWrestlerCount={activeWrestlerCount}
-          totalEliminations={totalEliminations}
-          lastActivityTime={lastActivityTime}
-          autoRotate={autoRotate}
-          onToggleAutoRotate={toggleAutoRotate}
-          showRumbleStats={activeTab === "mens" || activeTab === "womens"}
-        />
-      </div>
+      {/* Score Popup */}
+      <TvScorePopup event={currentPopup} />
 
-      {/* Tab Bar - 4 consolidated tabs */}
-      {partyStatus !== "pre_event" && (
-        <div className="mb-4 flex justify-center">
-          <TvTabBar
+      <div className="min-h-screen bg-background text-foreground tv-mode flex flex-col">
+        {/* Unified Auto-Hiding Header */}
+        {partyStatus !== "pre_event" && (
+          <TvUnifiedHeader
+            partyCode={code || ""}
             activeTab={activeTab}
             onSelectTab={handleSelectTab}
-            isTabComplete={isTabComplete}
-            isTabLive={isTabLive}
-          />
-        </div>
-      )}
-
-      {/* Main Content Area - Full Width */}
-      <div className="flex-1">
-        {partyStatus === "pre_event" ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <Logo size="lg" className="mx-auto mb-4" />
-              <h2 className="text-3xl font-bold mb-2">Waiting for Event to Start</h2>
-              <p className="text-muted-foreground">{players.length} players ready</p>
-            </div>
-          </div>
-        ) : (
-          <TvViewNavigator
-            matchResults={matchResults}
-            mensNumbers={mensNumbers}
-            womensNumbers={womensNumbers}
-            players={players}
-            picks={picks}
-            getPlayerInitials={getPlayerInitials}
-            getNumberStatus={getNumberStatus}
-            activeTab={activeTab}
-            undercardMatchIndex={undercardMatchIndex}
-            onUndercardMatchChange={setUndercardMatchIndex}
+            mensSubView={mensSubView}
+            womensSubView={womensSubView}
+            onMensSubViewChange={setMensSubView}
+            onWomensSubViewChange={setWomensSubView}
+            autoRotate={autoRotate}
+            onToggleAutoRotate={toggleAutoRotate}
+            isVisible={isHeaderVisible}
+            onShowHeader={showHeader}
           />
         )}
-      </div>
 
-      {/* Activity Ticker */}
-      {partyStatus !== "pre_event" && (
-        <div className="mt-4">
-          <TvActivityTicker events={activityEvents} />
+        {/* Main Content Area - Full Width with top padding for header */}
+        <div className={`flex-1 p-6 ${partyStatus !== "pre_event" ? "pt-20" : ""}`}>
+          {partyStatus === "pre_event" ? (
+            <div className="flex items-center justify-center h-96">
+              <div className="text-center">
+                <Logo size="lg" className="mx-auto mb-4" />
+                <h2 className="text-3xl font-bold mb-2">Waiting for Event to Start</h2>
+                <p className="text-muted-foreground">{players.length} players ready</p>
+              </div>
+            </div>
+          ) : (
+            <TvViewNavigator
+              matchResults={matchResults}
+              mensNumbers={mensNumbers}
+              womensNumbers={womensNumbers}
+              players={players}
+              picks={picks}
+              getPlayerInitials={getPlayerInitials}
+              getNumberStatus={getNumberStatus}
+              activeTab={activeTab}
+              undercardMatchIndex={undercardMatchIndex}
+              onUndercardMatchChange={setUndercardMatchIndex}
+              mensSubView={mensSubView}
+              womensSubView={womensSubView}
+            />
+          )}
         </div>
-      )}
 
-    </div>
+        {/* Activity Ticker */}
+        {partyStatus !== "pre_event" && (
+          <div className="px-6 pb-6">
+            <TvActivityTicker events={activityEvents} />
+          </div>
+        )}
+      </div>
     </>
   );
 }
