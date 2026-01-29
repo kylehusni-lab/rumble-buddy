@@ -281,7 +281,7 @@ export function PickCardStack({
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       <div className="flex-1 flex flex-col max-w-lg mx-auto w-full overflow-hidden">
         {/* Header with Back button */}
-        <div className="py-2 px-4 border-b border-border flex items-center justify-between">
+        <div className="py-2 px-4 border-b border-border flex items-center justify-between shrink-0">
           <button
             onClick={() => navigate(isHost ? `/host/control/${partyCode}` : `/player/dashboard/${partyCode}`)}
             className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors flex items-center gap-1"
@@ -297,92 +297,94 @@ export function PickCardStack({
         </div>
 
         {/* Progress Bar SECOND */}
-        <ProgressBar
-          currentIndex={currentCardIndex}
-          completionStatus={cardCompletionStatus}
-          onJumpToCard={setCurrentCardIndex}
-        />
+        <div className="shrink-0">
+          <ProgressBar
+            currentIndex={currentCardIndex}
+            completionStatus={cardCompletionStatus}
+            onJumpToCard={setCurrentCardIndex}
+          />
+        </div>
 
-        {/* Card Container - flex-1 + min-h-0 ensures proper height constraint for child scrolling */}
-        <div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0 overflow-hidden shrink">
-        <AnimatePresence mode="wait" custom={swipeDirection}>
+        {/* Card Container - flex-1 with overflow-hidden ensures proper height constraint */}
+        <div className="flex-1 flex items-start justify-center p-4 pt-2 overflow-hidden">
+          <AnimatePresence mode="wait" custom={swipeDirection}>
+            <motion.div
+              key={currentCardIndex}
+              custom={swipeDirection}
+              initial={{ 
+                x: swipeDirection === "left" ? -300 : 300,
+                opacity: 0
+              }}
+              animate={{ 
+                x: 0,
+                opacity: 1
+              }}
+              exit={{ 
+                x: swipeDirection === "left" ? 300 : -300,
+                opacity: 0
+              }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+              className="w-full max-w-md h-full"
+            >
+              {currentCard.type === "match" && (
+                <MatchCard
+                  title={currentCard.title}
+                  options={currentCard.options as readonly [string, string]}
+                  value={picks[currentCard.id] || null}
+                  onChange={(value) => handlePickUpdate(currentCard.id, value)}
+                  disabled={isLocked}
+                />
+              )}
+              
+              {currentCard.type === "rumble-winner" && (
+                <RumbleWinnerCard
+                  title={currentCard.title}
+                  gender={currentCard.gender as "mens" | "womens"}
+                  value={picks[currentCard.id] || null}
+                  onChange={(value) => handlePickUpdate(currentCard.id, value)}
+                  disabled={isLocked}
+                  customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
+                />
+              )}
+              
+              {currentCard.type === "chaos-props" && (
+                <ChaosPropsCard
+                  title={currentCard.title}
+                  gender={currentCard.gender as "mens" | "womens"}
+                  values={getChaosPropsValues(currentCard.gender as "mens" | "womens")}
+                  onChange={handleChaosPropsUpdate}
+                  disabled={isLocked}
+                />
+              )}
+              
+              {currentCard.type === "rumble-props" && (
+                <RumblePropsCard
+                  title={currentCard.title}
+                  gender={currentCard.gender as "mens" | "womens"}
+                  values={getRumblePropsValues(currentCard.gender as "mens" | "womens")}
+                  onChange={handleRumblePropsUpdate}
+                  disabled={isLocked}
+                  customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Swipe Hint (only show on first card) */}
+        {currentCardIndex === 0 && (
           <motion.div
-            key={currentCardIndex}
-            custom={swipeDirection}
-            initial={{ 
-              x: swipeDirection === "left" ? -300 : 300,
-              opacity: 0
-            }}
-            animate={{ 
-              x: 0,
-              opacity: 1
-            }}
-            exit={{ 
-              x: swipeDirection === "left" ? 300 : -300,
-              opacity: 0
-            }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-            className="w-full max-w-md h-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="text-center text-sm text-muted-foreground pb-2 shrink-0"
           >
-            {currentCard.type === "match" && (
-              <MatchCard
-                title={currentCard.title}
-                options={currentCard.options as readonly [string, string]}
-                value={picks[currentCard.id] || null}
-                onChange={(value) => handlePickUpdate(currentCard.id, value)}
-                disabled={isLocked}
-              />
-            )}
-            
-            {currentCard.type === "rumble-winner" && (
-              <RumbleWinnerCard
-                title={currentCard.title}
-                gender={currentCard.gender as "mens" | "womens"}
-                value={picks[currentCard.id] || null}
-                onChange={(value) => handlePickUpdate(currentCard.id, value)}
-                disabled={isLocked}
-                customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
-              />
-            )}
-            
-            {currentCard.type === "chaos-props" && (
-              <ChaosPropsCard
-                title={currentCard.title}
-                gender={currentCard.gender as "mens" | "womens"}
-                values={getChaosPropsValues(currentCard.gender as "mens" | "womens")}
-                onChange={handleChaosPropsUpdate}
-                disabled={isLocked}
-              />
-            )}
-            
-            {currentCard.type === "rumble-props" && (
-              <RumblePropsCard
-                title={currentCard.title}
-                gender={currentCard.gender as "mens" | "womens"}
-                values={getRumblePropsValues(currentCard.gender as "mens" | "womens")}
-                onChange={handleRumblePropsUpdate}
-                disabled={isLocked}
-                customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
-              />
-            )}
+            ← Swipe to navigate →
           </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Swipe Hint (only show on first card) */}
-      {currentCardIndex === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="text-center text-sm text-muted-foreground pb-2"
-        >
-          ← Swipe to navigate →
-        </motion.div>
-      )}
+        )}
 
         {/* Navigation Controls */}
         <div className="p-4 border-t border-border flex items-center justify-between bg-card shrink-0">
