@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { UNDERCARD_MATCHES, CHAOS_PROPS, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "./constants";
+import { UNDERCARD_MATCHES, CHAOS_PROPS } from "./constants";
 
 export const DEMO_GUESTS = [
   { name: "Melanie", email: "melanie@demo.local" },
@@ -15,15 +15,16 @@ function getRandomUniqueWrestlers(entrants: string[], count: number): string[] {
   return shuffled.slice(0, count);
 }
 
-export async function generateDemoPicksForPlayers(playerIds: string[]) {
+export async function generateDemoPicksForPlayers(
+  playerIds: string[],
+  mensEntrants: string[],
+  womensEntrants: string[]
+) {
   const picks: Array<{
     player_id: string;
     match_id: string;
     prediction: string;
   }> = [];
-
-  const mensEntrants = DEFAULT_MENS_ENTRANTS;
-  const womensEntrants = DEFAULT_WOMENS_ENTRANTS;
 
   for (const playerId of playerIds) {
     // Undercard matches (2 picks)
@@ -137,6 +138,20 @@ export async function seedDemoParty(
 ): Promise<{ hostPlayerId: string; guestIds: string[] }> {
   const hostEmail = "kyle.husni@gmail.com";
   
+  // Fetch entrants from database
+  const { data: wrestlers } = await supabase
+    .from("wrestlers")
+    .select("name, division")
+    .eq("is_active", true)
+    .eq("is_rumble_participant", true);
+  
+  const mensEntrants = wrestlers
+    ?.filter(w => w.division === "mens")
+    .map(w => w.name) || [];
+  const womensEntrants = wrestlers
+    ?.filter(w => w.division === "womens")
+    .map(w => w.name) || [];
+  
   // 1. Create demo host as player (Kyle) using RPC (bypasses RLS for user_id linking)
   const { data: hostPlayerId, error: hostError } = await supabase
     .rpc('seed_demo_player', {
@@ -177,7 +192,7 @@ export async function seedDemoParty(
 
   // 3. Generate picks for all players
   const allPlayerIds = [hostPlayerId, ...guestIds];
-  await generateDemoPicksForPlayers(allPlayerIds);
+  await generateDemoPicksForPlayers(allPlayerIds, mensEntrants, womensEntrants);
 
   return {
     hostPlayerId,

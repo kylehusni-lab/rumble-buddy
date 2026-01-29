@@ -11,9 +11,7 @@ import {
   CARD_CONFIG, 
   CHAOS_PROPS, 
   RUMBLE_PROPS, 
-  FINAL_FOUR_SLOTS,
-  DEFAULT_MENS_ENTRANTS,
-  DEFAULT_WOMENS_ENTRANTS 
+  FINAL_FOUR_SLOTS 
 } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -21,11 +19,19 @@ interface SoloScoringModalProps {
   isOpen: boolean;
   onClose: () => void;
   onResultsUpdated: () => void;
+  mensEntrants: string[];
+  womensEntrants: string[];
 }
 
 type ScoringTab = "matches" | "mens" | "womens" | "chaos";
 
-export function SoloScoringModal({ isOpen, onClose, onResultsUpdated }: SoloScoringModalProps) {
+export function SoloScoringModal({ 
+  isOpen, 
+  onClose, 
+  onResultsUpdated,
+  mensEntrants,
+  womensEntrants 
+}: SoloScoringModalProps) {
   const [activeTab, setActiveTab] = useState<ScoringTab>("matches");
   const [results, setResults] = useState<Record<string, string>>({});
   const picks = getSoloPicks();
@@ -113,6 +119,7 @@ export function SoloScoringModal({ isOpen, onClose, onResultsUpdated }: SoloScor
               gender="mens" 
               results={results} 
               picks={picks}
+              entrants={mensEntrants}
               onChange={handleResultChange}
               onClear={handleClearResult}
             />
@@ -122,6 +129,7 @@ export function SoloScoringModal({ isOpen, onClose, onResultsUpdated }: SoloScor
               gender="womens" 
               results={results} 
               picks={picks}
+              entrants={womensEntrants}
               onChange={handleResultChange}
               onClear={handleClearResult}
             />
@@ -196,35 +204,6 @@ function MatchesScoring({
         </div>
       ))}
 
-      {/* Rumble Winners */}
-      <div className="pt-4 border-t border-border">
-        <h4 className="text-md font-bold text-foreground mb-4">Rumble Winners</h4>
-        
-        {["mens", "womens"].map((gender) => {
-          const matchId = `${gender}_rumble_winner`;
-          const entrants = gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS;
-          const label = gender === "mens" ? "Men's Winner" : "Women's Winner";
-          
-          return (
-            <div key={matchId} className="mb-4">
-              <div className="text-sm font-medium text-foreground mb-2">{label}</div>
-              <select
-                value={results[matchId] || ""}
-                onChange={(e) => e.target.value ? onChange(matchId, e.target.value) : onClear(matchId)}
-                className="w-full p-3 rounded-lg border border-border bg-card text-foreground"
-              >
-                <option value="">Select winner...</option>
-                {entrants.map((entrant) => (
-                  <option key={entrant} value={entrant.replace("*", "")}>
-                    {entrant.replace("*", "")}
-                    {picks[matchId] === entrant.replace("*", "") ? " (your pick)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -234,16 +213,17 @@ function RumbleScoring({
   gender,
   results, 
   picks,
+  entrants,
   onChange,
   onClear 
 }: { 
   gender: "mens" | "womens";
   results: Record<string, string>;
   picks: Record<string, string>;
+  entrants: string[];
   onChange: (matchId: string, value: string) => void;
   onClear: (matchId: string) => void;
 }) {
-  const entrants = gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS;
   const title = gender === "mens" ? "Men's Rumble Props" : "Women's Rumble Props";
 
   return (
