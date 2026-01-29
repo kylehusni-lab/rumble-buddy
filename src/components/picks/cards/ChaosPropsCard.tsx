@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Zap, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CHAOS_PROPS, SCORING } from "@/lib/constants";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ChaosPropsCardProps {
   title: string;
@@ -43,7 +42,7 @@ export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProp
       </div>
 
       {/* Props List (Scrollable) */}
-      <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
+      <div className="flex-1 min-h-0 -mx-2 px-2 overflow-y-auto">
         <div className="space-y-4 pb-4">
           {CHAOS_PROPS.map((prop) => {
             const matchId = `${gender}_chaos_${prop.id}`;
@@ -91,11 +90,11 @@ export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProp
                     NO
                   </motion.button>
                 </div>
-              </div>
-            );
-          })}
+            </div>
+          );
+        })}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
   }

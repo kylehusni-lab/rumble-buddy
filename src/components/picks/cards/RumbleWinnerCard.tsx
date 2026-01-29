@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
 import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import confetti from "canvas-confetti";
 
@@ -115,7 +114,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
       </div>
 
       {/* Wrestler Grid (Scrollable) */}
-      <ScrollArea className="flex-1 -mx-2 px-2 overflow-y-auto">
+      <div className="flex-1 min-h-0 -mx-2 px-2 overflow-y-auto">
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2 sm:gap-3 pb-8">
           {filteredEntrants.map((wrestler) => {
             const isSelected = value === wrestler;
@@ -174,7 +173,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 });
