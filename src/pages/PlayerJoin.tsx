@@ -29,7 +29,7 @@ export default function PlayerJoin() {
 
     const checkParty = async () => {
       const { data } = await supabase
-        .from("parties")
+        .from("parties_public")
         .select("status")
         .eq("code", partyCode)
         .maybeSingle();
