@@ -11,6 +11,12 @@ interface TvNumberCellProps {
   isAssigned: boolean;
 }
 
+// Helper to strip asterisk from wrestler name
+function stripAsterisk(name: string | null): string {
+  if (!name) return "";
+  return name.startsWith("*") ? name.slice(1) : name;
+}
+
 export function TvNumberCell({
   number,
   wrestlerName,
@@ -20,27 +26,24 @@ export function TvNumberCell({
   status,
   isAssigned,
 }: TvNumberCellProps) {
-  const imageUrl = wrestlerName ? getWrestlerImageUrl(wrestlerName) : null;
+  const cleanName = stripAsterisk(wrestlerName);
+  const imageUrl = cleanName ? getWrestlerImageUrl(cleanName) : null;
 
-  // State: Empty unassigned (no player owns this number)
+  // VACANT slot - unassigned number with no wrestler
   if (!isAssigned && status === "pending") {
     return (
       <div 
-        className="relative aspect-square rounded-xl flex items-center justify-center"
+        className="relative aspect-square rounded-xl flex flex-col items-center justify-center"
         style={{
-          border: "2px solid rgba(255,255,255,0.1)",
-          background: "rgba(255,255,255,0.03)",
+          border: "2px dashed rgba(255,255,255,0.2)",
+          background: "rgba(255,255,255,0.02)",
         }}
       >
-        <span 
-          className="font-light"
-          style={{ 
-            fontSize: "36px", 
-            color: "rgba(255,255,255,0.15)",
-          }}
-        >
+        <span className="text-3xl font-light text-muted-foreground/40">
           {number}
         </span>
+        {/* Dashed line where banner would be */}
+        <div className="absolute bottom-3 left-3 right-3 border-t border-dashed border-white/20" />
       </div>
     );
   }
@@ -126,7 +129,7 @@ export function TvNumberCell({
       {imageUrl && (
         <img
           src={imageUrl}
-          alt={wrestlerName || ""}
+          alt={cleanName || ""}
           className={cn(
             "absolute inset-0 w-full h-full object-cover object-top",
             isEliminated && "grayscale"
@@ -160,26 +163,24 @@ export function TvNumberCell({
         </div>
       )}
 
-      {/* Owner banner (bottom) */}
-      {ownerName && ownerColor && (
-        <div 
-          className="absolute bottom-0 inset-x-0 py-1.5 px-2 text-center z-20"
+      {/* Owner banner (bottom) - shows VACANT if wrestler but no owner */}
+      <div 
+        className="absolute bottom-0 inset-x-0 py-1.5 px-2 text-center z-20"
+        style={{ 
+          background: ownerColor || "#555",
+          opacity: isEliminated ? 0.5 : 1,
+        }}
+      >
+        <span 
+          className="text-xs font-bold uppercase"
           style={{ 
-            background: ownerColor,
-            opacity: isEliminated ? 0.5 : 1,
+            color: ownerColor ? ownerTextColor : "rgba(255,255,255,0.7)",
+            letterSpacing: "0.5px",
           }}
         >
-          <span 
-            className="text-xs font-bold uppercase"
-            style={{ 
-              color: ownerTextColor,
-              letterSpacing: "0.5px",
-            }}
-          >
-            {ownerName}
-          </span>
-        </div>
-      )}
+          {ownerName || "VACANT"}
+        </span>
+      </div>
     </div>
   );
 }

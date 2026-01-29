@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 interface WrestlerImageProps {
   name: string;
-  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "tv" | "xl";
   className?: string;
   showFallbackIcon?: boolean;
   eliminated?: boolean;
@@ -15,7 +15,8 @@ const sizeClasses = {
   xs: "w-8 h-8",       // 32px
   sm: "w-12 h-12",     // 48px
   md: "w-20 h-20",     // 80px
-  lg: "w-32 h-32",     // 128px - TV optimized
+  lg: "w-32 h-32",     // 128px
+  tv: "w-[180px] h-[180px]", // 180px - TV optimized for 10ft viewing
   xl: "w-[400px] h-[400px]", // 400px
 };
 

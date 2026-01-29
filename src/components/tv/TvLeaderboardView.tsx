@@ -1,5 +1,19 @@
-import { Trophy } from "lucide-react";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+
+// Player color palette for bars
+const PLAYER_COLORS = [
+  { hex: "#e91e63" },  // Pink
+  { hex: "#f44336" },  // Red
+  { hex: "#ff9800" },  // Orange
+  { hex: "#ffc107" },  // Amber
+  { hex: "#4caf50" },  // Green
+  { hex: "#00bcd4" },  // Cyan
+  { hex: "#2196f3" },  // Blue
+  { hex: "#9c27b0" },  // Purple
+  { hex: "#795548" },  // Brown
+  { hex: "#607d8b" },  // Blue Gray
+];
 
 interface Player {
   id: string;
@@ -13,63 +27,99 @@ interface TvLeaderboardViewProps {
 
 export function TvLeaderboardView({ players }: TvLeaderboardViewProps) {
   // Sort players by points
-  const sortedPlayers = [...players].sort((a, b) => b.points - a.points);
+  const sortedPlayers = useMemo(() => 
+    [...players].sort((a, b) => b.points - a.points),
+    [players]
+  );
+
+  // Calculate max points for bar scaling
+  const maxPoints = useMemo(() => {
+    const max = Math.max(...players.map(p => p.points), 1);
+    return max;
+  }, [players]);
+
+  // Check if event has started (any points > 0)
+  const hasStarted = players.some(p => p.points > 0);
+
+  // Get player color by index
+  const getPlayerColor = (index: number) => {
+    return PLAYER_COLORS[index % PLAYER_COLORS.length].hex;
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-center gap-3">
-        <Trophy className="w-8 h-8 text-primary" />
-        <h2 className="text-3xl font-bold">Leaderboard</h2>
-        <Trophy className="w-8 h-8 text-primary" />
-      </div>
+    <div className="w-full max-w-4xl mx-auto space-y-3 px-4">
+      {/* Pre-event message */}
+      {!hasStarted && (
+        <div className="text-center text-muted-foreground text-lg mb-6">
+          Predictions locked — waiting for event to start
+        </div>
+      )}
 
-      {/* Player Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-        {sortedPlayers.map((player, index) => (
+      {/* Leaderboard rows */}
+      {sortedPlayers.map((player, index) => {
+        // Find original index for consistent color
+        const originalIndex = players.findIndex(p => p.id === player.id);
+        const playerColor = getPlayerColor(originalIndex);
+        const barWidth = hasStarted 
+          ? Math.max((player.points / maxPoints) * 100, 2) 
+          : 0;
+
+        return (
           <div
             key={player.id}
             className={cn(
-              "relative flex flex-col items-center gap-3 p-6 rounded-2xl border transition-all",
-              index === 0 && "bg-gradient-to-br from-primary/30 to-primary/10 border-primary shadow-lg shadow-primary/20 scale-105",
-              index === 1 && "bg-gradient-to-br from-muted/80 to-muted/40 border-muted-foreground/30",
-              index === 2 && "bg-gradient-to-br from-muted/60 to-muted/30 border-muted-foreground/20",
-              index > 2 && "bg-card/50 border-border"
+              "flex items-center gap-4 h-16 px-6 rounded-xl",
+              "bg-card/30 border border-border/50 transition-all duration-300",
+              index === 0 && hasStarted && "ring-2 ring-primary/50"
             )}
           >
-            {/* Rank Badge */}
-            <div
+            {/* Rank */}
+            <span
               className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center text-xl font-black",
-                index === 0 && "tv-rank-gold",
-                index === 1 && "tv-rank-silver",
-                index === 2 && "tv-rank-bronze",
-                index > 2 && "bg-muted text-muted-foreground"
+                "text-2xl font-bold w-8 text-center",
+                index === 0 && "text-[#FFD700]",  // Gold
+                index === 1 && "text-[#C0C0C0]",  // Silver
+                index === 2 && "text-[#CD7F32]",  // Bronze
+                index > 2 && "text-muted-foreground"
               )}
             >
               {index + 1}
-            </div>
+            </span>
 
-            {/* Player Name */}
-            <span className={cn(
-              "text-xl font-bold text-center",
-              index === 0 && "text-primary"
-            )}>
+            {/* Color indicator */}
+            <div
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: playerColor }}
+            />
+
+            {/* Name */}
+            <span className="text-xl font-medium flex-shrink-0 w-28 truncate">
               {player.display_name}
             </span>
 
+            {/* Progress bar */}
+            <div className="flex-1 h-4 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${barWidth}%`,
+                  backgroundColor: playerColor,
+                }}
+              />
+            </div>
+
             {/* Points */}
-            <div className={cn(
-              "text-3xl font-black",
-              index === 0 && "text-primary",
-              index > 0 && "text-foreground"
-            )}>
-              {player.points}
-              <span className="text-sm font-normal text-muted-foreground ml-1">pts</span>
+            <div className="w-24 text-right flex-shrink-0">
+              <span className="text-2xl font-bold">
+                {player.points}
+              </span>
+              <span className="text-sm text-muted-foreground ml-1">
+                pts
+              </span>
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
