@@ -115,13 +115,22 @@ export default function TvDisplay() {
     if (!code || partyStatus !== "pre_event") return;
     
     const pollPartyStatus = async () => {
-      const { data } = await supabase
+      console.log("[TV] Polling party status...");
+      const { data, error } = await supabase
         .from("parties_public")
         .select("status, event_started_at")
         .eq("code", code)
-        .single();
+        .maybeSingle();
+      
+      if (error) {
+        console.error("[TV] Poll error:", error);
+        return;
+      }
+      
+      console.log("[TV] Poll result:", data);
       
       if (data?.status && data.status !== "pre_event") {
+        console.log("[TV] Status changed to:", data.status);
         setPartyStatus(data.status);
         // Trigger number reveal if just went live
         if (data.status === "live") {
@@ -156,7 +165,9 @@ export default function TvDisplay() {
       }
     };
     
-    const interval = setInterval(pollPartyStatus, 5000);
+    // Run immediately on mount, then poll every 3 seconds
+    pollPartyStatus();
+    const interval = setInterval(pollPartyStatus, 3000);
     
     return () => clearInterval(interval);
   }, [code, partyStatus]);
