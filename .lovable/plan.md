@@ -1,206 +1,411 @@
 
-# Go-Live Readiness: Consolidated Implementation Plan
 
-## Summary
+# TV Display Header Redesign and Wrestler Card Enhancement
 
-This plan addresses four critical issues discovered during testing:
+## Overview
 
-1. **Group Mode Bug**: Women's Rumble picks showing Men's wrestlers due to substring matching error
-2. **Solo Mode Bug**: Hardcoded entrant lists instead of dynamic platform config
-3. **TV Display Bug**: Stuck in "Waiting" mode after event starts due to RLS blocking realtime subscription
-4. **Security Hardening**: Rate limiting, CORS restrictions, and input validation for Edge Functions
+This plan implements the engineering specs for the TV display mode, focusing on four key areas:
+1. Streamlined single-row auto-hiding header
+2. Wrestler cards with clear player ownership labels
+3. Current entrant gold pulsing glow effect
+4. Live scoring popup system
 
 ---
 
-## Part 1: Group Mode Edit Modal Bug (P0 - Critical)
+## Part 1: Single-Row Auto-Hiding Header
 
-### Problem
-In `SinglePickEditModal.tsx`, the gender detection uses `matchId.includes("mens")` which incorrectly matches "womens" strings because "wo**mens**" contains "mens".
+### Current State
 
-```javascript
-"womens_rumble_winner".includes("mens")  // returns TRUE (bug!)
+The header currently spans 3 rows:
+- Row 1: Logo, party code, title, stats pill, controls
+- Row 2: Main tab bar (Leaderboard, Undercard, Men's, Women's)
+- Row 3: Sub-tabs for Rumble views (Entry Grid, Rumble Props, Chaos Props)
+
+### New Design
+
+Single horizontal bar that auto-hides after 5 seconds of inactivity:
+
+```text
+#3158   Leaderboard   Undercard   Men's [▾]   Women's [▾]        Auto   Full
 ```
+
+### Elements to Remove
+- Logo component (only show on waiting screen)
+- Large view title ("Women's Royal Rumble")
+- Player count display
+- Stats pill (active/eliminated counts)
+- Settings gear icon
+
+### New Layout Structure
+
+```text
+Left Section:
+  - Party code: #3158 (gray #666, 14px font)
+
+Center Section - Navigation:
+  - Horizontal pill buttons: Leaderboard | Undercard | Men's ▾ | Women's ▾
+  - Styling:
+    - Inactive: transparent bg, #888 text
+    - Hover: rgba(255,255,255,0.1) bg, white text
+    - Active: #f5c518 (gold) bg, black text, 600 weight
+  - Men's/Women's show dropdown arrow when active
+
+Right Section - Controls:
+  - Auto toggle button
+  - Full (fullscreen) toggle button
+  - Toggle styling:
+    - Inactive: rgba(255,255,255,0.1) bg, #aaa text
+    - Active: rgba(245,197,24,0.2) bg, #f5c518 text and border
+```
+
+### Sub-Navigation Dropdown
+
+When Men's or Women's tab is clicked (if already active), a floating dropdown appears:
+
+```text
+┌─────────────────────────────────────────┐
+│   Entry Grid   Rumble Props   Chaos Props │
+└─────────────────────────────────────────┘
+```
+
+- Background: rgba(30, 30, 40, 0.95) with backdrop-filter: blur(10px)
+- Border: 1px solid rgba(255,255,255,0.1), 8px radius
+- Same gold active state styling
+- Closes on sub-item selection or outside click
 
 ### Files to Modify
-| File | Change |
-|------|--------|
-| `src/components/dashboard/SinglePickEditModal.tsx` | Fix gender detection in 4 places |
 
-### Technical Changes
-
-The fix reverses the logic to check for "womens" first in 4 locations (lines 38, 52, 65, 79):
-
-```typescript
-// Before (buggy)
-const gender = matchId.includes("mens") ? "mens" : "womens";
-
-// After (fixed)
-const gender = matchId.includes("womens") ? "womens" : "mens";
-```
+| File | Changes |
+|------|---------|
+| `src/pages/TvDisplay.tsx` | Remove Logo import, restructure header to single row, integrate new TvUnifiedHeader component |
+| `src/components/tv/TvTabBar.tsx` | Complete rewrite for inline horizontal layout with dropdown support |
+| `src/components/tv/TvHeaderStats.tsx` | Remove - no longer needed |
+| `src/components/tv/RumbleSubTabs.tsx` | Remove - integrated into TvTabBar dropdown |
+| `src/components/tv/TvViewNavigator.tsx` | Remove RumbleSubTabs usage, receive subView as prop |
+| `src/hooks/useAutoHideHeader.ts` | New hook for auto-hide behavior |
+| `src/index.css` | Update TV tab bar styles for new design |
 
 ---
 
-## Part 2: Solo Mode Picks Fix (P0 - Bug)
+## Part 2: Auto-Hide Behavior
 
-### Problem
-`SoloPicks.tsx` uses hardcoded `DEFAULT_MENS_ENTRANTS` and `DEFAULT_WOMENS_ENTRANTS` constants instead of fetching from `usePlatformConfig()`. This means Solo mode won't reflect entrant updates made via Platform Admin.
+### Implementation
 
-### Files to Modify
-| File | Change |
-|------|--------|
-| `src/pages/SoloPicks.tsx` | Add `usePlatformConfig` hook, update entrant props |
-
-### Technical Changes
-
-1. Replace hardcoded constants import with `usePlatformConfig` hook
-2. Add `configLoading` to the loading state check
-3. Update `RumbleWinnerCard` and `RumblePropsCard` props to use dynamic entrants
+Create a new `useAutoHideHeader` hook:
 
 ```typescript
-// Add hook
-const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
+const HIDE_DELAY = 5000; // 5 seconds
 
-// Update loading check
-if (isLoading || configLoading || !isAuthenticated) { ... }
-
-// Update card props
-customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
-```
-
----
-
-## Part 3: TV Display Realtime Fix (P0 - Critical)
-
-### Problem
-After the host clicks "Start Event", the TV display stays stuck on "Waiting for Event to Start" screen. This happens because:
-
-1. The TV display subscribes to realtime updates on the `parties` table
-2. Current RLS policy only allows hosts to SELECT from `parties` (`auth.uid() = host_user_id`)
-3. Realtime subscriptions require SELECT access to work
-4. Even when opened by the host, the realtime subscription may fail silently
-
-### Solution
-Add a SELECT policy allowing party members to read the `parties` table. This enables realtime subscriptions for the TV display while maintaining security (only authenticated party members can read).
-
-### Database Migration Required
-
-```sql
--- Allow party members to read party data for realtime subscriptions
-CREATE POLICY "Party members can read their party"
-ON public.parties FOR SELECT
-USING (
-  auth.uid() = host_user_id 
-  OR public.is_party_member(code)
-);
-```
-
-### Alternative Solution (Fallback)
-As a backup, add polling to the TV display that checks party status every 5 seconds while in pre_event state:
-
-```typescript
-// Add polling fallback for party status
-useEffect(() => {
-  if (!code || partyStatus !== "pre_event") return;
+export function useAutoHideHeader() {
+  const [isVisible, setIsVisible] = useState(true);
   
-  const interval = setInterval(async () => {
-    const { data } = await supabase
-      .from("parties_public")
-      .select("status")
-      .eq("code", code)
-      .single();
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
     
-    if (data?.status && data.status !== "pre_event") {
-      setPartyStatus(data.status);
-      // Trigger number reveal if just went live
-      if (data.status === "live") {
-        await loadRevealData();
-      }
-    }
-  }, 5000);
+    const resetTimer = () => {
+      setIsVisible(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setIsVisible(false), HIDE_DELAY);
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+    
+    resetTimer();
+    
+    return () => {
+      clearTimeout(timer);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, []);
   
-  return () => clearInterval(interval);
-}, [code, partyStatus]);
+  return isVisible;
+}
 ```
+
+### Animation Specs
+
+```css
+/* Fade out */
+.tv-header-hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Fade in */
+.tv-header-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+```
+
+### Hover Zone
+
+20px invisible zone at top of screen reveals header when mouse enters:
+
+```tsx
+{!isHeaderVisible && (
+  <div 
+    className="fixed top-0 left-0 right-0 h-5 z-50"
+    onMouseEnter={() => setIsVisible(true)}
+  />
+)}
+```
+
+### Optional: View Indicator When Hidden
+
+When header is hidden, show current view at 40% opacity in top-right:
+
+```text
+Women's: Entry Grid
+```
+
+- 13px font, fades out when header visible
 
 ---
 
-## Part 4: Security Hardening (P1)
+## Part 3: Wrestler Card Redesign
 
-### 4a. Rate Limiting for Admin PIN Verification
+### Current Implementation
 
-Prevent brute-force attacks on the 4-digit platform admin PIN.
+`TvNumberCell.tsx` shows:
+- Number badge (top-left corner, circular)
+- Wrestler image (full-frame)
+- Bottom gradient banner with small color dot + first name
 
-| File | Change |
-|------|--------|
-| `supabase/functions/verify-admin-pin/index.ts` | Add IP-based rate limiting (5 attempts per 15 min) |
+### New Design
 
-### 4b. CORS Restriction
+#### Card Structure
 
-Replace wildcard CORS with allowed origins only.
+```text
+┌─────────────────────┐
+│ [1]                 │  <- Entry number badge (top-left)
+│                     │
+│    [wrestler        │
+│     image]          │
+│                     │
+├─────────────────────┤
+│       KYLE          │  <- Owner banner (full width, solid color)
+└─────────────────────┘
+```
 
-| Files | Change |
-|-------|--------|
-| `supabase/functions/verify-admin-pin/index.ts` | Restrict to app domain origins |
-| `supabase/functions/update-platform-config/index.ts` | Restrict to app domain origins |
+### Entry Number Badge
 
-### 4c. Input Validation for Platform Config
+- Position: absolute, top 6px, left 8px
+- Background: rgba(0,0,0,0.5)
+- Padding: 2px 6px
+- Border-radius: 4px
+- Font: 12px, 600 weight, rgba(255,255,255,0.5) color
 
-| File | Change |
-|------|--------|
-| `supabase/functions/update-platform-config/index.ts` | Validate array size (max 100) and string lengths (max 100 chars) |
+### Owner Banner
+
+- Position: absolute bottom, full width
+- Background: player's assigned color (SOLID, not transparent)
+- Padding: 6px 8px
+- Player name: 13px, 700 weight, BLACK text, uppercase, 0.5px letter-spacing
+- Text: centered
+
+### Card Border
+
+- Assigned wrestler: 3px solid border in owner's color
+- Unassigned: 2px solid rgba(255,255,255,0.1)
+
+### Card States
+
+**Empty (assigned to player, no wrestler yet):**
+- Large entry number centered (36px, 300 weight, 15% opacity white)
+- Owner banner at bottom with solid color
+- Colored border
+
+**Empty (unassigned):**
+- Large entry number centered
+- No banner
+- Subtle border: 2px solid rgba(255,255,255,0.1)
+
+**Active (wrestler revealed, still in match):**
+- Wrestler image (object-fit: cover, object-position: top center)
+- Entry number badge (top-left)
+- Owner banner at bottom
+- 3px solid colored border
+
+**Current Entrant (just entered):**
+- Everything from Active state, plus:
+- Gold border (#f5c518) overrides owner color
+- Pulsing glow animation:
+
+```css
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(245, 197, 24, 0.4); }
+  50% { box-shadow: 0 0 35px rgba(245, 197, 24, 0.7); }
+}
+```
+
+- Animation: 2s ease-in-out infinite
+
+**Eliminated:**
+- Card opacity: 0.6
+- Owner banner opacity: 0.5
+- Wrestler image: grayscale
+- Red X overlay on image:
+  - Dark overlay: rgba(0,0,0,0.4)
+  - SVG X: two crossed lines, #ff4444 stroke, 8px width, round caps
+  - X size: ~60% of card, centered
+
+### Props Required
+
+```typescript
+interface TvNumberCellProps {
+  number: number;
+  wrestlerName: string | null;
+  ownerName: string | null;      // NEW: player display name
+  ownerColor: string | null;     // NEW: hex color like #e91e63
+  status: "pending" | "active" | "eliminated" | "current"; // Added "current"
+  isAssigned: boolean;           // NEW: whether this number is assigned to a player
+}
+```
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/tv/TvNumberCell.tsx` | Complete rewrite with new banner design, 4 states |
+| `src/components/tv/TvViewNavigator.tsx` | Pass ownerName and ownerColor props, detect "current" entrant |
+| `src/index.css` | Add pulse-glow keyframes, eliminated X overlay styles |
+
+---
+
+## Part 4: Live Scoring Popups
+
+### Trigger Events
+
+- Wrestler enters (player earns entry points)
+- Elimination happens
+- Any other scoring event
+
+### Design
+
+```text
+┌──────────────────────────────────────┐
+│          +10 Kyle!                   │
+└──────────────────────────────────────┘
+```
+
+- Position: fixed, center of screen (50%/50% with transform)
+- Background: linear-gradient from #f5c518 to #e6b800
+- Text: 32px, 800 weight, black
+- Padding: 16px 32px
+- Border-radius: 12px
+- Box-shadow: 0 10px 40px rgba(245, 197, 24, 0.5)
+- Z-index: 100
+
+### Animation
+
+**Enter (0.5s ease-out):**
+- From: opacity 0, scale 0.5
+- To: opacity 1, scale 1
+
+**Exit (0.5s ease-in, after 2s delay):**
+- From: opacity 1, scale 1
+- To: opacity 0, scale 0.8, translateY -20px
+
+### Queue Behavior
+
+Multiple score events queue with 0.5s gap between popups.
+
+### Files to Create/Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/tv/TvScorePopup.tsx` | New component for popup display |
+| `src/hooks/useTvScoreQueue.ts` | New hook managing popup queue |
+| `src/pages/TvDisplay.tsx` | Integrate score popup system, trigger on realtime events |
+
+---
+
+## Part 5: Technical Specifications
+
+### Color Palette
+
+```typescript
+const TV_COLORS = {
+  gold: '#f5c518',
+  goldDark: '#e6b800',
+  goldTransparent: 'rgba(245, 197, 24, 0.2)',
+  background: 'linear-gradient(180deg, #1a1a2e 0%, #0d0d15 100%)',
+  headerBg: 'linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 70%, transparent 100%)',
+  textMuted: '#888',
+  textDimmed: '#666',
+  borderSubtle: 'rgba(255,255,255,0.1)',
+  cardBg: 'rgba(255,255,255,0.03)',
+  eliminatedRed: '#ff4444',
+};
+```
+
+### Player Color System
+
+Update `PLAYER_COLORS` in TvViewNavigator.tsx to use hex values for banner backgrounds:
+
+```typescript
+const PLAYER_COLORS = [
+  { name: 'pink', hex: '#e91e63', textColor: 'black' },
+  { name: 'amber', hex: '#ffc107', textColor: 'black' },
+  { name: 'orange', hex: '#ff5722', textColor: 'black' },
+  { name: 'green', hex: '#4caf50', textColor: 'black' },
+  { name: 'blue', hex: '#2196f3', textColor: 'white' },
+  { name: 'purple', hex: '#9c27b0', textColor: 'white' },
+  { name: 'cyan', hex: '#00bcd4', textColor: 'black' },
+  { name: 'indigo', hex: '#3f51b5', textColor: 'white' },
+];
+```
+
+### Grid Layout
+
+| Screen Width | Columns |
+|--------------|---------|
+| 1400px+ | 10 columns |
+| 768px - 1399px | 6 columns |
+| Below 768px | 5 columns |
+
+Gap: 10px between cards
+
+### Transition Timing
+
+| Element | Duration | Easing |
+|---------|----------|--------|
+| Hover effects | 0.2s | ease |
+| Header show/hide | 0.4s | ease |
+| Card state changes | 0.3s | ease |
+| Score popup enter | 0.5s | ease-out |
+| Score popup exit | 0.5s | ease-in |
 
 ---
 
 ## Implementation Order
 
-| Step | Task | Priority | Type |
-|------|------|----------|------|
-| 1 | Fix `SinglePickEditModal.tsx` gender detection (4 lines) | P0 | Bug fix |
-| 2 | Fix `SoloPicks.tsx` to use `usePlatformConfig` | P0 | Bug fix |
-| 3 | Add RLS policy for party members to read parties + polling fallback for TV | P0 | Bug fix |
-| 4 | Add rate limiting to `verify-admin-pin` | P1 | Security |
-| 5 | Tighten CORS on both edge functions | P1 | Security |
-| 6 | Add input validation to `update-platform-config` | P1 | Security |
+| Step | Task | Files |
+|------|------|-------|
+| 1 | Create `useAutoHideHeader` hook | `src/hooks/useAutoHideHeader.ts` |
+| 2 | Rewrite `TvTabBar` with inline layout and dropdown | `src/components/tv/TvTabBar.tsx` |
+| 3 | Update `TvDisplay.tsx` header structure | `src/pages/TvDisplay.tsx` |
+| 4 | Remove unused components | Delete `TvHeaderStats.tsx`, `RumbleSubTabs.tsx` |
+| 5 | Update `TvViewNavigator` to receive subView as prop | `src/components/tv/TvViewNavigator.tsx` |
+| 6 | Rewrite `TvNumberCell` with new design | `src/components/tv/TvNumberCell.tsx` |
+| 7 | Add CSS for new styles | `src/index.css` |
+| 8 | Create score popup system | `src/components/tv/TvScorePopup.tsx`, `src/hooks/useTvScoreQueue.ts` |
+| 9 | Integrate score popups in TvDisplay | `src/pages/TvDisplay.tsx` |
 
 ---
 
-## Files Summary
+## Summary of Changes
 
-| File | Changes |
-|------|---------|
-| `src/components/dashboard/SinglePickEditModal.tsx` | Fix gender detection (lines 38, 52, 65, 79) |
-| `src/pages/SoloPicks.tsx` | Add `usePlatformConfig`, update loading check, update entrant props |
-| `src/pages/TvDisplay.tsx` | Add polling fallback for party status during pre_event |
-| `supabase/functions/verify-admin-pin/index.ts` | Add rate limiting, restrict CORS origins |
-| `supabase/functions/update-platform-config/index.ts` | Restrict CORS origins, add input validation |
+1. **Header**: Single row, auto-hides after 5 seconds, no logo, dropdown sub-navigation
+2. **Cards**: Bottom banner with player name in solid color, 3px colored border
+3. **Current entrant**: Gold pulsing glow effect (2s animation)
+4. **Eliminated**: 0.6 opacity, grayscale image, red X overlay
+5. **Scoring**: Centered popup animation when points are earned, queued with 0.5s gaps
 
-### Database Migration
-| Change | Description |
-|--------|-------------|
-| Add SELECT policy on `parties` | Allow party members (not just host) to read party data for realtime |
+This creates an immersive, broadcast-quality TV experience optimized for 10-foot viewing distance.
 
----
-
-## Supabase Linter Notes
-
-The 10 "Anonymous Access Policies" warnings remain **expected behavior** because:
-- The app uses Supabase Anonymous Auth as the primary authentication method
-- All users sign in anonymously, then their `auth.uid()` is used for RLS scoping
-- These warnings indicate the policies work for anonymous users, which is correct
-
----
-
-## Testing Checklist
-
-After implementation:
-- [ ] Group mode (party 4605): Click edit on "Women's Winner" - verify Women's wrestlers displayed
-- [ ] Group mode: Click edit on "Men's Winner" - verify Men's wrestlers displayed
-- [ ] Group mode: Edit Women's Rumble Props (Final Four, First Elim, etc.) - verify Women's wrestlers
-- [ ] Group mode: Edit Men's Rumble Props - verify Men's wrestlers
-- [ ] Solo mode: Navigate to Women's Rumble Winner card - verify Women's wrestlers
-- [ ] Solo mode: Navigate to Women's Rumble Props - verify Women's wrestlers
-- [ ] **TV Display**: Open TV in new tab, then click "Start Event" in Host Setup - verify TV transitions from waiting to live view
-- [ ] **TV Display**: Verify number reveal animation plays after event start
-- [ ] Platform Admin: Test rate limiting (fail PIN 5 times, verify 429 response)
-- [ ] Platform Admin: Verify CORS blocks requests from unauthorized origins
-- [ ] Demo mode: Full flow verification with 6 players
