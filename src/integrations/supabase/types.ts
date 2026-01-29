@@ -470,6 +470,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_tv_snapshot: { Args: { p_party_code: string }; Returns: Json }
       is_party_host: { Args: { p_party_code: string }; Returns: boolean }
       is_party_member: { Args: { p_party_code: string }; Returns: boolean }
       lookup_player_by_email: {
