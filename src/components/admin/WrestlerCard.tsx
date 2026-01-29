@@ -1,7 +1,7 @@
-import { Pencil, Trash2, Camera, Crown } from 'lucide-react';
+import { Pencil, Trash2, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getPlaceholderImageUrl } from '@/lib/wrestler-data';
+import { getWrestlerImageUrl } from '@/lib/wrestler-data';
 import type { Wrestler } from '@/hooks/useWrestlerAdmin';
 
 interface WrestlerCardProps {
@@ -11,8 +11,7 @@ interface WrestlerCardProps {
 }
 
 export function WrestlerCard({ wrestler, onEdit, onDelete }: WrestlerCardProps) {
-  const imageUrl = wrestler.image_url || getPlaceholderImageUrl(wrestler.name);
-  const hasImage = !!wrestler.image_url;
+  const imageUrl = getWrestlerImageUrl(wrestler.name, wrestler.image_url);
 
   return (
     <div className="bg-card/50 border border-border rounded-xl overflow-hidden relative">
@@ -34,21 +33,11 @@ export function WrestlerCard({ wrestler, onEdit, onDelete }: WrestlerCardProps) 
 
       {/* Image Area */}
       <div className="relative aspect-square bg-muted/20 flex items-center justify-center">
-        {hasImage ? (
-          <img
-            src={imageUrl}
-            alt={wrestler.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.src = getPlaceholderImageUrl(wrestler.name);
-            }}
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            <Camera className="w-8 h-8" />
-            <span className="text-xs">No image</span>
-          </div>
-        )}
+        <img
+          src={imageUrl}
+          alt={wrestler.name}
+          className="w-full h-full object-cover"
+        />
       </div>
 
       {/* Info Area */}
