@@ -224,16 +224,18 @@ export default function HostSetup() {
       await distributeNumbers("mens");
       await distributeNumbers("womens");
 
-      // Update party status
-      const { error } = await supabase
-        .from("parties")
-        .update({
-          status: "live",
-          event_started_at: new Date().toISOString(),
-        })
-        .eq("code", code);
+      // Update party status using secure RPC function
+      const storedPin = localStorage.getItem(`party_${code}_pin`);
+      const { data: success, error } = await supabase
+        .rpc("update_party_status_with_pin", {
+          p_party_code: code,
+          p_pin: storedPin || "",
+          p_status: "live",
+          p_event_started_at: new Date().toISOString(),
+        });
 
       if (error) throw error;
+      if (!success) throw new Error("Failed to update party status");
 
       toast.success("Event started! Numbers distributed! 🎉");
       navigate(`/host/control/${code}`);
