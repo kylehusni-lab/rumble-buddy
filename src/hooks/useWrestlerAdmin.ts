@@ -28,7 +28,7 @@ export interface UpdateWrestlerData {
   image_url?: string;
 }
 
-export function useWrestlerAdmin() {
+export function useWrestlerAdmin(enabled: boolean = true) {
   const [wrestlers, setWrestlers] = useState<Wrestler[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,11 +39,19 @@ export function useWrestlerAdmin() {
   };
 
   const fetchWrestlers = useCallback(async () => {
+    if (!enabled) return;
+    
+    const token = getAdminToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('manage-wrestlers', {
         body: {
-          token: getAdminToken(),
+          token,
           action: 'list',
           data: {
             search: searchQuery || undefined,
@@ -62,11 +70,13 @@ export function useWrestlerAdmin() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, divisionFilter]);
+  }, [searchQuery, divisionFilter, enabled]);
 
   useEffect(() => {
-    fetchWrestlers();
-  }, [fetchWrestlers]);
+    if (enabled) {
+      fetchWrestlers();
+    }
+  }, [fetchWrestlers, enabled]);
 
   const createWrestler = async (wrestlerData: CreateWrestlerData): Promise<Wrestler | null> => {
     try {

@@ -13,6 +13,22 @@ import { useWrestlerAdmin, Wrestler } from '@/hooks/useWrestlerAdmin';
 
 export default function WrestlerAdmin() {
   const navigate = useNavigate();
+  const [isSessionValid, setIsSessionValid] = useState(false);
+
+  // Verify admin session on mount BEFORE loading anything
+  useEffect(() => {
+    const session = localStorage.getItem('platform_admin_session');
+    const expiresAt = localStorage.getItem('platform_admin_expires');
+
+    if (!session || !expiresAt || new Date(expiresAt) < new Date()) {
+      localStorage.removeItem('platform_admin_session');
+      localStorage.removeItem('platform_admin_expires');
+      navigate('/platform-admin/verify');
+    } else {
+      setIsSessionValid(true);
+    }
+  }, [navigate]);
+
   const {
     wrestlers,
     isLoading,
@@ -26,7 +42,7 @@ export default function WrestlerAdmin() {
     bulkImport,
     uploadImage,
     removeImage,
-  } = useWrestlerAdmin();
+  } = useWrestlerAdmin(isSessionValid);
 
   // Modal states
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -37,17 +53,10 @@ export default function WrestlerAdmin() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Verify admin session on mount
-  useEffect(() => {
-    const session = localStorage.getItem('platform_admin_session');
-    const expiresAt = localStorage.getItem('platform_admin_expires');
-
-    if (!session || !expiresAt || new Date(expiresAt) < new Date()) {
-      localStorage.removeItem('platform_admin_session');
-      localStorage.removeItem('platform_admin_expires');
-      navigate('/platform-admin/verify');
-    }
-  }, [navigate]);
+  // Show nothing while checking session
+  if (!isSessionValid) {
+    return null;
+  }
 
   const handleEdit = (wrestler: Wrestler) => {
     setEditingWrestler(wrestler);
