@@ -210,18 +210,6 @@ export function RumbleEntryControl({
           </div>
         )}
 
-        {/* Selected wrestler display */}
-        {selectedWrestler && (
-          <div className="bg-background border border-border rounded-lg p-3 flex items-center justify-between">
-            <span className="font-medium">{selectedWrestler}</span>
-            <button
-              onClick={() => setSelectedWrestler("")}
-              className="text-muted-foreground hover:text-foreground text-sm"
-            >
-              Clear
-            </button>
-          </div>
-        )}
 
         <Button
           variant="gold"
