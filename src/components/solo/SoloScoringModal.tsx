@@ -77,9 +77,9 @@ export function SoloScoringModal({
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-lg max-h-[90vh] bg-card rounded-t-2xl sm:rounded-2xl border border-border shadow-xl flex flex-col min-h-0">
+      <div className="relative w-full max-w-lg h-[85vh] sm:h-[80vh] bg-card rounded-t-2xl sm:rounded-2xl border border-border shadow-xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
           <h2 className="text-xl font-bold text-foreground">Score Results</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="w-5 h-5" />
@@ -87,7 +87,7 @@ export function SoloScoringModal({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-border">
+        <div className="flex border-b border-border shrink-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -104,8 +104,8 @@ export function SoloScoringModal({
           ))}
         </div>
 
-        {/* Content */}
-        <ScrollArea className="flex-1 min-h-0 p-4">
+        {/* Scrollable Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-4">
           {activeTab === "matches" && (
             <MatchesScoring 
               results={results} 
@@ -142,10 +142,10 @@ export function SoloScoringModal({
               onClear={handleClearResult}
             />
           )}
-        </ScrollArea>
+        </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border shrink-0">
           <Button variant="hero" className="w-full" onClick={handleSave}>
             <Save className="w-4 h-4 mr-2" />
             Save Results
