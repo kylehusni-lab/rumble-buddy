@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export default function PlayerJoin() {
@@ -15,6 +16,7 @@ export default function PlayerJoin() {
   const navigate = useNavigate();
   const partyCode = searchParams.get("code") || "";
   const isHostJoining = searchParams.get("host") === "true";
+  const { ensureAuth } = useAuth();
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -53,6 +55,14 @@ export default function PlayerJoin() {
     setIsLoading(true);
 
     try {
+      // Ensure user is authenticated (anonymous if needed)
+      const authUser = await ensureAuth();
+      if (!authUser) {
+        toast.error("Authentication failed. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
       const sessionId = getSessionId();
 
       // Check if player already exists with this email using secure RPC function
@@ -73,6 +83,7 @@ export default function PlayerJoin() {
           .from("players")
           .update({ 
             session_id: sessionId,
+            user_id: authUser.id, // Link to auth user
             display_name: displayName.trim()
           })
           .eq("id", existingPlayer.id);
@@ -88,6 +99,7 @@ export default function PlayerJoin() {
             email: email.toLowerCase().trim(),
             display_name: displayName.trim(),
             session_id: sessionId,
+            user_id: authUser.id, // Link to auth user
           })
           .select("id")
           .single();
@@ -106,6 +118,7 @@ export default function PlayerJoin() {
 
       setPlayerSession({
         sessionId,
+        authUserId: authUser.id,
         playerId,
         partyCode,
         displayName: displayName.trim(),

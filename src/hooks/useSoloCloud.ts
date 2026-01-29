@@ -1,9 +1,10 @@
 // Solo mode cloud sync hook with email + PIN authentication
-// Uses secure RPC functions for login/register (never exposes PINs client-side)
+// Now integrates with Supabase Anonymous Auth for proper user identity
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getSoloSession, setSoloSession, clearSoloSession, getSoloPicks, saveSoloPicks, getSoloResults, saveSoloResults } from "@/lib/solo-storage";
+import { ensureAuthenticated } from "@/lib/auth";
+import { getSoloSession, setSoloSession, clearSoloSession, saveSoloPicks, saveSoloResults } from "@/lib/solo-storage";
 
 const SOLO_PLAYER_ID_KEY = 'rumble_solo_player_id';
 
@@ -92,10 +93,17 @@ export function useSoloCloud() {
     }
   }, []);
 
-  // Register new player using secure RPC
+  // Register new player using secure RPC + anonymous auth
   const register = async (email: string, pin: string, displayName: string): Promise<boolean> => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+      // Ensure user is authenticated (anonymous if needed)
+      const authUser = await ensureAuthenticated();
+      if (!authUser) {
+        setState(prev => ({ ...prev, isLoading: false, error: 'Authentication failed. Please try again.' }));
+        return false;
+      }
 
       // Use secure RPC function for registration
       const { data, error } = await supabase
@@ -118,6 +126,12 @@ export function useSoloCloud() {
         setState(prev => ({ ...prev, isLoading: false, error: result.error_message || 'Registration failed.' }));
         return false;
       }
+
+      // Update the solo_player with user_id
+      await supabase
+        .from('solo_players')
+        .update({ user_id: authUser.id })
+        .eq('id', result.id);
 
       setStoredPlayerId(result.id);
       setSoloSession({
@@ -144,10 +158,17 @@ export function useSoloCloud() {
     }
   };
 
-  // Login with email + PIN using secure RPC
+  // Login with email + PIN using secure RPC + anonymous auth
   const login = async (email: string, pin: string): Promise<boolean> => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+      // Ensure user is authenticated (anonymous if needed)
+      const authUser = await ensureAuthenticated();
+      if (!authUser) {
+        setState(prev => ({ ...prev, isLoading: false, error: 'Authentication failed. Please try again.' }));
+        return false;
+      }
 
       // Use secure RPC function for login (never exposes PIN client-side)
       const { data, error } = await supabase
@@ -169,6 +190,12 @@ export function useSoloCloud() {
         setState(prev => ({ ...prev, isLoading: false, error: 'Account not found' }));
         return false;
       }
+
+      // Update the solo_player with user_id
+      await supabase
+        .from('solo_players')
+        .update({ user_id: authUser.id })
+        .eq('id', result.id);
 
       setStoredPlayerId(result.id);
       setSoloSession({
