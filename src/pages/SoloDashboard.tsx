@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { SoloScoringModal } from "@/components/solo/SoloScoringModal";
 import { useSoloCloud } from "@/hooks/useSoloCloud";
+import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { 
   getSoloPicks, 
   getSoloResults, 
@@ -24,6 +25,7 @@ type TabType = "matches" | "mens" | "womens" | "chaos";
 export default function SoloDashboard() {
   const navigate = useNavigate();
   const { isLoading, isAuthenticated, player, logout, saveResultsToCloud } = useSoloCloud();
+  const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
   
   const [activeTab, setActiveTab] = useState<TabType>("matches");
   const [isScoringOpen, setIsScoringOpen] = useState(false);
@@ -96,7 +98,7 @@ export default function SoloDashboard() {
     navigate("/");
   };
 
-  if (isLoading) {
+  if (isLoading || configLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -245,6 +247,8 @@ export default function SoloDashboard() {
         isOpen={isScoringOpen}
         onClose={() => setIsScoringOpen(false)}
         onResultsUpdated={handleResultsUpdated}
+        mensEntrants={mensEntrants}
+        womensEntrants={womensEntrants}
       />
     </div>
   );
