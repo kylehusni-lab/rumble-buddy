@@ -386,6 +386,8 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean | null
+          is_confirmed: boolean | null
+          is_rumble_participant: boolean | null
           name: string
           short_name: string | null
           updated_at: string | null
@@ -396,6 +398,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          is_confirmed?: boolean | null
+          is_rumble_participant?: boolean | null
           name: string
           short_name?: string | null
           updated_at?: string | null
@@ -406,6 +410,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          is_confirmed?: boolean | null
+          is_rumble_participant?: boolean | null
           name?: string
           short_name?: string | null
           updated_at?: string | null

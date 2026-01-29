@@ -10,6 +10,8 @@ export interface Wrestler {
   division: 'mens' | 'womens';
   image_url: string | null;
   is_active: boolean;
+  is_rumble_participant: boolean;
+  is_confirmed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +21,8 @@ export interface CreateWrestlerData {
   short_name?: string;
   division: 'mens' | 'womens';
   image_url?: string;
+  is_rumble_participant?: boolean;
+  is_confirmed?: boolean;
 }
 
 export interface UpdateWrestlerData {
@@ -26,6 +30,8 @@ export interface UpdateWrestlerData {
   short_name?: string;
   division?: 'mens' | 'womens';
   image_url?: string;
+  is_rumble_participant?: boolean;
+  is_confirmed?: boolean;
 }
 
 export function useWrestlerAdmin(enabled: boolean = true) {
@@ -33,6 +39,8 @@ export function useWrestlerAdmin(enabled: boolean = true) {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [divisionFilter, setDivisionFilter] = useState<'all' | 'mens' | 'womens'>('all');
+  const [mensParticipants, setMensParticipants] = useState(0);
+  const [womensParticipants, setWomensParticipants] = useState(0);
 
   const getAdminToken = () => {
     return localStorage.getItem('platform_admin_session') || '';
@@ -64,6 +72,8 @@ export function useWrestlerAdmin(enabled: boolean = true) {
       if (data.error) throw new Error(data.error);
 
       setWrestlers(data.wrestlers || []);
+      setMensParticipants(data.mensParticipants || 0);
+      setWomensParticipants(data.womensParticipants || 0);
     } catch (error) {
       console.error('Error fetching wrestlers:', error);
       toast.error('Failed to load wrestlers');
@@ -183,6 +193,36 @@ export function useWrestlerAdmin(enabled: boolean = true) {
     }
   };
 
+  const updateRumbleStatus = async (
+    id: string,
+    isParticipant: boolean,
+    isConfirmed?: boolean
+  ): Promise<Wrestler | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-wrestlers', {
+        body: {
+          token: getAdminToken(),
+          action: 'update_rumble_status',
+          data: {
+            id,
+            is_rumble_participant: isParticipant,
+            is_confirmed: isConfirmed,
+          },
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      await fetchWrestlers();
+      return data.wrestler;
+    } catch (error) {
+      console.error('Error updating rumble status:', error);
+      toast.error('Failed to update status');
+      return null;
+    }
+  };
+
   const uploadImage = async (file: File, wrestlerId: string): Promise<string | null> => {
     // Validate file
     const validation = validateImageFile(file);
@@ -264,12 +304,15 @@ export function useWrestlerAdmin(enabled: boolean = true) {
     setSearchQuery,
     divisionFilter,
     setDivisionFilter,
+    mensParticipants,
+    womensParticipants,
     createWrestler,
     updateWrestler,
     deleteWrestler,
     bulkImport,
     uploadImage,
     removeImage,
+    updateRumbleStatus,
     refetch: fetchWrestlers,
   };
 }

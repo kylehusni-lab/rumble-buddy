@@ -36,6 +36,8 @@ export default function WrestlerAdmin() {
     setSearchQuery,
     divisionFilter,
     setDivisionFilter,
+    mensParticipants,
+    womensParticipants,
     createWrestler,
     updateWrestler,
     deleteWrestler,
@@ -152,8 +154,12 @@ export default function WrestlerAdmin() {
           >
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="mens">Men's</TabsTrigger>
-              <TabsTrigger value="womens">Women's</TabsTrigger>
+              <TabsTrigger value="mens">
+                Men's {mensParticipants > 0 && <span className="ml-1 text-xs opacity-70">({mensParticipants})</span>}
+              </TabsTrigger>
+              <TabsTrigger value="womens">
+                Women's {womensParticipants > 0 && <span className="ml-1 text-xs opacity-70">({womensParticipants})</span>}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

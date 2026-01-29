@@ -1,5 +1,6 @@
-import { Pencil, Trash2, Camera } from 'lucide-react';
+import { Pencil, Trash2, Camera, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { getPlaceholderImageUrl } from '@/lib/wrestler-data';
 import type { Wrestler } from '@/hooks/useWrestlerAdmin';
 
@@ -14,7 +15,23 @@ export function WrestlerCard({ wrestler, onEdit, onDelete }: WrestlerCardProps) 
   const hasImage = !!wrestler.image_url;
 
   return (
-    <div className="bg-card/50 border border-border rounded-xl overflow-hidden">
+    <div className="bg-card/50 border border-border rounded-xl overflow-hidden relative">
+      {/* Rumble Participant Badge */}
+      {wrestler.is_rumble_participant && (
+        <div className="absolute top-2 right-2 z-10">
+          <Badge 
+            variant={wrestler.is_confirmed ? "default" : "outline"}
+            className={wrestler.is_confirmed 
+              ? "bg-primary text-primary-foreground" 
+              : "border-dashed border-muted-foreground/50 text-muted-foreground"
+            }
+          >
+            <Crown className="w-3 h-3 mr-1" />
+            {wrestler.is_confirmed ? "In Rumble" : "Unconfirmed"}
+          </Badge>
+        </div>
+      )}
+
       {/* Image Area */}
       <div className="relative aspect-square bg-muted/20 flex items-center justify-center">
         {hasImage ? (
