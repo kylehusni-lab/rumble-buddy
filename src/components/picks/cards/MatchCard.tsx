@@ -4,6 +4,7 @@ import { Trophy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { SCORING } from "@/lib/constants";
+import { PickCardHeader } from "./PickCardHeader";
 
 interface MatchCardProps {
   title: string;
@@ -16,19 +17,14 @@ interface MatchCardProps {
 export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
   function MatchCard({ title, options, value, onChange, disabled }, ref) {
     return (
-      <div ref={ref} className="bg-card rounded-2xl p-4 sm:p-6 md:p-8 shadow-card border border-border min-h-[300px] md:min-h-[400px] flex flex-col relative">
-      {/* Header */}
-      <div className="flex items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6 md:mb-8">
-        <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
-        <div className="text-center">
-          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Match Winner</div>
-          <h2 className="text-base sm:text-xl md:text-2xl font-bold text-foreground">{title}</h2>
-        </div>
-      </div>
-
-      <div className="text-xs sm:text-sm text-primary text-center mb-4 sm:mb-6 md:mb-8 font-semibold">
-        +{SCORING.UNDERCARD_WINNER} pts if correct
-      </div>
+      <div ref={ref} className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col h-full">
+      {/* Unified Header */}
+      <PickCardHeader
+        icon={Trophy}
+        label="Match Winner"
+        title={title}
+        pointsText={`+${SCORING.UNDERCARD_WINNER} pts if correct`}
+      />
 
       {/* Wrestler Options - stacked layout for narrow container */}
       <div className="flex-1 flex flex-col gap-4 justify-center items-stretch relative">

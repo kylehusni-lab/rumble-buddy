@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Zap, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CHAOS_PROPS, SCORING } from "@/lib/constants";
+import { PickCardHeader } from "./PickCardHeader";
 
 interface ChaosPropsCardProps {
   title: string;
@@ -21,25 +22,17 @@ export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProp
   }, [disabled, gender, onChange, values]);
 
   const answeredCount = Object.values(values).filter(v => v !== null && v !== undefined).length;
-  const allAnswered = answeredCount === 6;
 
   return (
-    <div ref={ref} className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden h-full">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <Zap className="w-6 h-6 text-primary" />
-        <div className="flex-1">
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">Chaos Props</div>
-          <h2 className="text-xl font-bold text-foreground">{title}</h2>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          {answeredCount}/6
-        </div>
-      </div>
-
-      <div className="text-sm text-muted-foreground mb-4">
-        +{SCORING.PROP_BET} pts each correct • 60 pts possible
-      </div>
+    <div ref={ref} className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full">
+      {/* Unified Header */}
+      <PickCardHeader
+        icon={Zap}
+        label="Chaos Props"
+        title={title}
+        pointsText={`+${SCORING.PROP_BET} pts each correct • 60 pts possible`}
+        counter={`${answeredCount}/6`}
+      />
 
       {/* Props List (Scrollable) */}
       <div className="flex-1 min-h-0 -mx-2 px-2 overflow-y-auto">
