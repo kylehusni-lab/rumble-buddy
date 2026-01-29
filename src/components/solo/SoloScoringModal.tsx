@@ -77,7 +77,7 @@ export function SoloScoringModal({
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-lg max-h-[90vh] bg-card rounded-t-2xl sm:rounded-2xl border border-border shadow-xl flex flex-col">
+      <div className="relative w-full max-w-lg max-h-[90vh] bg-card rounded-t-2xl sm:rounded-2xl border border-border shadow-xl flex flex-col min-h-0">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-xl font-bold text-foreground">Score Results</h2>
@@ -105,7 +105,7 @@ export function SoloScoringModal({
         </div>
 
         {/* Content */}
-        <ScrollArea className="flex-1 p-4">
+        <ScrollArea className="flex-1 min-h-0 p-4">
           {activeTab === "matches" && (
             <MatchesScoring 
               results={results} 
