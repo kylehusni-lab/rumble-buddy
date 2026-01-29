@@ -1,411 +1,389 @@
 
 
-# TV Display Header Redesign and Wrestler Card Enhancement
+# TV Display Enhancement Plan - 4 Screens Improvement
 
 ## Overview
 
-This plan implements the engineering specs for the TV display mode, focusing on four key areas:
-1. Streamlined single-row auto-hiding header
-2. Wrestler cards with clear player ownership labels
-3. Current entrant gold pulsing glow effect
-4. Live scoring popup system
+This plan implements major improvements across 4 TV display screens to improve 10-foot readability, maximize screen space, and create a broadcast-quality viewing experience.
 
 ---
 
-## Part 1: Single-Row Auto-Hiding Header
+## Screen 1: Rumble Props Table Improvements
 
-### Current State
+### Current Issues
+- Row height is cramped (~60px) with minimal padding
+- Wrestler images are ~48px (`size="sm"`) - too small from across the room
+- No wrestler names below images - relies on face recognition
+- Initial fallbacks (SU, OT) are confusing
+- Final Four row shows 4 tiny ~25px images crammed together
+- "TBD" in Result column wastes space
 
-The header currently spans 3 rows:
-- Row 1: Logo, party code, title, stats pill, controls
-- Row 2: Main tab bar (Leaderboard, Undercard, Men's, Women's)
-- Row 3: Sub-tabs for Rumble views (Entry Grid, Rumble Props, Chaos Props)
+### Implementation Changes
 
-### New Design
+**File: `src/components/tv/RumblePropsDisplay.tsx`**
 
-Single horizontal bar that auto-hides after 5 seconds of inactivity:
+| Change | Current | New |
+|--------|---------|-----|
+| Row height | ~60px | 100-120px (via increased padding) |
+| Image size | `size="sm"` (48px) | `size="md"` (80px) |
+| Wrestler names | None | Show truncated name below image |
+| Empty state | Various | Simple "—" dash |
+| Final Four | 4 tiny images inline | 2x2 grid layout OR vertical name list |
+| Result column | "TBD" | "—" |
+| Player headers | Plain text | Colored 3px underline per player |
 
-```text
-#3158   Leaderboard   Undercard   Men's [▾]   Women's [▾]        Auto   Full
-```
-
-### Elements to Remove
-- Logo component (only show on waiting screen)
-- Large view title ("Women's Royal Rumble")
-- Player count display
-- Stats pill (active/eliminated counts)
-- Settings gear icon
-
-### New Layout Structure
-
-```text
-Left Section:
-  - Party code: #3158 (gray #666, 14px font)
-
-Center Section - Navigation:
-  - Horizontal pill buttons: Leaderboard | Undercard | Men's ▾ | Women's ▾
-  - Styling:
-    - Inactive: transparent bg, #888 text
-    - Hover: rgba(255,255,255,0.1) bg, white text
-    - Active: #f5c518 (gold) bg, black text, 600 weight
-  - Men's/Women's show dropdown arrow when active
-
-Right Section - Controls:
-  - Auto toggle button
-  - Full (fullscreen) toggle button
-  - Toggle styling:
-    - Inactive: rgba(255,255,255,0.1) bg, #aaa text
-    - Active: rgba(245,197,24,0.2) bg, #f5c518 text and border
-```
-
-### Sub-Navigation Dropdown
-
-When Men's or Women's tab is clicked (if already active), a floating dropdown appears:
-
-```text
-┌─────────────────────────────────────────┐
-│   Entry Grid   Rumble Props   Chaos Props │
-└─────────────────────────────────────────┘
-```
-
-- Background: rgba(30, 30, 40, 0.95) with backdrop-filter: blur(10px)
-- Border: 1px solid rgba(255,255,255,0.1), 8px radius
-- Same gold active state styling
-- Closes on sub-item selection or outside click
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/TvDisplay.tsx` | Remove Logo import, restructure header to single row, integrate new TvUnifiedHeader component |
-| `src/components/tv/TvTabBar.tsx` | Complete rewrite for inline horizontal layout with dropdown support |
-| `src/components/tv/TvHeaderStats.tsx` | Remove - no longer needed |
-| `src/components/tv/RumbleSubTabs.tsx` | Remove - integrated into TvTabBar dropdown |
-| `src/components/tv/TvViewNavigator.tsx` | Remove RumbleSubTabs usage, receive subView as prop |
-| `src/hooks/useAutoHideHeader.ts` | New hook for auto-hide behavior |
-| `src/index.css` | Update TV tab bar styles for new design |
-
----
-
-## Part 2: Auto-Hide Behavior
-
-### Implementation
-
-Create a new `useAutoHideHeader` hook:
-
-```typescript
-const HIDE_DELAY = 5000; // 5 seconds
-
-export function useAutoHideHeader() {
-  const [isVisible, setIsVisible] = useState(true);
-  
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    
-    const resetTimer = () => {
-      setIsVisible(true);
-      clearTimeout(timer);
-      timer = setTimeout(() => setIsVisible(false), HIDE_DELAY);
-    };
-
-    const events = ['mousemove', 'keydown', 'click', 'touchstart'];
-    events.forEach(event => window.addEventListener(event, resetTimer));
-    
-    resetTimer();
-    
-    return () => {
-      clearTimeout(timer);
-      events.forEach(event => window.removeEventListener(event, resetTimer));
-    };
-  }, []);
-  
-  return isVisible;
-}
-```
-
-### Animation Specs
-
-```css
-/* Fade out */
-.tv-header-hidden {
-  opacity: 0;
-  transform: translateY(-20px);
-  pointer-events: none;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-
-/* Fade in */
-.tv-header-visible {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-```
-
-### Hover Zone
-
-20px invisible zone at top of screen reveals header when mouse enters:
+**New Component Structure:**
 
 ```tsx
-{!isHeaderVisible && (
+// Each wrestler cell will show:
+<div className="flex flex-col items-center gap-2">
+  <WrestlerImage name={prediction} size="md" />
+  <span className="text-xs text-muted-foreground truncate max-w-[80px]">
+    {getShortName(prediction)} // "Roman", "Cody", etc.
+  </span>
+</div>
+```
+
+**Final Four 2x2 Grid:**
+
+```tsx
+<div className="grid grid-cols-2 gap-1.5 max-w-[100px] mx-auto">
+  {fourPicks.map((name, i) => (
+    <div key={i} className="flex flex-col items-center">
+      <WrestlerImage name={name} size="sm" /> {/* 40px */}
+    </div>
+  ))}
+</div>
+```
+
+**Player Header with Color Underline:**
+
+```tsx
+<th className="p-4 text-center">
+  <span className="text-lg font-semibold">{player.display_name}</span>
   <div 
-    className="fixed top-0 left-0 right-0 h-5 z-50"
-    onMouseEnter={() => setIsVisible(true)}
+    className="h-[3px] w-full mt-2 rounded-full"
+    style={{ backgroundColor: playerColor.hex }}
   />
-)}
+</th>
 ```
-
-### Optional: View Indicator When Hidden
-
-When header is hidden, show current view at 40% opacity in top-right:
-
-```text
-Women's: Entry Grid
-```
-
-- 13px font, fades out when header visible
 
 ---
 
-## Part 3: Wrestler Card Redesign
+## Screen 2: Leaderboard Complete Redesign
 
-### Current Implementation
+### Current Issues
+- Card grid layout feels empty when all scores are 0
+- Redundant "Leaderboard" title (already in tab)
+- No visual indication of WHERE points came from
+- Unbalanced 4+2 card layout
 
-`TvNumberCell.tsx` shows:
-- Number badge (top-left corner, circular)
-- Wrestler image (full-frame)
-- Bottom gradient banner with small color dot + first name
+### Implementation Changes
 
-### New Design
+**File: `src/components/tv/TvLeaderboardView.tsx`**
 
-#### Card Structure
+Complete redesign from card grid to horizontal bar list:
 
 ```text
-┌─────────────────────┐
-│ [1]                 │  <- Entry number badge (top-left)
-│                     │
-│    [wrestler        │
-│     image]          │
-│                     │
-├─────────────────────┤
-│       KYLE          │  <- Owner banner (full width, solid color)
-└─────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  1  🟡 Kyle      ████████████████████████░░░░░░░░░░░░░░░░░   45 pts │
+│  2  🔴 Melanie   ██████████████████░░░░░░░░░░░░░░░░░░░░░░░   38 pts │
+│  3  🟠 Mike      ███████████████░░░░░░░░░░░░░░░░░░░░░░░░░░   32 pts │
+│  4  🟢 Jon       █████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░   28 pts │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-### Entry Number Badge
+**List Row Structure:**
 
-- Position: absolute, top 6px, left 8px
-- Background: rgba(0,0,0,0.5)
-- Padding: 2px 6px
-- Border-radius: 4px
-- Font: 12px, 600 weight, rgba(255,255,255,0.5) color
+```tsx
+<div className="flex items-center gap-4 h-16 px-6 rounded-xl bg-card/30">
+  {/* Rank */}
+  <span className={cn(
+    "text-2xl font-bold w-8",
+    index === 0 && "text-[#FFD700]",  // Gold
+    index === 1 && "text-[#C0C0C0]",  // Silver
+    index === 2 && "text-[#CD7F32]",  // Bronze
+    index > 2 && "text-muted-foreground"
+  )}>
+    {index + 1}
+  </span>
+  
+  {/* Color indicator */}
+  <div 
+    className="w-3 h-3 rounded-full"
+    style={{ backgroundColor: playerColor.hex }}
+  />
+  
+  {/* Name */}
+  <span className="text-xl font-medium flex-shrink-0 w-24">
+    {player.display_name}
+  </span>
+  
+  {/* Progress bar */}
+  <div className="flex-1 h-3 rounded-full bg-white/10 overflow-hidden">
+    <div 
+      className="h-full rounded-full transition-all duration-500 ease-out"
+      style={{ 
+        width: `${(player.points / maxPoints) * 100}%`,
+        backgroundColor: playerColor.hex 
+      }}
+    />
+  </div>
+  
+  {/* Points */}
+  <span className="text-2xl font-bold w-20 text-right">
+    {player.points}
+    <span className="text-sm text-muted-foreground ml-1">pts</span>
+  </span>
+</div>
+```
 
-### Owner Banner
+**Remove:**
+- Trophy icons and title header
 
-- Position: absolute bottom, full width
-- Background: player's assigned color (SOLID, not transparent)
-- Padding: 6px 8px
-- Player name: 13px, 700 weight, BLACK text, uppercase, 0.5px letter-spacing
-- Text: centered
+**Add:**
+- Pre-event state: Show "Predictions locked - waiting for event to start"
+- Score change animation: Bar width animates + brief glow on row
+- Row height: 60-70px, gap: 10px, max-width: 900px centered
 
-### Card Border
+---
 
-- Assigned wrestler: 3px solid border in owner's color
-- Unassigned: 2px solid rgba(255,255,255,0.1)
+## Screen 3: Undercard Match View Improvements
 
-### Card States
+### Current Issues
+- Unused vertical space
+- Wrestler images could be larger (~120px currently)
+- Prediction bar uses gold/purple - not player colors
+- Player names on prediction bar are small
+- "Undercard Match" label is redundant
 
-**Empty (assigned to player, no wrestler yet):**
-- Large entry number centered (36px, 300 weight, 15% opacity white)
-- Owner banner at bottom with solid color
-- Colored border
+### Implementation Changes
 
-**Empty (unassigned):**
-- Large entry number centered
-- No banner
-- Subtle border: 2px solid rgba(255,255,255,0.1)
+**File: `src/components/tv/ActiveMatchDisplay.tsx`**
 
-**Active (wrestler revealed, still in match):**
-- Wrestler image (object-fit: cover, object-position: top center)
-- Entry number badge (top-left)
-- Owner banner at bottom
-- 3px solid colored border
+| Change | Current | New |
+|--------|---------|-----|
+| Wrestler images | `size="lg"` (128px) | Custom 180-200px |
+| Prediction bar colors | Gold/Purple | Player's assigned colors |
+| Player names on bar | Small gray text | 14px, colored by player |
+| "Undercard Match" label | Shows in corner | Remove |
+| Points value | Not shown | Add "Worth 10 pts" indicator |
 
-**Current Entrant (just entered):**
-- Everything from Active state, plus:
-- Gold border (#f5c518) overrides owner color
-- Pulsing glow animation:
+**New Prediction Bar Design:**
 
-```css
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(245, 197, 24, 0.4); }
-  50% { box-shadow: 0 0 35px rgba(245, 197, 24, 0.7); }
+```tsx
+{/* Player names above bar - grouped by prediction */}
+<div className="flex justify-between text-sm">
+  <div className="flex gap-2">
+    {pickStats.wrestler1.players.map((name, i) => (
+      <span 
+        key={i}
+        style={{ color: getPlayerColorByName(name) }}
+        className="font-medium"
+      >
+        {name}
+      </span>
+    ))}
+  </div>
+  <div className="flex gap-2">
+    {pickStats.wrestler2.players.map((name, i) => (
+      <span 
+        key={i}
+        style={{ color: getPlayerColorByName(name) }}
+        className="font-medium"
+      >
+        {name}
+      </span>
+    ))}
+  </div>
+</div>
+
+{/* Points indicator */}
+<div className="mt-4 text-center text-muted-foreground text-sm">
+  Worth 10 pts
+</div>
+```
+
+**Custom Larger Wrestler Image:**
+
+Add new `tv` size to WrestlerImage.tsx: `w-[180px] h-[180px]`
+
+---
+
+## Screen 4: Entry Grid Improvements
+
+### Current Issues
+- Winner Predictions cards too small (~90px)
+- Lock icons are tiny and unclear
+- `*` prefix for unconfirmed entrants is confusing
+- Draft distribution can cluster same colors
+- Player names in predictions are small and gray
+
+### Implementation Changes
+
+**File: `src/components/tv/RumbleWinnerPredictions.tsx`**
+
+| Change | Current | New |
+|--------|---------|-----|
+| Card width | `w-32` (128px) | `w-36` (144px) |
+| Wrestler image | `size="sm"` (48px) | `size="md"` (80px) |
+| Lock icons | Show on locked | Remove entirely |
+| Player name color | Gray muted | Player's assigned color |
+| Wrestler name | Shows `*` prefix | Strip `*` prefix, show clean |
+
+**Updated Card Structure:**
+
+```tsx
+<motion.div className="flex-shrink-0 w-36 p-4 rounded-xl border-2 bg-card/50">
+  <WrestlerImage
+    name={stripAsterisk(prediction)}
+    size="md"
+    className="border-2 border-muted"
+  />
+  
+  <div className="text-sm font-medium text-center mt-2">
+    {stripAsterisk(prediction)}
+  </div>
+  
+  <div 
+    className="text-sm font-medium text-center"
+    style={{ color: getPlayerColor(player.id) }}
+  >
+    {player.display_name}
+  </div>
+</motion.div>
+```
+
+### Draft Distribution Algorithm (Simplified)
+
+**Per user preference: Random distribution is acceptable, no cluster-breaking needed.**
+
+**File: Host-side number assignment logic**
+
+```typescript
+function assignDraftSlots(players: Player[], totalSlots = 30) {
+  const numPlayers = players.length;
+  const picksPerPlayer = Math.floor(totalSlots / numPlayers);
+  const vacantCount = totalSlots - (picksPerPlayer * numPlayers);
+  
+  // Create assignment array with each player appearing picksPerPlayer times
+  const assignments: (Player | 'VACANT')[] = [];
+  
+  for (let round = 0; round < picksPerPlayer; round++) {
+    players.forEach(player => {
+      assignments.push(player);
+    });
+  }
+  
+  // Add VACANT slots for remainder
+  for (let i = 0; i < vacantCount; i++) {
+    assignments.push('VACANT');
+  }
+  
+  // Simple random shuffle - consecutive same-player is acceptable
+  return shuffle(assignments);
+}
+
+function shuffle<T>(array: T[]): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 }
 ```
 
-- Animation: 2s ease-in-out infinite
+### VACANT Slot Display
 
-**Eliminated:**
-- Card opacity: 0.6
-- Owner banner opacity: 0.5
-- Wrestler image: grayscale
-- Red X overlay on image:
-  - Dark overlay: rgba(0,0,0,0.4)
-  - SVG X: two crossed lines, #ff4444 stroke, 8px width, round caps
-  - X size: ~60% of card, centered
+**File: `src/components/tv/TvNumberCell.tsx`**
 
-### Props Required
-
-```typescript
-interface TvNumberCellProps {
-  number: number;
-  wrestlerName: string | null;
-  ownerName: string | null;      // NEW: player display name
-  ownerColor: string | null;     // NEW: hex color like #e91e63
-  status: "pending" | "active" | "eliminated" | "current"; // Added "current"
-  isAssigned: boolean;           // NEW: whether this number is assigned to a player
+```tsx
+// If not assigned to any player (VACANT)
+if (!isAssigned && !wrestlerName) {
+  return (
+    <div 
+      className="relative aspect-square rounded-xl flex flex-col items-center justify-center"
+      style={{
+        border: "2px dashed rgba(255,255,255,0.2)",
+        background: "rgba(255,255,255,0.02)",
+      }}
+    >
+      <span className="text-3xl font-light" style={{ color: "#555" }}>
+        {number}
+      </span>
+      <div className="absolute bottom-3 left-4 right-4 border-t border-dashed border-white/20" />
+    </div>
+  );
 }
 ```
 
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/tv/TvNumberCell.tsx` | Complete rewrite with new banner design, 4 states |
-| `src/components/tv/TvViewNavigator.tsx` | Pass ownerName and ownerColor props, detect "current" entrant |
-| `src/index.css` | Add pulse-glow keyframes, eliminated X overlay styles |
-
 ---
 
-## Part 4: Live Scoring Popups
+## Technical Specifications
 
-### Trigger Events
-
-- Wrestler enters (player earns entry points)
-- Elimination happens
-- Any other scoring event
-
-### Design
-
-```text
-┌──────────────────────────────────────┐
-│          +10 Kyle!                   │
-└──────────────────────────────────────┘
-```
-
-- Position: fixed, center of screen (50%/50% with transform)
-- Background: linear-gradient from #f5c518 to #e6b800
-- Text: 32px, 800 weight, black
-- Padding: 16px 32px
-- Border-radius: 12px
-- Box-shadow: 0 10px 40px rgba(245, 197, 24, 0.5)
-- Z-index: 100
-
-### Animation
-
-**Enter (0.5s ease-out):**
-- From: opacity 0, scale 0.5
-- To: opacity 1, scale 1
-
-**Exit (0.5s ease-in, after 2s delay):**
-- From: opacity 1, scale 1
-- To: opacity 0, scale 0.8, translateY -20px
-
-### Queue Behavior
-
-Multiple score events queue with 0.5s gap between popups.
-
-### Files to Create/Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/tv/TvScorePopup.tsx` | New component for popup display |
-| `src/hooks/useTvScoreQueue.ts` | New hook managing popup queue |
-| `src/pages/TvDisplay.tsx` | Integrate score popup system, trigger on realtime events |
-
----
-
-## Part 5: Technical Specifications
-
-### Color Palette
-
-```typescript
-const TV_COLORS = {
-  gold: '#f5c518',
-  goldDark: '#e6b800',
-  goldTransparent: 'rgba(245, 197, 24, 0.2)',
-  background: 'linear-gradient(180deg, #1a1a2e 0%, #0d0d15 100%)',
-  headerBg: 'linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 70%, transparent 100%)',
-  textMuted: '#888',
-  textDimmed: '#666',
-  borderSubtle: 'rgba(255,255,255,0.1)',
-  cardBg: 'rgba(255,255,255,0.03)',
-  eliminatedRed: '#ff4444',
-};
-```
-
-### Player Color System
-
-Update `PLAYER_COLORS` in TvViewNavigator.tsx to use hex values for banner backgrounds:
+### Extended Player Colors (10 players max)
 
 ```typescript
 const PLAYER_COLORS = [
-  { name: 'pink', hex: '#e91e63', textColor: 'black' },
-  { name: 'amber', hex: '#ffc107', textColor: 'black' },
-  { name: 'orange', hex: '#ff5722', textColor: 'black' },
-  { name: 'green', hex: '#4caf50', textColor: 'black' },
-  { name: 'blue', hex: '#2196f3', textColor: 'white' },
-  { name: 'purple', hex: '#9c27b0', textColor: 'white' },
-  { name: 'cyan', hex: '#00bcd4', textColor: 'black' },
-  { name: 'indigo', hex: '#3f51b5', textColor: 'white' },
+  { hex: '#e91e63', textColor: 'black' },  // Pink
+  { hex: '#f44336', textColor: 'white' },  // Red
+  { hex: '#ff9800', textColor: 'black' },  // Orange
+  { hex: '#ffc107', textColor: 'black' },  // Amber
+  { hex: '#4caf50', textColor: 'black' },  // Green
+  { hex: '#00bcd4', textColor: 'black' },  // Cyan
+  { hex: '#2196f3', textColor: 'white' },  // Blue
+  { hex: '#9c27b0', textColor: 'white' },  // Purple
+  { hex: '#795548', textColor: 'white' },  // Brown
+  { hex: '#607d8b', textColor: 'white' },  // Blue Gray
 ];
 ```
 
-### Grid Layout
+### Animation Timings
 
-| Screen Width | Columns |
-|--------------|---------|
-| 1400px+ | 10 columns |
-| 768px - 1399px | 6 columns |
-| Below 768px | 5 columns |
+| Animation | Duration | Easing |
+|-----------|----------|--------|
+| Score bar fill | 0.5s | ease-out |
+| Row highlight pulse | 0.3s | ease |
+| All transitions | 0.2s | ease |
 
-Gap: 10px between cards
+---
 
-### Transition Timing
+## Files to Modify
 
-| Element | Duration | Easing |
-|---------|----------|--------|
-| Hover effects | 0.2s | ease |
-| Header show/hide | 0.4s | ease |
-| Card state changes | 0.3s | ease |
-| Score popup enter | 0.5s | ease-out |
-| Score popup exit | 0.5s | ease-in |
+| File | Changes |
+|------|---------|
+| `src/components/tv/RumblePropsDisplay.tsx` | Bigger rows, images with names, 2x2 Final Four, colored headers |
+| `src/components/tv/TvLeaderboardView.tsx` | Complete redesign to horizontal bar list |
+| `src/components/tv/ActiveMatchDisplay.tsx` | Larger images, player-colored prediction bar, remove label |
+| `src/components/tv/RumbleWinnerPredictions.tsx` | Bigger cards, remove locks, strip asterisks, colored names |
+| `src/components/tv/TvNumberCell.tsx` | Add VACANT slot styling |
+| `src/components/tv/WrestlerImage.tsx` | Add `tv` size variant (180px) |
+| `src/components/tv/TvViewNavigator.tsx` | Pass player colors to child components |
+| `src/index.css` | Add score bar animation, row glow effects |
 
 ---
 
 ## Implementation Order
 
-| Step | Task | Files |
-|------|------|-------|
-| 1 | Create `useAutoHideHeader` hook | `src/hooks/useAutoHideHeader.ts` |
-| 2 | Rewrite `TvTabBar` with inline layout and dropdown | `src/components/tv/TvTabBar.tsx` |
-| 3 | Update `TvDisplay.tsx` header structure | `src/pages/TvDisplay.tsx` |
-| 4 | Remove unused components | Delete `TvHeaderStats.tsx`, `RumbleSubTabs.tsx` |
-| 5 | Update `TvViewNavigator` to receive subView as prop | `src/components/tv/TvViewNavigator.tsx` |
-| 6 | Rewrite `TvNumberCell` with new design | `src/components/tv/TvNumberCell.tsx` |
-| 7 | Add CSS for new styles | `src/index.css` |
-| 8 | Create score popup system | `src/components/tv/TvScorePopup.tsx`, `src/hooks/useTvScoreQueue.ts` |
-| 9 | Integrate score popups in TvDisplay | `src/pages/TvDisplay.tsx` |
+| Step | Task | Priority |
+|------|------|----------|
+| 1 | **Leaderboard redesign** - Highest visual impact | High |
+| 2 | **Rumble Props table** - Bigger rows, wrestler names, Final Four grid | High |
+| 3 | **Winner Predictions** - Bigger cards, remove locks/asterisks | Medium |
+| 4 | **Undercard Match** - Player-colored bar, larger images | Medium |
+| 5 | **VACANT slots** - New styling for unassigned numbers | Low |
+| 6 | **Draft distribution algorithm** - Simple random shuffle | Low |
 
 ---
 
 ## Summary of Changes
 
-1. **Header**: Single row, auto-hides after 5 seconds, no logo, dropdown sub-navigation
-2. **Cards**: Bottom banner with player name in solid color, 3px colored border
-3. **Current entrant**: Gold pulsing glow effect (2s animation)
-4. **Eliminated**: 0.6 opacity, grayscale image, red X overlay
-5. **Scoring**: Centered popup animation when points are earned, queued with 0.5s gaps
-
-This creates an immersive, broadcast-quality TV experience optimized for 10-foot viewing distance.
+| Screen | Key Improvements |
+|--------|-----------------|
+| **Rumble Props** | 100-120px rows, 70-80px images with names, 2x2 Final Four grid, colored column headers |
+| **Leaderboard** | Horizontal bar list with player colors, remove title, animated score changes |
+| **Undercard** | 180-200px wrestler images, player-colored prediction bar, "Worth 10 pts" indicator |
+| **Entry Grid** | 140px prediction cards, no locks, stripped asterisks, player-colored names, VACANT slot styling |
+| **Draft Algorithm** | Simple random shuffle (consecutive same-player is acceptable per user preference) |
 
