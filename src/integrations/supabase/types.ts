@@ -496,6 +496,15 @@ export type Database = {
           success: boolean
         }[]
       }
+      seed_demo_player: {
+        Args: {
+          p_display_name: string
+          p_email: string
+          p_party_code: string
+          p_session_id: string
+        }
+        Returns: string
+      }
       set_host_pin: {
         Args: { p_party_code: string; p_pin: string }
         Returns: boolean
