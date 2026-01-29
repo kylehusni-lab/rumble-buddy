@@ -2,10 +2,49 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  "https://rumble-buddy.lovable.app",
+  "https://id-preview--b2021f13-f1d4-4520-93bc-6b4e2c2aba98.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  return {
+    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
+
+// Input validation constants
+const MAX_ENTRANTS = 100;
+const MAX_NAME_LENGTH = 100;
+
+function validateEntrantsArray(entrants: unknown, label: string): { valid: boolean; error?: string } {
+  if (!Array.isArray(entrants)) {
+    return { valid: false, error: `${label} must be an array` };
+  }
+  
+  if (entrants.length > MAX_ENTRANTS) {
+    return { valid: false, error: `${label} cannot exceed ${MAX_ENTRANTS} items` };
+  }
+  
+  for (const name of entrants) {
+    if (typeof name !== "string") {
+      return { valid: false, error: `${label} must contain only strings` };
+    }
+    if (name.length === 0) {
+      return { valid: false, error: `${label} contains empty name` };
+    }
+    if (name.length > MAX_NAME_LENGTH) {
+      return { valid: false, error: `${label} names must be under ${MAX_NAME_LENGTH} characters` };
+    }
+  }
+  
+  return { valid: true };
+}
 
 // Get the signing secret (must match verify-admin-pin)
 async function getSigningSecret(): Promise<Uint8Array> {
@@ -17,6 +56,8 @@ async function getSigningSecret(): Promise<Uint8Array> {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -52,6 +93,28 @@ serve(async (req) => {
         JSON.stringify({ error: "Invalid or expired token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Validate men's entrants
+    if (mensEntrants !== undefined) {
+      const validation = validateEntrantsArray(mensEntrants, "Men's entrants");
+      if (!validation.valid) {
+        return new Response(
+          JSON.stringify({ error: validation.error }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Validate women's entrants
+    if (womensEntrants !== undefined) {
+      const validation = validateEntrantsArray(womensEntrants, "Women's entrants");
+      if (!validation.valid) {
+        return new Response(
+          JSON.stringify({ error: validation.error }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Create Supabase client with service role
@@ -99,6 +162,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in update-platform-config:", error);
+    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

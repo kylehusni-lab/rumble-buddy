@@ -35,7 +35,7 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
 
   // Rumble winner picks
   if (matchId === "mens_rumble_winner" || matchId === "womens_rumble_winner") {
-    const gender = matchId.includes("mens") ? "mens" : "womens";
+    const gender = matchId.includes("womens") ? "womens" : "mens";
     const entrants = gender === "mens" 
       ? (mensEntrants || DEFAULT_MENS_ENTRANTS)
       : (womensEntrants || DEFAULT_WOMENS_ENTRANTS);
@@ -49,7 +49,7 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
 
   // Chaos props (yes/no)
   if (matchId.includes("chaos_prop")) {
-    const gender = matchId.includes("mens") ? "Men's" : "Women's";
+    const gender = matchId.includes("womens") ? "Women's" : "Men's";
     const propIndex = parseInt(matchId.split("_").pop() || "1") - 1;
     const prop = CHAOS_PROPS[propIndex];
     return {
@@ -62,7 +62,7 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
   // Rumble props (wrestler select)
   const rumblePropMatch = RUMBLE_PROPS.find(p => matchId.includes(p.id));
   if (rumblePropMatch) {
-    const gender = matchId.includes("mens") ? "mens" : "womens";
+    const gender = matchId.includes("womens") ? "womens" : "mens";
     const entrants = gender === "mens" 
       ? (mensEntrants || DEFAULT_MENS_ENTRANTS)
       : (womensEntrants || DEFAULT_WOMENS_ENTRANTS);
@@ -76,7 +76,7 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
 
   // Final four picks
   if (matchId.includes("final_four")) {
-    const gender = matchId.includes("mens") ? "mens" : "womens";
+    const gender = matchId.includes("womens") ? "womens" : "mens";
     const slotNum = matchId.split("_").pop();
     const entrants = gender === "mens" 
       ? (mensEntrants || DEFAULT_MENS_ENTRANTS)

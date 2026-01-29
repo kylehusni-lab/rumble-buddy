@@ -14,10 +14,9 @@ import {
   TOTAL_CARDS, 
   CHAOS_PROPS, 
   RUMBLE_PROPS, 
-  FINAL_FOUR_SLOTS,
-  DEFAULT_MENS_ENTRANTS,
-  DEFAULT_WOMENS_ENTRANTS 
+  FINAL_FOUR_SLOTS 
 } from "@/lib/constants";
+import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { countCompletedPicks } from "@/lib/pick-validation";
 import { getSoloPicks, saveSoloPicks } from "@/lib/solo-storage";
 import { useSoloCloud } from "@/hooks/useSoloCloud";
@@ -36,6 +35,7 @@ import {
 export default function SoloPicks() {
   const navigate = useNavigate();
   const { isLoading, isAuthenticated, player, savePicksToCloud } = useSoloCloud();
+  const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
   
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [picks, setPicks] = useState<Record<string, any>>({});
@@ -260,7 +260,7 @@ export default function SoloPicks() {
     return values;
   };
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading || configLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -337,7 +337,7 @@ export default function SoloPicks() {
                 value={picks[currentCard.id] || null}
                 onChange={(value) => handlePickUpdate(currentCard.id, value)}
                 disabled={false}
-                customEntrants={currentCard.gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS}
+                customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
               />
             )}
             
@@ -358,7 +358,7 @@ export default function SoloPicks() {
                 values={getRumblePropsValues(currentCard.gender as "mens" | "womens")}
                 onChange={handleRumblePropsUpdate}
                 disabled={false}
-                customEntrants={currentCard.gender === "mens" ? DEFAULT_MENS_ENTRANTS : DEFAULT_WOMENS_ENTRANTS}
+                customEntrants={currentCard.gender === "mens" ? mensEntrants : womensEntrants}
               />
             )}
           </motion.div>

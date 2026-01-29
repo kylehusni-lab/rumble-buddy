@@ -1,10 +1,47 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SignJWT, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  "https://rumble-buddy.lovable.app",
+  "https://id-preview--b2021f13-f1d4-4520-93bc-6b4e2c2aba98.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  return {
+    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
+
+// In-memory rate limiting (resets on cold start, but provides basic protection)
+const attemptsByIP = new Map<string, { count: number; resetAt: number }>();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = attemptsByIP.get(ip);
+  
+  if (!record || record.resetAt < now) {
+    attemptsByIP.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    return true;
+  }
+  
+  if (record.count >= MAX_ATTEMPTS) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+}
+
+function resetRateLimitOnSuccess(ip: string): void {
+  attemptsByIP.delete(ip);
+}
 
 // Get or create a signing secret
 async function getSigningSecret(): Promise<Uint8Array> {
@@ -17,12 +54,26 @@ async function getSigningSecret(): Promise<Uint8Array> {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Rate limiting check
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+               req.headers.get("cf-connecting-ip") || 
+               "unknown";
+    
+    if (!checkRateLimit(ip)) {
+      return new Response(
+        JSON.stringify({ valid: false, error: "Too many attempts. Try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { pin } = await req.json();
 
     if (!pin) {
@@ -49,6 +100,9 @@ serve(async (req) => {
       );
     }
 
+    // PIN is correct - reset rate limit for this IP
+    resetRateLimitOnSuccess(ip);
+
     // Generate a signed JWT token
     const secret = await getSigningSecret();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
@@ -72,6 +126,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in verify-admin-pin:", error);
+    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ valid: false, error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
