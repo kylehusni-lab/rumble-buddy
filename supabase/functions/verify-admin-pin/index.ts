@@ -1,10 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SignJWT, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Origin validation for CORS
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  
+  const allowedPatterns = [
+    /^https:\/\/rumble-buddy\.lovable\.app$/,
+    /^https:\/\/.*\.lovable\.app$/,
+    /^http:\/\/localhost(:\d+)?$/,
+  ];
+  
+  const isAllowed = allowedPatterns.some(pattern => pattern.test(origin));
+  
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 // In-memory rate limiting (resets on cold start, but provides basic protection)
 const attemptsByIP = new Map<string, { count: number; resetAt: number }>();
@@ -43,9 +57,19 @@ async function getSigningSecret(): Promise<Uint8Array> {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // Reject requests from non-allowed origins
+  if (!corsHeaders["Access-Control-Allow-Origin"]) {
+    return new Response(
+      JSON.stringify({ valid: false, error: "Origin not allowed" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   try {

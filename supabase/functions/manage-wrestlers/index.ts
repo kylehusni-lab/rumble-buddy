@@ -1,9 +1,33 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Origin validation for CORS
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  
+  const allowedPatterns = [
+    /^https:\/\/rumble-buddy\.lovable\.app$/,
+    /^https:\/\/.*\.lovable\.app$/,
+    /^http:\/\/localhost(:\d+)?$/,
+  ];
+  
+  const isAllowed = allowedPatterns.some(pattern => pattern.test(origin));
+  
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
+
+// Same signing secret derivation as verify-admin-pin
+async function getSigningSecret(): Promise<Uint8Array> {
+  const secretStr = Deno.env.get("PLATFORM_ADMIN_PIN") || "fallback-secret-key";
+  const encoder = new TextEncoder();
+  const data = encoder.encode(secretStr + "-jwt-signing-key-v1");
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(hashBuffer);
+}
 
 interface WrestlerData {
   id?: string;
@@ -27,45 +51,53 @@ interface RequestBody {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Reject requests from non-allowed origins
+  if (!corsHeaders["Access-Control-Allow-Origin"]) {
+    return new Response(
+      JSON.stringify({ error: "Origin not allowed" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const platformAdminPin = Deno.env.get("PLATFORM_ADMIN_PIN");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: RequestBody = await req.json();
     const { token, action, data } = body;
 
-    // Verify admin token (simple check - token must match platform admin session)
-    if (!token) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized - no token provided" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // For list action, we allow authenticated users
-    // For mutations, verify the token against our admin check
+    // Verify admin token for all actions except list
     if (action !== "list") {
-      // Token should be the platform admin session token
-      // We verify it by checking if it's a valid session
-      if (!platformAdminPin) {
+      if (!token) {
         return new Response(
-          JSON.stringify({ error: "Platform admin not configured" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Unauthorized - no token provided" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      // Simple token validation - the token is the session ID from platform admin
-      // In production, you'd want a more robust JWT-based approach
-      if (token.length < 10) {
+
+      try {
+        const secret = await getSigningSecret();
+        const { payload } = await jwtVerify(token, secret);
+        
+        // Verify the token has the platform_admin role
+        if (payload.role !== "platform_admin") {
+          return new Response(
+            JSON.stringify({ error: "Insufficient permissions" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (err) {
+        console.error("JWT verification failed:", err);
         return new Response(
-          JSON.stringify({ error: "Invalid admin token" }),
+          JSON.stringify({ error: "Invalid or expired token" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -376,6 +408,7 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     console.error("Error in manage-wrestlers:", error);
+    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
