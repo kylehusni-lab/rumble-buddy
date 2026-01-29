@@ -1,92 +1,133 @@
 
-# Fix Plan: Wrestler Selection Keyboard, Picker Count & Demo Mode
+
+# Fix Plan: Consistent Picking Experience (Solo & Group)
 
 ## Issues Identified
 
-1. **Keyboard auto-opens on wrestler selection cards** - Mobile browsers focus search inputs automatically, consuming screen space
-2. **Progress bar shows 9 picker slots, but only 8 cards exist** - The undercard_2 match was removed but ProgressBar wasn't updated
-3. **Demo mode broken** - PlayerDashboard still references `undercard_2` which no longer exists
+### 1. Search Input Still Auto-Focusing
+The `RumbleWinnerCard.tsx` search input is missing `autoFocus={false}` which causes the mobile keyboard to auto-open and obscure the wrestler grid. While the previous fix added `autoFocus={false}` to other cards, the main RumbleWinnerCard was missed.
+
+### 2. Inconsistent Scrolling & Navigation Visibility
+The pick cards have inconsistent height constraints. Some cards like `MatchCard` don't fill the container properly, and on taller Rumble/Chaos cards, the navigation footer can get pushed out of view due to the card's internal scrolling fighting with the page structure.
+
+**Root cause**: The cards use `max-h-[calc(100vh-220px)]` but this doesn't account for the parent container's flex structure, leading to overflow issues on mobile.
+
+### 3. Header & Footer Inconsistency Between Solo and Group
+- **Solo Picks** (`SoloPicks.tsx`): Uses `Home` icon in header, shows sync status
+- **Group Picks** (`PickCardStack.tsx`): Uses `ArrowLeft` icon, shows party code
+
+Both need consistent visual hierarchy:
+- Same header structure (back button, title/status, spacer)
+- Same fixed footer with Back/Save/Next buttons
+- Same swipe hint placement
 
 ---
 
-## Fix 1: Prevent Auto-Keyboard on Wrestler Selection
+## Fix 1: Add Missing `autoFocus={false}` to RumbleWinnerCard
 
-**Files to modify:**
-- `src/components/picks/cards/RumbleWinnerCard.tsx`
-- `src/components/WrestlerPickerModal.tsx`  
-- `src/components/picks/cards/RumblePropsCard.tsx`
+**File:** `src/components/picks/cards/RumbleWinnerCard.tsx`
 
-**Changes:**
-Add `readOnly` attribute initially, then remove it on explicit tap. Or simpler: wrap the input in a collapsible/expandable state so users must tap "Search" to activate it, keeping the full wrestler grid visible by default.
-
-**Recommended approach:** Add `inputMode="none"` and handle focus only on explicit user tap on the search field, or make search hidden by default with a small "Search" button that expands it.
+Add the missing `autoFocus={false}` attribute to prevent the keyboard from auto-opening when the card renders.
 
 ---
 
-## Fix 2: Update ProgressBar to Match 8 Cards
+## Fix 2: Fix Page Layout to Ensure Footer Always Visible
 
-**File:** `src/components/picks/ProgressBar.tsx`
+**Files:** `src/pages/SoloPicks.tsx` and `src/components/picks/PickCardStack.tsx`
 
-**Current (broken):**
-```typescript
-const CARD_GROUPS = [
-  { name: "Undercard", range: [0, 2], icon: Trophy },  // 3 cards (0,1,2)
-  { name: "Men's", range: [3, 5], icon: User },        // 3 cards (3,4,5)
-  { name: "Women's", range: [6, 8], icon: User },      // 3 cards (6,7,8)
-] // Total: 9 slots
+The page layout needs to properly constrain the card area so the navigation footer is never pushed off-screen:
+
+1. Change the card container from `flex-1` with internal overflow to a constrained height that respects the viewport minus header, progress bar, and footer heights
+2. Use a fixed calculation: `h-[calc(100vh-{header+progress+footer}px)]` 
+3. Move overflow handling inside the card container rather than letting cards fight for space
+
+**Current structure (problematic):**
+```
+h-screen flex-col
+├── header (shrink-0)
+├── progress bar (shrink-0)
+├── card container (flex-1, overflow-hidden) ← cards can push footer off
+├── swipe hint
+└── footer (shrink-0)
 ```
 
-**Fixed:**
-```typescript
-const CARD_GROUPS = [
-  { name: "Undercard", range: [0, 1], icon: Trophy },  // 2 cards (0,1)
-  { name: "Men's", range: [2, 4], icon: User },        // 3 cards (2,3,4)
-  { name: "Women's", range: [5, 7], icon: User },      // 3 cards (5,6,7)
-] // Total: 8 slots
+**Fixed structure:**
+```
+h-screen flex-col
+├── header (shrink-0)
+├── progress bar (shrink-0)
+├── card container (flex-1, min-h-0, overflow-hidden)
+│   └── card (h-full, internal scroll)
+├── swipe hint (shrink-0)
+└── footer (shrink-0)
+```
+
+Key changes:
+- Add `min-h-0` to card container to allow proper flex shrinking
+- Remove fixed `max-h-[calc(...)]` from cards and let them fill parent
+- Ensure cards use `h-full` and internal `overflow-y-auto` for their scrollable areas
+
+---
+
+## Fix 3: Add `autoFocus={false}` to Final Four Modal
+
+**File:** `src/components/picks/cards/RumblePropsCard.tsx` (line ~466-473)
+
+The Final Four modal search input is missing `autoFocus={false}`:
+
+```tsx
+<Input
+  type="text"
+  placeholder="Search wrestlers..."
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  className="pl-10"
+  autoComplete="off"
+  autoCorrect="off"
+  autoCapitalize="off"
+  autoFocus={false}      // ADD
+  inputMode="search"     // ADD
+  enterKeyHint="search"  // ADD
+/>
 ```
 
 ---
 
-## Fix 3: Update PlayerDashboard TAB_MATCH_IDS
+## Fix 4: Standardize Card Height Constraints
 
-**File:** `src/pages/PlayerDashboard.tsx`
+**Files:** All pick cards
 
-**Current (broken):**
-```typescript
-matches: ['undercard_1', 'undercard_2', 'undercard_3', ...]
-```
+Remove `max-h-[calc(100vh-XXXpx)]` from individual cards and instead let them inherit from their parent container:
 
-**Fixed:**
-```typescript
-matches: ['undercard_1', 'undercard_3', ...]
-```
+| File | Current | Fixed |
+|------|---------|-------|
+| `RumbleWinnerCard.tsx` | `max-h-[calc(100vh-220px)]` | `h-full` |
+| `ChaosPropsCard.tsx` | `max-h-[calc(100vh-220px)]` | `h-full` |
+| `RumblePropsCard.tsx` | `max-h-[calc(100vh-180px)]` | `h-full` |
+| `MatchCard.tsx` | `min-h-[300px]` (keep as minimum) | No change needed |
 
-Remove `undercard_2` reference since that match no longer exists.
+The parent container in `SoloPicks.tsx` and `PickCardStack.tsx` will control the height.
 
 ---
 
-## Fix 4: Clean Up constants.ts MATCH_IDS (Optional)
+## Technical Summary
 
-**File:** `src/lib/constants.ts`
-
-Consider removing `UNDERCARD_2` from `MATCH_IDS` to prevent future confusion, or leave it as a placeholder for potential future use.
+| Change | File(s) | Impact |
+|--------|---------|--------|
+| Add `autoFocus={false}` to search | `RumbleWinnerCard.tsx`, `RumblePropsCard.tsx` (Final Four) | Prevents keyboard auto-open |
+| Fix flex container with `min-h-0` | `SoloPicks.tsx`, `PickCardStack.tsx` | Footer always visible |
+| Standardize card heights to `h-full` | All 4 pick card components | Consistent sizing |
+| Add missing input attributes | `RumblePropsCard.tsx` (Final Four modal) | Search UX consistency |
 
 ---
 
 ## Testing Checklist
 
 After implementation:
-1. Open Solo Picks → Verify 8 dots in progress bar (2 undercard + 3 men's + 3 women's)
-2. Navigate through all 8 cards → Verify correct navigation
-3. Tap on wrestler grid → Verify keyboard does NOT auto-open
-4. Tap search field explicitly → Verify keyboard opens
-5. Run Demo Mode → Verify demo players created with correct picks
-6. Open Player Dashboard → Verify matches tab shows 2 undercard matches
+1. Open Solo Picks on mobile - verify footer (Back/Save/Next) is always visible on all 8 cards
+2. Navigate to RumbleWinnerCard - verify keyboard does NOT auto-open
+3. Navigate to Chaos Props card - verify content scrolls and footer stays fixed
+4. Tap Final Four in Rumble Props - verify search doesn't auto-focus
+5. Test Group Picks flow - verify same behavior as Solo
+6. Compare Solo and Group header/footer - verify visual consistency
 
----
-
-## Technical Notes
-
-- The `CARD_CONFIG` array already has 8 cards (2 matches, 2 rumble winners, 2 chaos props, 2 rumble props)
-- The demo seeder uses `UNDERCARD_MATCHES.forEach()` which will correctly iterate only the 2 existing matches
-- The main bugs are in the ProgressBar hardcoded ranges and PlayerDashboard TAB_MATCH_IDS reference
