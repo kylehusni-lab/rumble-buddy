@@ -316,6 +316,12 @@ export const RumblePropsCard = memo(function RumblePropsCard({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              autoFocus={false}
+              inputMode="search"
+              enterKeyHint="search"
             />
           </div>
 

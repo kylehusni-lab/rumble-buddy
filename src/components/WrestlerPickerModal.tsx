@@ -106,6 +106,9 @@ export function WrestlerPickerModal({
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck="false"
+                autoFocus={false}
+                inputMode="search"
+                enterKeyHint="search"
               />
             </div>
           </div>

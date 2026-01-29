@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 // Match ID groupings for each tab (chaos props now included in mens/womens)
 const TAB_MATCH_IDS: Record<Exclude<TabId, "numbers">, string[]> = {
-  matches: ['undercard_1', 'undercard_2', 'undercard_3', 'mens_rumble_winner', 'womens_rumble_winner'],
+  matches: ['undercard_1', 'undercard_3', 'mens_rumble_winner', 'womens_rumble_winner'],
   mens: [
     'mens_first_elimination', 'mens_most_eliminations', 'mens_longest_time', 'mens_entrant_1', 'mens_entrant_30', 
     'mens_final_four_1', 'mens_final_four_2', 'mens_final_four_3', 'mens_final_four_4', 'mens_no_show',

@@ -23,7 +23,6 @@ export const CHAOS_PROPS = [
 
 export const MATCH_IDS = {
   UNDERCARD_1: 'undercard_1',
-  UNDERCARD_2: 'undercard_2',
   UNDERCARD_3: 'undercard_3',
   MENS_RUMBLE_WINNER: 'mens_rumble_winner',
   WOMENS_RUMBLE_WINNER: 'womens_rumble_winner',
