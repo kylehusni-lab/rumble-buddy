@@ -1,389 +1,361 @@
 
 
-# TV Display Enhancement Plan - 4 Screens Improvement
+# Wrestler Database Admin Panel - Implementation Plan
 
 ## Overview
 
-This plan implements major improvements across 4 TV display screens to improve 10-foot readability, maximize screen space, and create a broadcast-quality viewing experience.
+This plan creates a full-featured admin panel for managing the wrestler roster database. The system will store wrestlers in a database table with cloud storage for images, allowing hosts and platform admins to add/edit/remove wrestlers without using AI credits.
 
 ---
 
-## Screen 1: Rumble Props Table Improvements
+## Architecture Decision
 
-### Current Issues
-- Row height is cramped (~60px) with minimal padding
-- Wrestler images are ~48px (`size="sm"`) - too small from across the room
-- No wrestler names below images - relies on face recognition
-- Initial fallbacks (SU, OT) are confusing
-- Final Four row shows 4 tiny ~25px images crammed together
-- "TBD" in Result column wastes space
+### Two-Tier Access Model
 
-### Implementation Changes
+Given the existing authentication patterns in the codebase:
 
-**File: `src/components/tv/RumblePropsDisplay.tsx`**
+| Access Level | Route | Authentication Method |
+|--------------|-------|----------------------|
+| **Platform Admin** | `/admin/wrestlers` | Platform admin PIN (existing verify-admin-pin edge function) |
+| **Party Host** | Hidden button in HostControl | Party PIN + host session check |
 
-| Change | Current | New |
-|--------|---------|-----|
-| Row height | ~60px | 100-120px (via increased padding) |
-| Image size | `size="sm"` (48px) | `size="md"` (80px) |
-| Wrestler names | None | Show truncated name below image |
-| Empty state | Various | Simple "—" dash |
-| Final Four | 4 tiny images inline | 2x2 grid layout OR vertical name list |
-| Result column | "TBD" | "—" |
-| Player headers | Plain text | Colored 3px underline per player |
+**Recommendation**: Implement Platform Admin level first - this provides a central roster management that all parties can use. Party-level customization can be added later.
 
-**New Component Structure:**
+---
 
-```tsx
-// Each wrestler cell will show:
-<div className="flex flex-col items-center gap-2">
-  <WrestlerImage name={prediction} size="md" />
-  <span className="text-xs text-muted-foreground truncate max-w-[80px]">
-    {getShortName(prediction)} // "Roman", "Cody", etc.
-  </span>
-</div>
+## Database Schema
+
+### New Table: `wrestlers`
+
+```sql
+CREATE TABLE public.wrestlers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  short_name TEXT,
+  division TEXT NOT NULL CHECK (division IN ('mens', 'womens')),
+  image_url TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Unique constraint on name (case-insensitive)
+CREATE UNIQUE INDEX idx_wrestlers_name_lower ON wrestlers (LOWER(name));
+
+-- Performance index
+CREATE INDEX idx_wrestlers_division ON wrestlers(division);
+CREATE INDEX idx_wrestlers_active ON wrestlers(is_active) WHERE is_active = true;
 ```
 
-**Final Four 2x2 Grid:**
+### Row Level Security
 
-```tsx
-<div className="grid grid-cols-2 gap-1.5 max-w-[100px] mx-auto">
-  {fourPicks.map((name, i) => (
-    <div key={i} className="flex flex-col items-center">
-      <WrestlerImage name={name} size="sm" /> {/* 40px */}
-    </div>
-  ))}
-</div>
+```sql
+ALTER TABLE wrestlers ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read wrestlers
+CREATE POLICY "Anyone can read wrestlers"
+ON wrestlers FOR SELECT
+TO authenticated
+USING (true);
+
+-- No direct mutations - must go through edge function with admin token
 ```
 
-**Player Header with Color Underline:**
+### Storage Bucket: `wrestler-images`
 
-```tsx
-<th className="p-4 text-center">
-  <span className="text-lg font-semibold">{player.display_name}</span>
-  <div 
-    className="h-[3px] w-full mt-2 rounded-full"
-    style={{ backgroundColor: playerColor.hex }}
-  />
-</th>
+```sql
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('wrestler-images', 'wrestler-images', true, 5242880);
+
+-- RLS for public read access
+CREATE POLICY "Public can view wrestler images"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'wrestler-images');
+
+-- Authenticated users can upload (will be further restricted via edge function)
+CREATE POLICY "Authenticated can upload wrestler images"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'wrestler-images');
+
+CREATE POLICY "Authenticated can update wrestler images"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'wrestler-images');
+
+CREATE POLICY "Authenticated can delete wrestler images"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (bucket_id = 'wrestler-images');
 ```
 
 ---
 
-## Screen 2: Leaderboard Complete Redesign
+## Edge Function: `manage-wrestlers`
 
-### Current Issues
-- Card grid layout feels empty when all scores are 0
-- Redundant "Leaderboard" title (already in tab)
-- No visual indication of WHERE points came from
-- Unbalanced 4+2 card layout
+Secure CRUD operations with admin token verification.
 
-### Implementation Changes
+### Endpoints (via body action):
 
-**File: `src/components/tv/TvLeaderboardView.tsx`**
+| Action | Description |
+|--------|-------------|
+| `list` | Get all wrestlers (paginated, filtered) |
+| `create` | Add new wrestler |
+| `update` | Edit wrestler |
+| `delete` | Remove wrestler (soft delete via is_active) |
+| `bulk_import` | Import multiple wrestlers from names list |
 
-Complete redesign from card grid to horizontal bar list:
+### Request Format:
+
+```typescript
+interface ManageWrestlersRequest {
+  token: string; // Platform admin JWT token
+  action: 'list' | 'create' | 'update' | 'delete' | 'bulk_import';
+  data?: {
+    // For create/update
+    id?: string;
+    name?: string;
+    short_name?: string;
+    division?: 'mens' | 'womens';
+    image_url?: string;
+    // For bulk_import
+    names?: string[];
+    default_division?: 'mens' | 'womens';
+    // For list filtering
+    search?: string;
+    division_filter?: 'mens' | 'womens' | 'all';
+  };
+}
+```
+
+**File**: `supabase/functions/manage-wrestlers/index.ts`
+
+---
+
+## Frontend Components
+
+### 1. Admin Route & Page
+
+**File**: `src/pages/WrestlerAdmin.tsx`
+
+- Protected by platform admin session check
+- Redirects to verify PIN if not authenticated
+- Similar pattern to existing `PlatformAdmin.tsx`
+
+**Route Addition** to `src/App.tsx`:
+```tsx
+<Route path="/admin/wrestlers" element={<WrestlerAdmin />} />
+```
+
+### 2. Page Layout Structure
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│  1  🟡 Kyle      ████████████████████████░░░░░░░░░░░░░░░░░   45 pts │
-│  2  🔴 Melanie   ██████████████████░░░░░░░░░░░░░░░░░░░░░░░   38 pts │
-│  3  🟠 Mike      ███████████████░░░░░░░░░░░░░░░░░░░░░░░░░░   32 pts │
-│  4  🟢 Jon       █████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░   28 pts │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  ← Back                Wrestler Database           [Bulk] [+ Add]  │
+├─────────────────────────────────────────────────────────────────────┤
+│  🔍 Search...                        [All] [Men's] [Women's]       │
+├─────────────────────────────────────────────────────────────────────┤
+│  47 wrestlers                                                       │
+├─────────────────────────────────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐            │
+│  │  [img]   │  │  [img]   │  │  [img]   │  │  [📷]    │            │
+│  ├──────────┤  ├──────────┤  ├──────────┤  ├──────────┤            │
+│  │ Roman    │  │ Seth     │  │ Cody     │  │ New One  │            │
+│  │ Men's    │  │ Men's    │  │ Men's    │  │ Men's    │            │
+│  │ [✏️][🗑️] │  │ [✏️][🗑️] │  │ [✏️][🗑️] │  │ [✏️][🗑️] │            │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘            │
+│  ...                                                                │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**List Row Structure:**
+### 3. Component Breakdown
 
-```tsx
-<div className="flex items-center gap-4 h-16 px-6 rounded-xl bg-card/30">
-  {/* Rank */}
-  <span className={cn(
-    "text-2xl font-bold w-8",
-    index === 0 && "text-[#FFD700]",  // Gold
-    index === 1 && "text-[#C0C0C0]",  // Silver
-    index === 2 && "text-[#CD7F32]",  // Bronze
-    index > 2 && "text-muted-foreground"
-  )}>
-    {index + 1}
-  </span>
-  
-  {/* Color indicator */}
-  <div 
-    className="w-3 h-3 rounded-full"
-    style={{ backgroundColor: playerColor.hex }}
-  />
-  
-  {/* Name */}
-  <span className="text-xl font-medium flex-shrink-0 w-24">
-    {player.display_name}
-  </span>
-  
-  {/* Progress bar */}
-  <div className="flex-1 h-3 rounded-full bg-white/10 overflow-hidden">
-    <div 
-      className="h-full rounded-full transition-all duration-500 ease-out"
-      style={{ 
-        width: `${(player.points / maxPoints) * 100}%`,
-        backgroundColor: playerColor.hex 
-      }}
-    />
-  </div>
-  
-  {/* Points */}
-  <span className="text-2xl font-bold w-20 text-right">
-    {player.points}
-    <span className="text-sm text-muted-foreground ml-1">pts</span>
-  </span>
-</div>
-```
+| Component | File | Purpose |
+|-----------|------|---------|
+| `WrestlerAdmin` | `src/pages/WrestlerAdmin.tsx` | Main page with grid |
+| `WrestlerCard` | `src/components/admin/WrestlerCard.tsx` | Individual wrestler card |
+| `WrestlerFormModal` | `src/components/admin/WrestlerFormModal.tsx` | Add/Edit modal |
+| `BulkImportModal` | `src/components/admin/BulkImportModal.tsx` | Bulk import modal |
+| `DeleteConfirmModal` | `src/components/admin/DeleteConfirmModal.tsx` | Delete confirmation |
 
-**Remove:**
-- Trophy icons and title header
+### 4. Custom Hook
 
-**Add:**
-- Pre-event state: Show "Predictions locked - waiting for event to start"
-- Score change animation: Bar width animates + brief glow on row
-- Row height: 60-70px, gap: 10px, max-width: 900px centered
-
----
-
-## Screen 3: Undercard Match View Improvements
-
-### Current Issues
-- Unused vertical space
-- Wrestler images could be larger (~120px currently)
-- Prediction bar uses gold/purple - not player colors
-- Player names on prediction bar are small
-- "Undercard Match" label is redundant
-
-### Implementation Changes
-
-**File: `src/components/tv/ActiveMatchDisplay.tsx`**
-
-| Change | Current | New |
-|--------|---------|-----|
-| Wrestler images | `size="lg"` (128px) | Custom 180-200px |
-| Prediction bar colors | Gold/Purple | Player's assigned colors |
-| Player names on bar | Small gray text | 14px, colored by player |
-| "Undercard Match" label | Shows in corner | Remove |
-| Points value | Not shown | Add "Worth 10 pts" indicator |
-
-**New Prediction Bar Design:**
-
-```tsx
-{/* Player names above bar - grouped by prediction */}
-<div className="flex justify-between text-sm">
-  <div className="flex gap-2">
-    {pickStats.wrestler1.players.map((name, i) => (
-      <span 
-        key={i}
-        style={{ color: getPlayerColorByName(name) }}
-        className="font-medium"
-      >
-        {name}
-      </span>
-    ))}
-  </div>
-  <div className="flex gap-2">
-    {pickStats.wrestler2.players.map((name, i) => (
-      <span 
-        key={i}
-        style={{ color: getPlayerColorByName(name) }}
-        className="font-medium"
-      >
-        {name}
-      </span>
-    ))}
-  </div>
-</div>
-
-{/* Points indicator */}
-<div className="mt-4 text-center text-muted-foreground text-sm">
-  Worth 10 pts
-</div>
-```
-
-**Custom Larger Wrestler Image:**
-
-Add new `tv` size to WrestlerImage.tsx: `w-[180px] h-[180px]`
-
----
-
-## Screen 4: Entry Grid Improvements
-
-### Current Issues
-- Winner Predictions cards too small (~90px)
-- Lock icons are tiny and unclear
-- `*` prefix for unconfirmed entrants is confusing
-- Draft distribution can cluster same colors
-- Player names in predictions are small and gray
-
-### Implementation Changes
-
-**File: `src/components/tv/RumbleWinnerPredictions.tsx`**
-
-| Change | Current | New |
-|--------|---------|-----|
-| Card width | `w-32` (128px) | `w-36` (144px) |
-| Wrestler image | `size="sm"` (48px) | `size="md"` (80px) |
-| Lock icons | Show on locked | Remove entirely |
-| Player name color | Gray muted | Player's assigned color |
-| Wrestler name | Shows `*` prefix | Strip `*` prefix, show clean |
-
-**Updated Card Structure:**
-
-```tsx
-<motion.div className="flex-shrink-0 w-36 p-4 rounded-xl border-2 bg-card/50">
-  <WrestlerImage
-    name={stripAsterisk(prediction)}
-    size="md"
-    className="border-2 border-muted"
-  />
-  
-  <div className="text-sm font-medium text-center mt-2">
-    {stripAsterisk(prediction)}
-  </div>
-  
-  <div 
-    className="text-sm font-medium text-center"
-    style={{ color: getPlayerColor(player.id) }}
-  >
-    {player.display_name}
-  </div>
-</motion.div>
-```
-
-### Draft Distribution Algorithm (Simplified)
-
-**Per user preference: Random distribution is acceptable, no cluster-breaking needed.**
-
-**File: Host-side number assignment logic**
+**File**: `src/hooks/useWrestlerAdmin.ts`
 
 ```typescript
-function assignDraftSlots(players: Player[], totalSlots = 30) {
-  const numPlayers = players.length;
-  const picksPerPlayer = Math.floor(totalSlots / numPlayers);
-  const vacantCount = totalSlots - (picksPerPlayer * numPlayers);
-  
-  // Create assignment array with each player appearing picksPerPlayer times
-  const assignments: (Player | 'VACANT')[] = [];
-  
-  for (let round = 0; round < picksPerPlayer; round++) {
-    players.forEach(player => {
-      assignments.push(player);
-    });
-  }
-  
-  // Add VACANT slots for remainder
-  for (let i = 0; i < vacantCount; i++) {
-    assignments.push('VACANT');
-  }
-  
-  // Simple random shuffle - consecutive same-player is acceptable
-  return shuffle(assignments);
-}
-
-function shuffle<T>(array: T[]): T[] {
-  const result = [...array];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-```
-
-### VACANT Slot Display
-
-**File: `src/components/tv/TvNumberCell.tsx`**
-
-```tsx
-// If not assigned to any player (VACANT)
-if (!isAssigned && !wrestlerName) {
-  return (
-    <div 
-      className="relative aspect-square rounded-xl flex flex-col items-center justify-center"
-      style={{
-        border: "2px dashed rgba(255,255,255,0.2)",
-        background: "rgba(255,255,255,0.02)",
-      }}
-    >
-      <span className="text-3xl font-light" style={{ color: "#555" }}>
-        {number}
-      </span>
-      <div className="absolute bottom-3 left-4 right-4 border-t border-dashed border-white/20" />
-    </div>
-  );
+interface UseWrestlerAdmin {
+  wrestlers: Wrestler[];
+  isLoading: boolean;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  divisionFilter: 'all' | 'mens' | 'womens';
+  setDivisionFilter: (d: string) => void;
+  createWrestler: (data: CreateWrestlerData) => Promise<void>;
+  updateWrestler: (id: string, data: UpdateWrestlerData) => Promise<void>;
+  deleteWrestler: (id: string) => Promise<void>;
+  bulkImport: (names: string[], division: string) => Promise<void>;
+  uploadImage: (file: File, wrestlerId: string) => Promise<string>;
 }
 ```
 
 ---
 
-## Technical Specifications
+## Image Upload Flow
 
-### Extended Player Colors (10 players max)
+### Process:
+
+1. User selects image file
+2. Client-side validation (type, size)
+3. Client-side compression (max 400x400px)
+4. Upload to Supabase Storage `wrestler-images/{wrestler-id}.jpg`
+5. Get public URL
+6. Update wrestler record with image_url
+
+### Compression Utility:
+
+**File**: `src/lib/image-utils.ts`
 
 ```typescript
-const PLAYER_COLORS = [
-  { hex: '#e91e63', textColor: 'black' },  // Pink
-  { hex: '#f44336', textColor: 'white' },  // Red
-  { hex: '#ff9800', textColor: 'black' },  // Orange
-  { hex: '#ffc107', textColor: 'black' },  // Amber
-  { hex: '#4caf50', textColor: 'black' },  // Green
-  { hex: '#00bcd4', textColor: 'black' },  // Cyan
-  { hex: '#2196f3', textColor: 'white' },  // Blue
-  { hex: '#9c27b0', textColor: 'white' },  // Purple
-  { hex: '#795548', textColor: 'white' },  // Brown
-  { hex: '#607d8b', textColor: 'white' },  // Blue Gray
-];
+export async function compressImage(file: File, maxSize = 400): Promise<Blob> {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.85);
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+}
 ```
 
-### Animation Timings
+---
 
-| Animation | Duration | Easing |
-|-----------|----------|--------|
-| Score bar fill | 0.5s | ease-out |
-| Row highlight pulse | 0.3s | ease |
-| All transitions | 0.2s | ease |
+## Integration with Existing System
+
+### Update `wrestler-data.ts` to Support Database
+
+Modify `getWrestlerImageUrl()` to check database first:
+
+```typescript
+// New function that checks database wrestlers first
+export async function getWrestlerImageUrlFromDb(name: string): Promise<string> {
+  // Check database cache first (populated on app load)
+  const dbWrestler = wrestlerCache.get(name);
+  if (dbWrestler?.image_url) {
+    return dbWrestler.image_url;
+  }
+  
+  // Fall back to existing static data
+  return getWrestlerImageUrl(name);
+}
+```
+
+### Add Wrestler Cache Hook
+
+**File**: `src/hooks/useWrestlerCache.ts`
+
+Preloads database wrestlers and provides fast lookups.
 
 ---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/pages/WrestlerAdmin.tsx` | Main admin page |
+| `src/components/admin/WrestlerCard.tsx` | Wrestler display card |
+| `src/components/admin/WrestlerFormModal.tsx` | Add/Edit form modal |
+| `src/components/admin/BulkImportModal.tsx` | Bulk import modal |
+| `src/components/admin/DeleteConfirmModal.tsx` | Delete confirmation |
+| `src/hooks/useWrestlerAdmin.ts` | Admin operations hook |
+| `src/hooks/useWrestlerCache.ts` | Database wrestler cache |
+| `src/lib/image-utils.ts` | Image compression utility |
+| `supabase/functions/manage-wrestlers/index.ts` | Secure CRUD edge function |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/tv/RumblePropsDisplay.tsx` | Bigger rows, images with names, 2x2 Final Four, colored headers |
-| `src/components/tv/TvLeaderboardView.tsx` | Complete redesign to horizontal bar list |
-| `src/components/tv/ActiveMatchDisplay.tsx` | Larger images, player-colored prediction bar, remove label |
-| `src/components/tv/RumbleWinnerPredictions.tsx` | Bigger cards, remove locks, strip asterisks, colored names |
-| `src/components/tv/TvNumberCell.tsx` | Add VACANT slot styling |
-| `src/components/tv/WrestlerImage.tsx` | Add `tv` size variant (180px) |
-| `src/components/tv/TvViewNavigator.tsx` | Pass player colors to child components |
-| `src/index.css` | Add score bar animation, row glow effects |
+| `src/App.tsx` | Add `/admin/wrestlers` route |
+| `src/lib/wrestler-data.ts` | Add database integration for image lookups |
+| `src/pages/PlatformAdmin.tsx` | Add link to wrestler database |
+
+---
+
+## UI Styling (Consistent with App)
+
+### Color Palette
+
+```typescript
+const adminColors = {
+  background: '#0d0d15',
+  cardBg: 'rgba(255,255,255,0.05)',
+  cardBorder: 'rgba(255,255,255,0.1)',
+  inputBg: 'rgba(255,255,255,0.1)',
+  inputFocus: '#f5c518',
+  buttonPrimary: '#f5c518',
+  buttonDanger: '#f44336',
+};
+```
+
+### Grid Responsive Breakpoints
+
+| Screen | Columns |
+|--------|---------|
+| Desktop (1200px+) | 4 |
+| Tablet (768-1199px) | 3 |
+| Mobile (<768px) | 2 |
 
 ---
 
 ## Implementation Order
 
-| Step | Task | Priority |
-|------|------|----------|
-| 1 | **Leaderboard redesign** - Highest visual impact | High |
-| 2 | **Rumble Props table** - Bigger rows, wrestler names, Final Four grid | High |
-| 3 | **Winner Predictions** - Bigger cards, remove locks/asterisks | Medium |
-| 4 | **Undercard Match** - Player-colored bar, larger images | Medium |
-| 5 | **VACANT slots** - New styling for unassigned numbers | Low |
-| 6 | **Draft distribution algorithm** - Simple random shuffle | Low |
+| Step | Task | Files |
+|------|------|-------|
+| 1 | Create database table and storage bucket | Migration SQL |
+| 2 | Create manage-wrestlers edge function | `supabase/functions/manage-wrestlers/index.ts` |
+| 3 | Create image compression utility | `src/lib/image-utils.ts` |
+| 4 | Create useWrestlerAdmin hook | `src/hooks/useWrestlerAdmin.ts` |
+| 5 | Create WrestlerCard component | `src/components/admin/WrestlerCard.tsx` |
+| 6 | Create WrestlerFormModal | `src/components/admin/WrestlerFormModal.tsx` |
+| 7 | Create DeleteConfirmModal | `src/components/admin/DeleteConfirmModal.tsx` |
+| 8 | Create BulkImportModal | `src/components/admin/BulkImportModal.tsx` |
+| 9 | Create WrestlerAdmin page | `src/pages/WrestlerAdmin.tsx` |
+| 10 | Add route to App.tsx | `src/App.tsx` |
+| 11 | Add link from PlatformAdmin | `src/pages/PlatformAdmin.tsx` |
+| 12 | Integrate with wrestler-data.ts | `src/lib/wrestler-data.ts` |
 
 ---
 
-## Summary of Changes
+## Security Considerations
 
-| Screen | Key Improvements |
-|--------|-----------------|
-| **Rumble Props** | 100-120px rows, 70-80px images with names, 2x2 Final Four grid, colored column headers |
-| **Leaderboard** | Horizontal bar list with player colors, remove title, animated score changes |
-| **Undercard** | 180-200px wrestler images, player-colored prediction bar, "Worth 10 pts" indicator |
-| **Entry Grid** | 140px prediction cards, no locks, stripped asterisks, player-colored names, VACANT slot styling |
-| **Draft Algorithm** | Simple random shuffle (consecutive same-player is acceptable per user preference) |
+1. **Admin Token Verification**: All mutations go through edge function that verifies platform admin JWT
+2. **Storage RLS**: Images publicly readable, but uploads require authentication
+3. **Input Validation**: Edge function validates all inputs (name length, division values, etc.)
+4. **Rate Limiting**: Edge function includes rate limiting for bulk operations
+5. **Soft Delete**: Wrestlers are marked inactive rather than hard deleted to preserve historical data
+
+---
+
+## Summary
+
+This implementation:
+
+- Creates a dedicated wrestlers table in the database
+- Sets up cloud storage for wrestler images
+- Provides a secure admin panel protected by platform admin PIN
+- Supports full CRUD + bulk import operations
+- Uses existing UI patterns for consistent styling
+- Integrates with the existing wrestler display system
+- No AI credits used for any operations
+
+Access at `/admin/wrestlers` - platform admin only.
 
