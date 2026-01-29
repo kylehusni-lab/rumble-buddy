@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Trophy, Edit3, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check } from "lucide-react";
+import { Trophy, Edit3, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { SoloScoringModal } from "@/components/solo/SoloScoringModal";
@@ -419,52 +419,75 @@ const ChaosTab = memo(function ChaosTab({
   picks: Record<string, string>; 
   results: Record<string, string>;
 }) {
-  return (
-    <div className="space-y-6">
-      {["mens", "womens"].map((gender) => (
-        <div key={gender}>
-          <h3 className="text-lg font-bold text-foreground mb-4">
-            {gender === "mens" ? "Men's" : "Women's"} Chaos Props
-          </h3>
-          <div className="space-y-2">
-            {CHAOS_PROPS.map((prop, index) => {
-              const matchId = `${gender}_chaos_prop_${index + 1}`;
-              const pick = picks[matchId];
-              const result = results[matchId];
-              const isCorrect = pick && result && pick === result;
-              const isWrong = pick && result && pick !== result;
+  const getPickResult = (matchId: string): boolean | null => {
+    const pick = picks[matchId];
+    const result = results[matchId];
+    if (!pick || !result) return null;
+    return pick === result;
+  };
 
-              return (
-                <div
-                  key={matchId}
-                  className={`p-3 rounded-lg border flex items-center justify-between ${
-                    isCorrect
-                      ? "bg-success/10 border-success"
-                      : isWrong
-                      ? "bg-destructive/10 border-destructive"
-                      : "bg-card border-border"
-                  }`}
-                >
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-foreground">
-                      {prop.shortName}
-                    </div>
+  const renderCell = (matchId: string) => {
+    const pick = picks[matchId];
+    const isCorrect = getPickResult(matchId);
+    
+    return (
+      <div className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded ${
+        isCorrect === true
+          ? "bg-success/10"
+          : isCorrect === false
+          ? "bg-destructive/10"
+          : ""
+      }`}>
+        <span className={`text-sm font-bold ${
+          pick === "YES" ? "text-success" : pick === "NO" ? "text-destructive" : "text-muted-foreground"
+        }`}>
+          {pick || "—"}
+        </span>
+        {isCorrect === true && <Check size={14} className="text-success" />}
+        {isCorrect === false && <X size={14} className="text-destructive" />}
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <table className="w-full">
+        <thead>
+          <tr className="bg-muted/50 border-b border-border">
+            <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Chaos Prop
+            </th>
+            <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              🧔 Men's
+            </th>
+            <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              👩 Women's
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {CHAOS_PROPS.map((prop, index) => {
+            const mensMatchId = `mens_chaos_prop_${index + 1}`;
+            const womensMatchId = `womens_chaos_prop_${index + 1}`;
+            
+            return (
+              <tr key={prop.id} className="border-b border-border/50 last:border-0">
+                <td className="px-3 py-2.5">
+                  <div className="text-sm font-medium text-foreground">
+                    {prop.shortName}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold ${
-                      pick === "YES" ? "text-success" : pick === "NO" ? "text-destructive" : "text-muted-foreground"
-                    }`}>
-                      {pick || "—"}
-                    </span>
-                    {isCorrect && <span className="text-success">✓</span>}
-                    {isWrong && <span className="text-destructive">✗</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+                </td>
+                <td className="px-2 py-2">
+                  {renderCell(mensMatchId)}
+                </td>
+                <td className="px-2 py-2">
+                  {renderCell(womensMatchId)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 });
