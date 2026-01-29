@@ -15,6 +15,7 @@ import TvDisplay from "./pages/TvDisplay";
 import ViewAllPicks from "./pages/ViewAllPicks";
 import PlatformAdmin from "./pages/PlatformAdmin";
 import PlatformAdminVerify from "./pages/PlatformAdminVerify";
+import WrestlerAdmin from "./pages/WrestlerAdmin";
 import Legal from "./pages/Legal";
 import SoloSetup from "./pages/SoloSetup";
 import SoloPicks from "./pages/SoloPicks";
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/tv/:code" element={<TvDisplay />} />
           <Route path="/platform-admin" element={<PlatformAdmin />} />
           <Route path="/platform-admin/verify" element={<PlatformAdminVerify />} />
+          <Route path="/admin/wrestlers" element={<WrestlerAdmin />} />
           <Route path="/legal" element={<Legal />} />
           <Route path="/solo/setup" element={<SoloSetup />} />
           <Route path="/solo/picks" element={<SoloPicks />} />
