@@ -1,193 +1,169 @@
 
-## Plan: TV-Optimized Navigation Bar Redesign
 
-This plan redesigns the TvTabBar and related components to create a premium, 10-foot readable navigation system with consolidated tabs, Riyadh-inspired gold and green accents, and a clear visual hierarchy.
+# Security & Authentication Architecture Rework
 
----
+## Problem Summary
 
-### 1. Consolidate Navigation Structure
+The current system uses a custom authentication pattern (session IDs + PINs stored in localStorage) without real Supabase Auth. This creates several issues:
 
-**Current State**: 5 tabs (Leaderboard, Match 1, Match 2, Men's, Women's)
+- **RLS Friction**: Policies can't use `auth.uid()` since there's no authenticated user, forcing workarounds like restrictive `SELECT USING (false)` policies with public views
+- **Fragile Session Management**: Session IDs in localStorage can be lost, spoofed, or cleared
+- **Overly Permissive Writes**: Many tables allow anyone to INSERT/UPDATE/DELETE with `true` conditions
+- **Complex Workarounds**: The current design requires constant switching between tables and views, plus RPC functions for almost every operation
 
-**New Structure**: 4 tabs
-| Tab | Icon | Purpose |
-|-----|------|---------|
-| **Leaderboard** | Trophy | Player rankings - front and center |
-| **Undercard** | Swords | Opens a 2-match selector for Drew vs Sami and Gunther vs AJ |
-| **Men's Rumble** | Users | Men's Royal Rumble with sub-tabs |
-| **Women's Rumble** | Users | Women's Royal Rumble with sub-tabs |
+## Proposed Solution: Hybrid Approach
 
-**Benefits**:
-- Reduces visual clutter from 5 buttons to 4
-- More horizontal space for larger text
-- Clear hierarchy between main events (Rumbles) and supporting content
+Implement **Supabase Anonymous Auth** combined with the existing PIN system. This gives you real authenticated users without requiring email/password signup, while keeping the simple UX.
 
----
+### Why Anonymous Auth?
 
-### 2. Enhanced Visual Design
+- **Real `auth.uid()`**: RLS can properly scope data access to the authenticated user
+- **Session Persistence**: Supabase handles session refresh and persistence
+- **No UX Change**: Users still just enter a name + code - no passwords needed
+- **Demo Mode Compatible**: Anonymous users work perfectly for testing
+- **Upgrade Path**: Anonymous users can later link their account to email if desired
 
-**Color Palette**:
-- **Active tab**: Riyadh Gold (#D4AF37) with a glowing underline and slight gold background tint
-- **Rumble tabs (Main Events)**: Larger text, bolder weight to emphasize importance
-- **Inactive tabs**: Desaturated gray with muted icons to reduce visual noise
+## Architecture Changes
 
-**Size Targets for 10-Foot Readability**:
-- Tab icons: 28px minimum (currently 20px)
-- Tab labels: 20px font-size (currently 14px)
-- Tab buttons: 56px height minimum
-- Overall bar padding: Increased for visual breathing room
+### 1. Authentication Flow
 
-**Active State**:
-- Heavy 4px gold bottom border with glow effect
-- Subtle gold background tint
-- Full color saturation on icon and text
-
----
-
-### 3. Undercard Sub-Navigation
-
-When "Undercard" is selected, the view will show a mini-selector or cycle between the two matches. Two implementation options:
-
-**Option A: Inline Match Switcher (Recommended)**
-- Below the main tab bar, show a simple toggle: `Drew vs Sami | Gunther vs AJ`
-- Users can tap to switch between matches
-- Keyboard shortcuts: Hold `2` and tap left/right arrows
-
-**Option B: Tabbed Sub-View**
-- Similar to how Rumble views have sub-tabs for Grid/Props/Chaos
-- Add a `UndercardSubTabs` component with the two matches
-
----
-
-### 4. Technical Implementation
-
-**Files to Modify**:
-
-| File | Changes |
-|------|---------|
-| `src/components/tv/TvTabBar.tsx` | Complete redesign with new styling, larger sizes, gold accents |
-| `src/components/tv/TvViewNavigator.tsx` | Update VIEWS array, add undercard state management |
-| `src/pages/TvDisplay.tsx` | Pass undercard sub-view state to navigator |
-| `src/index.css` | Add new TV navigation CSS classes for gold glow, active underline |
-
-**New TvTabBar Structure**:
-```tsx
-// Simplified view config for 4 tabs
-const TAB_CONFIG = [
-  { id: "leaderboard", icon: Trophy, label: "Leaderboard", shortcut: "1", isMainEvent: false },
-  { id: "undercard", icon: Swords, label: "Undercard", shortcut: "2", isMainEvent: false },
-  { id: "mens", icon: Users, label: "Men's Rumble", shortcut: "3", isMainEvent: true },
-  { id: "womens", icon: Users, label: "Women's Rumble", shortcut: "4", isMainEvent: true },
-];
+**Group Mode (Players/Guests):**
+```
+1. User enters group code + name + email
+2. App calls supabase.auth.signInAnonymously()
+3. On success, create/update player record with auth.uid()
+4. RLS uses auth.uid() to scope all player data access
 ```
 
-**New CSS Classes**:
-```css
-/* TV Tab Bar - Gold accent styling */
-.tv-tab-active {
-  background: linear-gradient(180deg, hsla(43, 75%, 52%, 0.15) 0%, transparent 100%);
-  border-bottom: 4px solid hsl(43 75% 52%);
-  box-shadow: 0 4px 20px hsla(43, 75%, 52%, 0.3);
-}
-
-.tv-tab-inactive {
-  color: hsl(0 0% 50%);
-  opacity: 0.7;
-}
-
-.tv-tab-main-event {
-  font-size: 1.25rem; /* 20px */
-  font-weight: 700;
-}
+**Group Mode (Hosts):**
+```
+1. Host creates group (automatically creates anonymous auth session)
+2. Host sets 4-digit PIN (stored hashed in parties table)
+3. On return, host enters PIN to verify ownership
+4. PIN verification links to the original auth user OR upgrades session
 ```
 
----
-
-### 5. Undercard Match Selector Component
-
-Create a new `UndercardMatchSelector` component for the inline match toggle:
-
-```tsx
-// src/components/tv/UndercardMatchSelector.tsx
-interface UndercardMatchSelectorProps {
-  matches: { id: string; title: string }[];
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-}
+**Solo Mode:**
+```
+1. User can sign in anonymously OR with email/PIN (for cross-device sync)
+2. Anonymous users get full functionality on that device
+3. Email+PIN users can access from any device
 ```
 
-**Styling**:
-- Horizontal pills showing match names
-- Active match has green accent (success color) to differentiate from gold tabs
-- Matches the existing `RumbleSubTabs` aesthetic
-
----
-
-### 6. View Flow Updates
-
-**Updated VIEWS Array**:
-```tsx
-export const VIEWS: View[] = [
-  { type: "leaderboard", id: "leaderboard", title: "Leaderboard" },
-  { type: "undercard", id: "undercard", title: "Undercard" }, // Single undercard entry
-  { type: "rumble", id: "mens", title: "Men's Royal Rumble", gender: "mens" },
-  { type: "rumble", id: "womens", title: "Women's Royal Rumble", gender: "womens" },
-];
+**Demo Mode:**
+```
+1. Creates anonymous session automatically
+2. Seeds demo data linked to the anonymous user
+3. Works exactly as before - no changes needed
 ```
 
-**Undercard State Management**:
-- Add `undercardMatchIndex` state to track which match is being displayed
-- Pass to `TvViewNavigator` to render the correct `ActiveMatchDisplay`
-- Keyboard: When on Undercard tab, left/right arrows cycle between matches
+### 2. Database Schema Changes
 
----
+**Add `user_id` column to key tables:**
 
-### 7. Visual Hierarchy Summary
+| Table | Change |
+|-------|--------|
+| `parties` | Add `host_user_id uuid references auth.users(id)` |
+| `players` | Add `user_id uuid references auth.users(id)` |
+| `solo_players` | Add `user_id uuid references auth.users(id)` |
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  [🏆 Leaderboard]  [⚔ Undercard]  [👥 MEN'S RUMBLE]  [👥 WOMEN'S RUMBLE]        │
-│        ─────            ═════         ════════════       ════════════            │
-│      inactive          ACTIVE          Main Event          Main Event            │
-│       (gray)           (gold)           (larger)            (larger)             │
-└─────────────────────────────────────────────────────────────────────────────────┘
-                                 ▼
-                When Undercard is active:
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                    Drew vs Sami  ●────○  Gunther vs AJ                          │
-│                      (selected)            (available)                           │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
+**Note:** Keep existing `session_id` columns temporarily for migration, then deprecate.
 
----
+### 3. RLS Policy Redesign
 
-### 8. Keyboard Shortcuts Update
+**Replace the current confusing pattern with simple, secure policies:**
 
-| Key | Action |
-|-----|--------|
-| `1` | Jump to Leaderboard |
-| `2` | Jump to Undercard |
-| `3` | Jump to Men's Rumble |
-| `4` | Jump to Women's Rumble |
-| `←` / `→` | When on Undercard: cycle between matches |
-| `←` / `→` | When on Rumble: cycle between main tabs |
+| Table | SELECT | INSERT | UPDATE | DELETE |
+|-------|--------|--------|--------|--------|
+| `parties` | `auth.uid() = host_user_id` (hosts only) | `auth.uid() IS NOT NULL` | `auth.uid() = host_user_id` | None |
+| `players` | Players in same party can see each other | Own record only | Own record only | None |
+| `picks` | Own picks + party members (after event) | Own record only | Own record (if not scored) | None |
+| `rumble_numbers` | Party members can read | Host only | Host only | Host only |
 
----
+**Keep public views for truly public data** (leaderboard, TV display) but fix with `security_invoker=on`.
 
-### 9. Implementation Order
+### 4. Code Changes
 
-1. **Add CSS classes** in `src/index.css` for TV tab styling
-2. **Create UndercardMatchSelector** component for the match toggle
-3. **Refactor TvTabBar** with new 4-tab structure and visual design
-4. **Update TvViewNavigator** to consolidate undercard handling
-5. **Update TvDisplay** with undercard match state management
-6. **Update keyboard navigation** for new tab structure
+**Session Management:**
+- Replace custom `getSessionId()` with `supabase.auth.getSession()`
+- Replace `setPlayerSession()` with storing supplementary data after auth
+- Use `supabase.auth.onAuthStateChange()` for session persistence
 
----
+**Data Queries:**
+- Remove most `parties_public` view usage - query `parties` directly
+- RLS automatically scopes data based on `auth.uid()`
 
-### 10. Accessibility Considerations
+**RPC Functions:**
+- Keep PIN verification RPCs (still needed for host access)
+- Simplify `save_solo_pick` and similar - RLS handles ownership
 
-- All tabs maintain keyboard focus indicators
-- Tab role and aria-selected attributes for screen readers
-- Sufficient color contrast (gold on dark exceeds WCAG AA)
-- Status indicators (complete/active) remain visible with icons not just color
+## Migration Strategy
+
+**Phase 1 - Add Anonymous Auth (non-breaking):**
+1. Add `user_id` columns (nullable initially)
+2. Implement anonymous sign-in on all entry points
+3. Populate `user_id` on new records
+4. Add new RLS policies alongside existing ones
+
+**Phase 2 - Backfill & Migrate:**
+1. Create migration script to link existing sessions to anonymous users
+2. Update RLS to prefer `user_id` when available
+3. Remove dependency on `session_id`
+
+**Phase 3 - Cleanup:**
+1. Make `user_id` non-nullable
+2. Drop legacy `session_id` columns
+3. Remove old RLS policies
+4. Remove public views (if no longer needed)
+
+## Demo Mode Compatibility
+
+Demo mode will continue to work seamlessly:
+- `seedDemoParty()` creates anonymous session automatically
+- Demo players are created with their own anonymous auth sessions
+- PIN "0000" works as before for host access
+- All existing demo functionality preserved
+
+## Technical Implementation Details
+
+### Files to Modify
+
+**New/Updated Files:**
+- `src/lib/auth.ts` - New auth utilities wrapping Supabase Auth
+- `src/hooks/useAuth.ts` - React hook for auth state
+- `src/lib/session.ts` - Refactor to use Supabase sessions
+- `src/pages/PlayerJoin.tsx` - Add anonymous sign-in
+- `src/pages/Index.tsx` - Add anonymous sign-in on group create
+- `src/pages/SoloSetup.tsx` - Support both anonymous and email auth
+- `src/lib/demo-seeder.ts` - Create anonymous sessions for demo users
+
+**Database Migrations:**
+- Add `user_id` columns to `parties`, `players`, `solo_players`
+- Update RLS policies (add new, keep old for transition)
+- Fix views with `security_invoker=on`
+- Create helper function `is_party_member(party_code)` for RLS
+
+### Security Improvements
+
+1. **Hashed PINs**: Store host PINs using bcrypt (already partially done via RPC)
+2. **Rate Limiting**: Add rate limiting to PIN verification (edge function)
+3. **Session Rotation**: Supabase handles secure session rotation automatically
+4. **Audit Trail**: `auth.users` provides built-in audit capabilities
+
+## Benefits
+
+| Before | After |
+|--------|-------|
+| Custom session management | Built-in Supabase session handling |
+| Can't use `auth.uid()` in RLS | Full RLS capability with `auth.uid()` |
+| `SELECT USING (false)` + views pattern | Direct table access with proper RLS |
+| 11 "RLS always true" warnings | Properly scoped write policies |
+| Fragile localStorage sessions | Persistent, secure auth tokens |
+
+## Rollback Plan
+
+If issues arise:
+1. `user_id` columns are nullable - old `session_id` logic still works
+2. Old RLS policies kept during transition - can revert by removing new policies
+3. No data migration required for rollback - just code changes
+
