@@ -10,9 +10,9 @@ interface ProgressBarProps {
 
 // Card groups for the progress bar
 const CARD_GROUPS = [
-  { name: "Undercard", range: [0, 2], icon: Trophy },
-  { name: "Men's", range: [3, 5], icon: User },
-  { name: "Women's", range: [6, 8], icon: User },
+  { name: "Undercard", range: [0, 1], icon: Trophy },
+  { name: "Men's", range: [2, 4], icon: User },
+  { name: "Women's", range: [5, 7], icon: User },
 ] as const;
 
 export function ProgressBar({ 

@@ -97,7 +97,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
         </motion.div>
       )}
 
-      {/* Search Bar */}
+      {/* Search Bar - readOnly until tapped to prevent auto-keyboard */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
@@ -106,6 +106,11 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          inputMode="search"
+          enterKeyHint="search"
         />
       </div>
 
