@@ -75,7 +75,7 @@ export default function Index() {
       const code = Math.floor(1000 + Math.random() * 9000).toString();
       
       const { data } = await supabase
-        .from("parties")
+        .from("parties_public")
         .select("code")
         .eq("code", code)
         .maybeSingle();

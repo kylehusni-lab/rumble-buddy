@@ -132,7 +132,7 @@ export default function PlayerDashboard() {
       try {
         // Fetch party status
         const { data: partyData } = await supabase
-          .from("parties")
+          .from("parties_public")
           .select("status")
           .eq("code", code)
           .single();
@@ -236,7 +236,7 @@ export default function PlayerDashboard() {
       const hasSeenReveal = sessionStorage.getItem(`reveal-seen-${code}`);
       if (!hasSeenReveal) {
         const { data: partyData } = await supabase
-          .from("parties")
+          .from("parties_public")
           .select("status, event_started_at")
           .eq("code", code)
           .single();
