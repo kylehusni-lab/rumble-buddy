@@ -1,1 +1,4 @@
 project_id = "wdwoabawetwfzzicevtm"
+
+[functions.send-pin-recovery]
+verify_jwt = false

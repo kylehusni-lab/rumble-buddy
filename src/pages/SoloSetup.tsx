@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { User, ArrowRight, Sparkles, Mail, Lock, LogIn, UserPlus, Loader2 } from "lucide-react";
+import { User, ArrowRight, Sparkles, Mail, Lock, LogIn, UserPlus, Loader2, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Logo } from "@/components/Logo";
 import { useSoloCloud } from "@/hooks/useSoloCloud";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function SoloSetup() {
@@ -20,6 +21,7 @@ export default function SoloSetup() {
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingRecovery, setIsSendingRecovery] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -65,6 +67,29 @@ export default function SoloSetup() {
     if (success) {
       toast.success("Welcome back! 🎉");
       navigate("/solo/dashboard");
+    }
+  };
+
+  const handleForgotPin = async () => {
+    if (!email.trim()) {
+      toast.error("Please enter your email first");
+      return;
+    }
+
+    setIsSendingRecovery(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-pin-recovery", {
+        body: { email: email.trim() },
+      });
+
+      if (error) throw error;
+
+      toast.success("If an account exists, your PIN has been sent to your email!");
+    } catch (err) {
+      console.error("PIN recovery error:", err);
+      toast.error("Failed to send recovery email. Please try again.");
+    } finally {
+      setIsSendingRecovery(false);
     }
   };
 
@@ -220,7 +245,26 @@ export default function SoloSetup() {
                       onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                       className="text-center text-2xl tracking-[0.5em] font-mono"
                     />
-                  </div>
+                    </div>
+
+                  <button
+                    type="button"
+                    onClick={handleForgotPin}
+                    disabled={isSendingRecovery}
+                    className="w-full text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1 py-1"
+                  >
+                    {isSendingRecovery ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <HelpCircle className="w-3 h-3" />
+                        Forgot PIN? Email it to me
+                      </>
+                    )}
+                  </button>
 
                   {error && (
                     <p className="text-sm text-destructive text-center">{error}</p>
