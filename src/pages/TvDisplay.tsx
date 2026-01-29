@@ -42,6 +42,17 @@ interface MatchResult {
   result: string;
 }
 
+// Snapshot data returned by get_tv_snapshot RPC
+interface TvSnapshot {
+  found: boolean;
+  status?: string;
+  event_started_at?: string;
+  players?: Player[];
+  numbers?: (RumbleNumber & { rumble_type: string })[];
+  match_results?: MatchResult[];
+  picks?: Pick[];
+}
+
 export default function TvDisplay() {
   const { code } = useParams<{ code: string }>();
   
@@ -110,171 +121,164 @@ export default function TvDisplay() {
     partyStatusRef.current = partyStatus;
   }, [partyStatus]);
 
-  // Effect for polling fallback during pre_event (in case realtime fails)
-  useEffect(() => {
-    if (!code || partyStatus !== "pre_event") return;
+  // Helper to fetch all TV data via RPC (bypasses table SELECT policies)
+  const fetchTvSnapshot = useCallback(async (): Promise<TvSnapshot | null> => {
+    if (!code) return null;
     
-    const pollPartyStatus = async () => {
-      console.log("[TV] Polling party status...");
-      const { data, error } = await supabase
-        .from("parties_public")
-        .select("status, event_started_at")
-        .eq("code", code)
-        .maybeSingle();
-      
-      if (error) {
-        console.error("[TV] Poll error:", error);
-        return;
-      }
-      
-      console.log("[TV] Poll result:", data);
-      
-      if (data?.status && data.status !== "pre_event") {
-        console.log("[TV] Status changed to:", data.status);
-        setPartyStatus(data.status);
-        // Trigger number reveal if just went live
-        if (data.status === "live") {
-          const { data: allPlayers } = await supabase
-            .from("players_public")
-            .select("id, display_name")
-            .eq("party_code", code)
-            .order("joined_at");
+    console.log("[TV] Fetching snapshot via RPC...");
+    const { data, error } = await supabase.rpc("get_tv_snapshot", { p_party_code: code });
+    
+    if (error) {
+      console.error("[TV] Snapshot RPC error:", error);
+      return null;
+    }
+    
+    // Cast the JSONB response to our typed interface
+    const snapshot = data as unknown as TvSnapshot;
+    
+    if (!snapshot || !snapshot.found) {
+      console.log("[TV] Party not found");
+      return null;
+    }
+    
+    console.log("[TV] Snapshot received:", snapshot.status, "players:", snapshot.players?.length);
+    return snapshot;
+  }, [code]);
 
-          const { data: allNumbers } = await supabase
-            .from("rumble_numbers")
-            .select("number, assigned_to_player_id, rumble_type")
-            .eq("party_code", code);
+  // Helper to apply snapshot data to state
+  const applySnapshot = useCallback((snapshot: any, triggerReveal = false) => {
+    if (!snapshot || !snapshot.found) return;
+    
+    // Update status
+    if (snapshot.status) {
+      setPartyStatus(snapshot.status);
+    }
+    
+    // Update players
+    if (snapshot.players) {
+      setPlayers(snapshot.players);
+    }
+    
+    // Update numbers
+    if (snapshot.numbers) {
+      const mens = snapshot.numbers.filter((n: any) => n.rumble_type === "mens");
+      const womens = snapshot.numbers.filter((n: any) => n.rumble_type === "womens");
+      setMensNumbers(mens);
+      setWomensNumbers(womens);
+    }
+    
+    // Update picks
+    if (snapshot.picks) {
+      setPicks(snapshot.picks);
+    }
+    
+    // Update match results
+    if (snapshot.match_results) {
+      setMatchResults(snapshot.match_results);
+    }
+    
+    // Trigger reveal animation if requested
+    if (triggerReveal && snapshot.status === "live" && snapshot.players && snapshot.numbers) {
+      const playerData: PlayerWithNumbers[] = snapshot.players.map((p: any) => ({
+        playerName: p.display_name,
+        mensNumbers: snapshot.numbers
+          .filter((n: any) => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
+          .map((n: any) => n.number)
+          .sort((a: number, b: number) => a - b),
+        womensNumbers: snapshot.numbers
+          .filter((n: any) => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
+          .map((n: any) => n.number)
+          .sort((a: number, b: number) => a - b),
+      }));
+      
+      setRevealPlayers(playerData);
+      setShowNumberReveal(true);
+    }
+  }, []);
 
-          if (allPlayers && allNumbers) {
-            const playerData: PlayerWithNumbers[] = allPlayers.map(p => ({
-              playerName: p.display_name,
-              mensNumbers: allNumbers
-                .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
-                .map(n => n.number)
-                .sort((a, b) => a - b),
-              womensNumbers: allNumbers
-                .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
-                .map(n => n.number)
-                .sort((a, b) => a - b),
-            }));
-            
-            setRevealPlayers(playerData);
-            setShowNumberReveal(true);
-          }
+  // Effect for polling (works for both pre_event and live states)
+  useEffect(() => {
+    if (!code) return;
+    
+    const poll = async () => {
+      const snapshot = await fetchTvSnapshot();
+      if (!snapshot) return;
+      
+      const wasPreEvent = partyStatusRef.current === "pre_event";
+      const isNowLive = snapshot.status === "live";
+      
+      // Apply the snapshot data
+      applySnapshot(snapshot);
+      
+      // Trigger reveal if transitioning from pre_event to live
+      if (wasPreEvent && isNowLive) {
+        const hasSeenReveal = sessionStorage.getItem(`tv-reveal-seen-${code}`);
+        if (!hasSeenReveal && snapshot.players && snapshot.numbers) {
+          const playerData: PlayerWithNumbers[] = snapshot.players.map((p: any) => ({
+            playerName: p.display_name,
+            mensNumbers: snapshot.numbers
+              .filter((n: any) => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
+              .map((n: any) => n.number)
+              .sort((a: number, b: number) => a - b),
+            womensNumbers: snapshot.numbers
+              .filter((n: any) => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
+              .map((n: any) => n.number)
+              .sort((a: number, b: number) => a - b),
+          }));
+          
+          setRevealPlayers(playerData);
+          setShowNumberReveal(true);
         }
       }
     };
     
-    // Run immediately on mount, then poll every 3 seconds
-    pollPartyStatus();
-    const interval = setInterval(pollPartyStatus, 3000);
+    // Run immediately on mount
+    poll();
+    
+    // Poll every 3 seconds
+    const interval = setInterval(poll, 3000);
     
     return () => clearInterval(interval);
-  }, [code, partyStatus]);
+  }, [code, fetchTvSnapshot, applySnapshot]);
 
-  // Effect 1: Initial data fetch (runs once per code change)
+  // Check for initial reveal on mount (for late-joining TVs)
   useEffect(() => {
     if (!code) return;
 
-    const fetchData = async () => {
-      // Use parties_public view (SELECT is blocked on parties table)
-      const { data: partyData } = await supabase
-        .from("parties_public")
-        .select("status")
-        .eq("code", code)
-        .single();
-
-      if (partyData?.status) setPartyStatus(partyData.status);
-
-      const { data: playersData } = await supabase
-        .from("players_public")
-        .select("id, display_name, points")
-        .eq("party_code", code)
-        .order("points", { ascending: false });
-
-      if (playersData) setPlayers(playersData);
-
-      const { data: numbersData } = await supabase
-        .from("rumble_numbers")
-        .select("number, wrestler_name, assigned_to_player_id, entry_timestamp, elimination_timestamp, rumble_type")
-        .eq("party_code", code)
-        .order("number");
-
-      if (numbersData) {
-        setMensNumbers(numbersData.filter((n: any) => n.rumble_type === "mens"));
-        setWomensNumbers(numbersData.filter((n: any) => n.rumble_type === "womens"));
-      }
-
-      // Fetch picks
-      const { data: picksData } = await supabase
-        .from("picks")
-        .select("player_id, match_id, prediction")
-        .in("player_id", playersData?.map(p => p.id) || []);
-      
-      if (picksData) setPicks(picksData);
-
-      // Fetch match results
-      const { data: resultsData } = await supabase
-        .from("match_results")
-        .select("match_id, result")
-        .eq("party_code", code);
-      
-      if (resultsData) setMatchResults(resultsData);
-    };
-
-    fetchData();
-
     const checkInitialReveal = async () => {
       const hasSeenReveal = sessionStorage.getItem(`tv-reveal-seen-${code}`);
-      if (!hasSeenReveal) {
-        // Use parties_public view (SELECT is blocked on parties table)
-        const { data: partyData } = await supabase
-          .from("parties_public")
-          .select("status, event_started_at")
-          .eq("code", code)
-          .single();
+      if (hasSeenReveal) return;
+      
+      const snapshot = await fetchTvSnapshot();
+      if (!snapshot || snapshot.status !== "live") return;
+      
+      // Check if event started recently (within 2 minutes)
+      if (snapshot.event_started_at) {
+        const startedAt = new Date(snapshot.event_started_at);
+        const now = new Date();
+        const timeSinceStart = (now.getTime() - startedAt.getTime()) / 1000;
         
-        if (partyData?.status === "live" && partyData.event_started_at) {
-          const startedAt = new Date(partyData.event_started_at);
-          const now = new Date();
-          const timeSinceStart = (now.getTime() - startedAt.getTime()) / 1000;
+        if (timeSinceStart < 120 && snapshot.players && snapshot.numbers) {
+          const playerData: PlayerWithNumbers[] = snapshot.players.map((p: any) => ({
+            playerName: p.display_name,
+            mensNumbers: snapshot.numbers
+              .filter((n: any) => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
+              .map((n: any) => n.number)
+              .sort((a: number, b: number) => a - b),
+            womensNumbers: snapshot.numbers
+              .filter((n: any) => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
+              .map((n: any) => n.number)
+              .sort((a: number, b: number) => a - b),
+          }));
           
-          // Show reveal if event started within the last 2 minutes
-          if (timeSinceStart < 120) {
-            const { data: allPlayers } = await supabase
-              .from("players_public")
-              .select("id, display_name")
-              .eq("party_code", code)
-              .order("joined_at");
-
-            const { data: allNumbers } = await supabase
-              .from("rumble_numbers")
-              .select("number, assigned_to_player_id, rumble_type")
-              .eq("party_code", code);
-
-            if (allPlayers && allNumbers) {
-              const playerData: PlayerWithNumbers[] = allPlayers.map(p => ({
-                playerName: p.display_name,
-                mensNumbers: allNumbers
-                  .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
-                  .map(n => n.number)
-                  .sort((a, b) => a - b),
-                womensNumbers: allNumbers
-                  .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
-                  .map(n => n.number)
-                  .sort((a, b) => a - b),
-              }));
-              
-              setRevealPlayers(playerData);
-              setShowNumberReveal(true);
-            }
-          }
+          setRevealPlayers(playerData);
+          setShowNumberReveal(true);
         }
       }
     };
 
     checkInitialReveal();
-  }, [code]); // Only re-run when party code changes
+  }, [code, fetchTvSnapshot]);
 
   // Effect 2: Realtime subscriptions (stable, no state deps)
   useEffect(() => {
