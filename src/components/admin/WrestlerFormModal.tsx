@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Camera, X, Upload } from 'lucide-react';
+import { Camera, X, Upload, Crown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -41,6 +42,8 @@ export function WrestlerFormModal({
   const [name, setName] = useState('');
   const [shortName, setShortName] = useState('');
   const [division, setDivision] = useState<'mens' | 'womens'>('mens');
+  const [isRumbleParticipant, setIsRumbleParticipant] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -55,11 +58,15 @@ export function WrestlerFormModal({
         setName(wrestler.name);
         setShortName(wrestler.short_name || '');
         setDivision(wrestler.division);
+        setIsRumbleParticipant(wrestler.is_rumble_participant);
+        setIsConfirmed(wrestler.is_confirmed);
         setImagePreview(wrestler.image_url);
       } else {
         setName('');
         setShortName('');
         setDivision('mens');
+        setIsRumbleParticipant(false);
+        setIsConfirmed(true);
         setImagePreview(null);
       }
       setPendingFile(null);
@@ -101,6 +108,8 @@ export function WrestlerFormModal({
       name: name.trim(),
       short_name: shortName.trim() || undefined,
       division,
+      is_rumble_participant: isRumbleParticipant,
+      is_confirmed: isConfirmed,
     };
 
     const result = await onSubmit(data);
@@ -210,6 +219,44 @@ export function WrestlerFormModal({
             <p className="text-xs text-muted-foreground">
               Used for compact displays like leaderboards
             </p>
+          </div>
+
+          {/* Rumble Status Section */}
+          <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border">
+            <div className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-primary" />
+              <span className="font-medium text-sm">Rumble Participation</span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="rumble-participant" className="text-sm">In Rumble</Label>
+                <p className="text-xs text-muted-foreground">
+                  Include in player pick options
+                </p>
+              </div>
+              <Switch
+                id="rumble-participant"
+                checked={isRumbleParticipant}
+                onCheckedChange={setIsRumbleParticipant}
+              />
+            </div>
+
+            {isRumbleParticipant && (
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <div>
+                  <Label htmlFor="confirmed" className="text-sm">Confirmed</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Officially announced by WWE
+                  </p>
+                </div>
+                <Switch
+                  id="confirmed"
+                  checked={isConfirmed}
+                  onCheckedChange={setIsConfirmed}
+                />
+              </div>
+            )}
           </div>
 
           {/* Actions */}

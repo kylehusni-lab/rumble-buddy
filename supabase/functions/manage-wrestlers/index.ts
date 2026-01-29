@@ -11,15 +11,18 @@ interface WrestlerData {
   short_name?: string;
   division?: "mens" | "womens";
   image_url?: string;
+  is_rumble_participant?: boolean;
+  is_confirmed?: boolean;
   names?: string[];
   default_division?: "mens" | "womens";
   search?: string;
   division_filter?: "mens" | "womens" | "all";
+  rumble_only?: boolean;
 }
 
 interface RequestBody {
   token: string;
-  action: "list" | "create" | "update" | "delete" | "bulk_import";
+  action: "list" | "create" | "update" | "delete" | "bulk_import" | "update_rumble_status";
   data?: WrestlerData;
 }
 
@@ -80,6 +83,10 @@ Deno.serve(async (req) => {
           query = query.eq("division", data.division_filter);
         }
 
+        if (data?.rumble_only) {
+          query = query.eq("is_rumble_participant", true);
+        }
+
         if (data?.search) {
           query = query.ilike("name", `%${data.search}%`);
         }
@@ -93,8 +100,18 @@ Deno.serve(async (req) => {
           );
         }
 
+        // Calculate participant counts
+        const mensParticipants = (wrestlers || []).filter(
+          (w: { division: string; is_rumble_participant: boolean }) => 
+            w.division === "mens" && w.is_rumble_participant
+        ).length;
+        const womensParticipants = (wrestlers || []).filter(
+          (w: { division: string; is_rumble_participant: boolean }) => 
+            w.division === "womens" && w.is_rumble_participant
+        ).length;
+
         return new Response(
-          JSON.stringify({ wrestlers }),
+          JSON.stringify({ wrestlers, mensParticipants, womensParticipants }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -130,6 +147,8 @@ Deno.serve(async (req) => {
             short_name: data.short_name?.trim() || null,
             division: data.division,
             image_url: data.image_url || null,
+            is_rumble_participant: data.is_rumble_participant ?? false,
+            is_confirmed: data.is_confirmed ?? true,
           })
           .select()
           .single();
@@ -191,6 +210,14 @@ Deno.serve(async (req) => {
 
         if (data.image_url !== undefined) {
           updates.image_url = data.image_url;
+        }
+
+        if (data.is_rumble_participant !== undefined) {
+          updates.is_rumble_participant = data.is_rumble_participant;
+        }
+
+        if (data.is_confirmed !== undefined) {
+          updates.is_confirmed = data.is_confirmed;
         }
 
         const { data: wrestler, error } = await supabase
@@ -293,10 +320,50 @@ Deno.serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ 
+          JSON.stringify({
             imported: imported?.length || 0,
             skipped: wrestlers.length - (imported?.length || 0),
           }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "update_rumble_status": {
+        if (!data?.id) {
+          return new Response(
+            JSON.stringify({ error: "Wrestler ID is required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const updates: Record<string, unknown> = {
+          updated_at: new Date().toISOString(),
+        };
+
+        if (data.is_rumble_participant !== undefined) {
+          updates.is_rumble_participant = data.is_rumble_participant;
+        }
+
+        if (data.is_confirmed !== undefined) {
+          updates.is_confirmed = data.is_confirmed;
+        }
+
+        const { data: wrestler, error } = await supabase
+          .from("wrestlers")
+          .update(updates)
+          .eq("id", data.id)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ wrestler }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
