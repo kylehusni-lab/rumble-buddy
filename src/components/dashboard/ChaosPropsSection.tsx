@@ -18,37 +18,6 @@ interface ChaosPropsSectionProps {
   results: MatchResult[];
 }
 
-function PickRow({ 
-  label, 
-  prediction, 
-  isCorrect, 
-  points 
-}: { 
-  label: string; 
-  prediction: string; 
-  isCorrect: boolean | null; 
-  points: number;
-}) {
-  return (
-    <div className="p-3 flex items-center justify-between">
-      <div className="min-w-0 flex-1">
-        <div className="text-sm text-muted-foreground">{label}</div>
-        <div className="font-medium">{prediction || "No pick"}</div>
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-        {isCorrect === true && (
-          <>
-            <Check size={18} className="text-success" />
-            <span className="text-success text-sm font-medium">+{points}</span>
-          </>
-        )}
-        {isCorrect === false && <X size={18} className="text-destructive" />}
-        {isCorrect === null && <span className="text-xs text-muted-foreground">pending</span>}
-      </div>
-    </div>
-  );
-}
-
 export function ChaosPropsSection({ picks, results }: ChaosPropsSectionProps) {
   const getPickResult = (matchId: string): boolean | null => {
     const result = results.find(r => r.match_id === matchId);
@@ -57,54 +26,82 @@ export function ChaosPropsSection({ picks, results }: ChaosPropsSectionProps) {
     return result.result === pick.prediction;
   };
 
+  const getPick = (matchId: string): string => {
+    const pick = picks.find(p => p.match_id === matchId);
+    return pick?.prediction || "";
+  };
+
+  const renderCell = (matchId: string) => {
+    const prediction = getPick(matchId);
+    const isCorrect = getPickResult(matchId);
+    
+    return (
+      <div className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded ${
+        isCorrect === true
+          ? "bg-success/10"
+          : isCorrect === false
+          ? "bg-destructive/10"
+          : ""
+      }`}>
+        <span className={`text-sm font-bold ${
+          prediction === "YES" ? "text-success" : prediction === "NO" ? "text-destructive" : "text-muted-foreground"
+        }`}>
+          {prediction || "—"}
+        </span>
+        {isCorrect === true && (
+          <>
+            <Check size={14} className="text-success" />
+            <span className="text-success text-xs font-medium">+{SCORING.PROP_BET}</span>
+          </>
+        )}
+        {isCorrect === false && <X size={14} className="text-destructive" />}
+      </div>
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-4"
     >
-      {/* Men's Chaos Props */}
-      <div className="bg-card border border-border rounded-xl divide-y divide-border">
-        <div className="px-3 py-2 bg-muted/50 rounded-t-xl">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            🧔 Men's Chaos Props
-          </h3>
-        </div>
-        {CHAOS_PROPS.map((prop, i) => {
-          const matchId = `mens_chaos_prop_${i + 1}`;
-          const pick = picks.find(p => p.match_id === matchId);
-          return (
-            <PickRow
-              key={matchId}
-              label={prop.shortName}
-              prediction={pick?.prediction || ""}
-              isCorrect={getPickResult(matchId)}
-              points={SCORING.PROP_BET}
-            />
-          );
-        })}
-      </div>
-
-      {/* Women's Chaos Props */}
-      <div className="bg-card border border-border rounded-xl divide-y divide-border">
-        <div className="px-3 py-2 bg-muted/50 rounded-t-xl">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            👩 Women's Chaos Props
-          </h3>
-        </div>
-        {CHAOS_PROPS.map((prop, i) => {
-          const matchId = `womens_chaos_prop_${i + 1}`;
-          const pick = picks.find(p => p.match_id === matchId);
-          return (
-            <PickRow
-              key={matchId}
-              label={prop.shortName}
-              prediction={pick?.prediction || ""}
-              isCorrect={getPickResult(matchId)}
-              points={SCORING.PROP_BET}
-            />
-          );
-        })}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-muted/50 border-b border-border">
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Chaos Prop
+              </th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                🧔 Men's
+              </th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                👩 Women's
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {CHAOS_PROPS.map((prop, index) => {
+              const mensMatchId = `mens_chaos_prop_${index + 1}`;
+              const womensMatchId = `womens_chaos_prop_${index + 1}`;
+              
+              return (
+                <tr key={prop.id} className="border-b border-border/50 last:border-0">
+                  <td className="px-3 py-2.5">
+                    <div className="text-sm font-medium text-foreground">
+                      {prop.shortName}
+                    </div>
+                  </td>
+                  <td className="px-2 py-2">
+                    {renderCell(mensMatchId)}
+                  </td>
+                  <td className="px-2 py-2">
+                    {renderCell(womensMatchId)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </motion.div>
   );
