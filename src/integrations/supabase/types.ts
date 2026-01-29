@@ -60,6 +60,7 @@ export type Database = {
           event_started_at: string | null
           host_pin: string | null
           host_session_id: string
+          host_user_id: string | null
           mens_rumble_entrants: Json
           status: string
           womens_rumble_entrants: Json
@@ -70,6 +71,7 @@ export type Database = {
           event_started_at?: string | null
           host_pin?: string | null
           host_session_id: string
+          host_user_id?: string | null
           mens_rumble_entrants?: Json
           status?: string
           womens_rumble_entrants?: Json
@@ -80,6 +82,7 @@ export type Database = {
           event_started_at?: string | null
           host_pin?: string | null
           host_session_id?: string
+          host_user_id?: string | null
           mens_rumble_entrants?: Json
           status?: string
           womens_rumble_entrants?: Json
@@ -161,6 +164,7 @@ export type Database = {
           party_code: string
           points: number
           session_id: string
+          user_id: string | null
         }
         Insert: {
           display_name: string
@@ -170,6 +174,7 @@ export type Database = {
           party_code: string
           points?: number
           session_id: string
+          user_id?: string | null
         }
         Update: {
           display_name?: string
@@ -179,6 +184,7 @@ export type Database = {
           party_code?: string
           points?: number
           session_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -312,6 +318,7 @@ export type Database = {
           id: string
           pin: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -320,6 +327,7 @@ export type Database = {
           id?: string
           pin: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -328,6 +336,7 @@ export type Database = {
           id?: string
           pin?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -461,6 +470,8 @@ export type Database = {
       }
     }
     Functions: {
+      is_party_host: { Args: { p_party_code: string }; Returns: boolean }
+      is_party_member: { Args: { p_party_code: string }; Returns: boolean }
       lookup_player_by_email: {
         Args: { p_email: string; p_party_code: string }
         Returns: {

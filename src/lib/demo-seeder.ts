@@ -128,7 +128,8 @@ export async function generateDemoPicksForPlayers(playerIds: string[]) {
 
 export async function seedDemoParty(
   partyCode: string,
-  hostSessionId: string
+  hostSessionId: string,
+  hostUserId?: string
 ): Promise<{ hostPlayerId: string; guestIds: string[] }> {
   const hostEmail = "kyle.husni@gmail.com";
   
@@ -140,6 +141,7 @@ export async function seedDemoParty(
       email: hostEmail,
       display_name: "Kyle",
       session_id: hostSessionId,
+      user_id: hostUserId || null,
     });
 
   if (hostError) throw hostError;
