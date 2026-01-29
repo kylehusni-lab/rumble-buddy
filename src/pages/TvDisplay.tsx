@@ -110,6 +110,57 @@ export default function TvDisplay() {
     partyStatusRef.current = partyStatus;
   }, [partyStatus]);
 
+  // Effect for polling fallback during pre_event (in case realtime fails)
+  useEffect(() => {
+    if (!code || partyStatus !== "pre_event") return;
+    
+    const pollPartyStatus = async () => {
+      const { data } = await supabase
+        .from("parties_public")
+        .select("status, event_started_at")
+        .eq("code", code)
+        .single();
+      
+      if (data?.status && data.status !== "pre_event") {
+        setPartyStatus(data.status);
+        // Trigger number reveal if just went live
+        if (data.status === "live") {
+          const { data: allPlayers } = await supabase
+            .from("players_public")
+            .select("id, display_name")
+            .eq("party_code", code)
+            .order("joined_at");
+
+          const { data: allNumbers } = await supabase
+            .from("rumble_numbers")
+            .select("number, assigned_to_player_id, rumble_type")
+            .eq("party_code", code);
+
+          if (allPlayers && allNumbers) {
+            const playerData: PlayerWithNumbers[] = allPlayers.map(p => ({
+              playerName: p.display_name,
+              mensNumbers: allNumbers
+                .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "mens")
+                .map(n => n.number)
+                .sort((a, b) => a - b),
+              womensNumbers: allNumbers
+                .filter(n => n.assigned_to_player_id === p.id && n.rumble_type === "womens")
+                .map(n => n.number)
+                .sort((a, b) => a - b),
+            }));
+            
+            setRevealPlayers(playerData);
+            setShowNumberReveal(true);
+          }
+        }
+      }
+    };
+    
+    const interval = setInterval(pollPartyStatus, 5000);
+    
+    return () => clearInterval(interval);
+  }, [code, partyStatus]);
+
   // Effect 1: Initial data fetch (runs once per code change)
   useEffect(() => {
     if (!code) return;
