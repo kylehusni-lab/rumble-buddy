@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Bell, Sparkles } from "lucide-react";
 import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
 import { cn } from "@/lib/utils";
+import { AddSurpriseEntrantModal } from "./AddSurpriseEntrantModal";
 
 interface RumbleEntryControlProps {
   nextNumber: number;
@@ -14,7 +15,6 @@ interface RumbleEntryControlProps {
   enteredCount: number;
   onConfirmEntry: (wrestlerName: string) => Promise<void>;
   disabled?: boolean;
-  // New props for match start and surprise entrants
   matchStarted: boolean;
   onStartMatch: () => void;
   onAddSurprise: (name: string) => void;
@@ -34,24 +34,31 @@ export function RumbleEntryControl({
   const [selectedWrestler, setSelectedWrestler] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSurpriseModal, setShowSurpriseModal] = useState(false);
 
   const progress = (enteredCount / 30) * 100;
   const isComplete = enteredCount >= 30;
 
-  // Show match start UI until match is started (button enabled only when 2+ entrants)
   const showMatchStartUI = !matchStarted;
 
-  // Alphabetize and filter entrants
+  // Filter entrants based on search - only show when there's input
   const filteredEntrants = useMemo(() => {
+    if (!searchQuery.trim()) return [];
     return [...entrants]
       .sort(sortEntrants)
       .filter((name) =>
-        name.toLowerCase().includes(searchQuery.toLowerCase())
+        getEntrantDisplayName(name).toLowerCase().includes(searchQuery.toLowerCase())
       );
   }, [entrants, searchQuery]);
 
   const handleConfirm = async () => {
     if (!selectedWrestler) return;
+
+    // If "Surprise/Other Entrant" is selected, show the modal to get actual name
+    if (selectedWrestler.includes("Surprise")) {
+      setShowSurpriseModal(true);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -63,14 +70,21 @@ export function RumbleEntryControl({
     }
   };
 
-  const handleWrestlerSelect = (wrestler: string) => {
-    setSelectedWrestler(wrestler);
+  const handleSurpriseConfirm = async (name: string) => {
+    setIsSubmitting(true);
+    try {
+      onAddSurprise(name);
+      await onConfirmEntry(name);
+      setSelectedWrestler("");
+      setSearchQuery("");
+    } finally {
+      setIsSubmitting(false);
+      setShowSurpriseModal(false);
+    }
   };
 
-  const handleAddSurprise = (name: string) => {
-    onAddSurprise(name);
-    setSelectedWrestler(name);
-    setSearchQuery("");
+  const handleWrestlerSelect = (wrestler: string) => {
+    setSelectedWrestler(wrestler);
   };
 
   if (isComplete) {
@@ -130,59 +144,71 @@ export function RumbleEntryControl({
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search wrestlers..."
+            placeholder="Type to search wrestlers..."
             className="pl-10 min-h-[48px]"
             disabled={disabled || isSubmitting}
           />
         </div>
 
-        {/* Wrestler list */}
-        <ScrollArea className="h-48 border border-border rounded-lg">
-          <div className="p-2 space-y-1">
-            {filteredEntrants.length > 0 ? (
-              filteredEntrants.map((wrestler) => (
-                <button
-                  key={wrestler}
-                  onClick={() => handleWrestlerSelect(wrestler)}
-                  disabled={disabled || isSubmitting}
-                  className={cn(
-                    "w-full text-left px-3 py-2.5 rounded-md transition-colors min-h-[44px]",
-                    selectedWrestler === wrestler
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent",
-                    isUnconfirmedEntrant(wrestler) && "italic opacity-80"
-                  )}
-                >
-                  {getEntrantDisplayName(wrestler)}
-                </button>
-              ))
-            ) : searchQuery.length > 0 ? (
-              <div className="p-4 text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  No wrestlers match "{searchQuery}"
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full min-h-[44px] border-primary text-primary"
-                  onClick={() => {
-                    onAddSurprise(searchQuery.trim());
-                    setSelectedWrestler(searchQuery.trim());
-                    setSearchQuery("");
-                  }}
-                  disabled={!searchQuery.trim()}
-                >
-                  <Sparkles size={16} className="mr-2" />
-                  Add "{searchQuery}" as Entry
-                </Button>
-              </div>
-            ) : (
-              <p className="p-4 text-center text-sm text-muted-foreground">
-                Start typing to search...
-              </p>
-            )}
+        {/* Wrestler list - only show when searching */}
+        {searchQuery.trim() && (
+          <ScrollArea className="h-48 border border-border rounded-lg">
+            <div className="p-2 space-y-1">
+              {filteredEntrants.length > 0 ? (
+                <>
+                  {filteredEntrants.map((wrestler) => (
+                    <button
+                      key={wrestler}
+                      onClick={() => handleWrestlerSelect(wrestler)}
+                      disabled={disabled || isSubmitting}
+                      className={cn(
+                        "w-full text-left px-3 py-2.5 rounded-md transition-colors min-h-[44px]",
+                        selectedWrestler === wrestler
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-accent",
+                        isUnconfirmedEntrant(wrestler) && "italic opacity-80"
+                      )}
+                    >
+                      {getEntrantDisplayName(wrestler)}
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <div className="p-4 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    No wrestlers match "{searchQuery}"
+                  </p>
+                </div>
+              )}
 
+              {/* Always show Surprise option at bottom when searching */}
+              <button
+                onClick={() => handleWrestlerSelect("Surprise/Other Entrant")}
+                disabled={disabled || isSubmitting}
+                className={cn(
+                  "w-full text-left px-3 py-2.5 rounded-md transition-colors min-h-[44px] border border-dashed border-primary/50 mt-2",
+                  selectedWrestler === "Surprise/Other Entrant"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Sparkles size={16} />
+                  Surprise/Other Entrant
+                </span>
+              </button>
+            </div>
+          </ScrollArea>
+        )}
+
+        {/* Prompt to search when empty */}
+        {!searchQuery.trim() && (
+          <div className="border border-border rounded-lg p-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Start typing to search for a wrestler
+            </p>
           </div>
-        </ScrollArea>
+        )}
 
         {/* Selected wrestler display */}
         {selectedWrestler && (
@@ -206,6 +232,14 @@ export function RumbleEntryControl({
           {isSubmitting ? "Entering..." : `Confirm #${nextNumber} Entry`}
         </Button>
       </div>
+
+      {/* Surprise Entrant Name Modal */}
+      <AddSurpriseEntrantModal
+        open={showSurpriseModal}
+        onOpenChange={setShowSurpriseModal}
+        existingEntrants={entrants}
+        onAdd={handleSurpriseConfirm}
+      />
     </div>
   );
 }
