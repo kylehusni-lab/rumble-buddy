@@ -296,8 +296,8 @@ export default function SoloPicks() {
           onJumpToCard={setCurrentCardIndex}
         />
 
-        {/* Card Container */}
-        <div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0 overflow-hidden">
+        {/* Card Container - flex-1 + min-h-0 ensures proper height constraint for child scrolling */}
+        <div className="flex-1 flex items-start justify-center p-4 pt-2 min-h-0 overflow-hidden shrink">
         <AnimatePresence mode="wait" custom={swipeDirection}>
           <motion.div
             key={currentCardIndex}

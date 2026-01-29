@@ -146,7 +146,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
   ).filter(Boolean);
 
   return (
-    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-180px)]">
+    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-3 sm:mb-4 flex-shrink-0">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -469,6 +469,12 @@ export const RumblePropsCard = memo(function RumblePropsCard({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              autoFocus={false}
+              inputMode="search"
+              enterKeyHint="search"
             />
           </div>
 
