@@ -70,7 +70,7 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
 
     try {
       const { data, error: fetchError } = await supabase
-        .from("parties")
+        .from("parties_public")
         .select("code, status")
         .eq("code", partyCode)
         .maybeSingle();

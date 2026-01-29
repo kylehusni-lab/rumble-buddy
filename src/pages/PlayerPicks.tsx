@@ -29,7 +29,7 @@ export default function PlayerPicks() {
     const fetchData = async () => {
       try {
         const { data: partyData, error: partyError } = await supabase
-          .from("parties")
+          .from("parties_public")
           .select("status")
           .eq("code", code)
           .single();
