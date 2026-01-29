@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Shield, LogOut, Plus, X, Save, Users } from "lucide-react";
+import { Shield, LogOut, Plus, X, Save, Users, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -156,6 +156,18 @@ export default function PlatformAdmin() {
           <p className="text-center text-muted-foreground text-sm mt-2">
             Manage global Rumble entrant lists
           </p>
+          
+          {/* Wrestler Database Link */}
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/admin/wrestlers")}
+              className="gap-2"
+            >
+              <Database className="w-4 h-4" />
+              Wrestler Database
+            </Button>
+          </div>
         </motion.div>
 
         <Tabs defaultValue="mens" className="w-full">

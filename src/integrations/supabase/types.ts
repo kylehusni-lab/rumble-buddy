@@ -379,6 +379,39 @@ export type Database = {
           },
         ]
       }
+      wrestlers: {
+        Row: {
+          created_at: string | null
+          division: string
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          short_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          division: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          short_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          division?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          short_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       parties_public: {
