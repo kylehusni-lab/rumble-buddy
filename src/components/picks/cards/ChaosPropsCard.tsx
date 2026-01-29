@@ -24,7 +24,7 @@ export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProp
   const allAnswered = answeredCount === 6;
 
   return (
-    <div ref={ref} className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-220px)]">
+    <div ref={ref} className="bg-card rounded-2xl p-6 shadow-card border border-border flex flex-col overflow-hidden h-full">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Zap className="w-6 h-6 text-primary" />

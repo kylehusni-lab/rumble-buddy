@@ -59,7 +59,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
   }, [disabled, onChange]);
 
   return (
-    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full max-h-[calc(100vh-220px)]">
+    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full">
       {/* Header */}
       <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
         <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
@@ -108,6 +108,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
+          autoFocus={false}
           inputMode="search"
           enterKeyHint="search"
         />
