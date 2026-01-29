@@ -39,7 +39,7 @@ export default function PlatformAdminVerify() {
       localStorage.setItem("platform_admin_expires", data.expiresAt);
 
       toast.success("Access granted!");
-      navigate("/platform-admin");
+      navigate("/admin/wrestlers");
     } catch (err) {
       console.error("Error verifying PIN:", err);
       toast.error("Failed to verify PIN");
