@@ -7,24 +7,24 @@ import { RumblePropsDisplay } from "./RumblePropsDisplay";
 import { ChaosPropsDisplay } from "./ChaosPropsDisplay";
 import { RumbleWinnerPredictions } from "./RumbleWinnerPredictions";
 import { TvLeaderboardView } from "./TvLeaderboardView";
-import { RumbleSubTabs, RumbleSubView } from "./RumbleSubTabs";
 import { WrestlerImage } from "./WrestlerImage";
 import { UndercardMatchSelector } from "./UndercardMatchSelector";
 import { TvTabId } from "./TvTabBar";
+import { RumbleSubView } from "./TvUnifiedHeader";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
 import { cn } from "@/lib/utils";
 
-// Player color palette (avoiding green/red for status indication)
+// Player color palette with hex values for banners
 const PLAYER_COLORS = [
-  { bg: "bg-blue-500", border: "border-blue-500" },
-  { bg: "bg-orange-500", border: "border-orange-500" },
-  { bg: "bg-purple-500", border: "border-purple-500" },
-  { bg: "bg-cyan-500", border: "border-cyan-500" },
-  { bg: "bg-pink-500", border: "border-pink-500" },
-  { bg: "bg-amber-500", border: "border-amber-500" },
-  { bg: "bg-teal-500", border: "border-teal-500" },
-  { bg: "bg-indigo-500", border: "border-indigo-500" },
+  { name: "pink", hex: "#e91e63", textColor: "black" as const },
+  { name: "amber", hex: "#ffc107", textColor: "black" as const },
+  { name: "orange", hex: "#ff5722", textColor: "black" as const },
+  { name: "green", hex: "#4caf50", textColor: "black" as const },
+  { name: "blue", hex: "#2196f3", textColor: "white" as const },
+  { name: "purple", hex: "#9c27b0", textColor: "white" as const },
+  { name: "cyan", hex: "#00bcd4", textColor: "black" as const },
+  { name: "indigo", hex: "#3f51b5", textColor: "white" as const },
 ];
 
 interface MatchResult {
@@ -62,10 +62,13 @@ interface TvViewNavigatorProps {
   picks: Pick[];
   getPlayerInitials: (id: string | null) => string;
   getNumberStatus: (num: RumbleNumber) => "pending" | "active" | "eliminated";
-  // New consolidated navigation props
+  // Navigation props
   activeTab: TvTabId;
   undercardMatchIndex: number;
   onUndercardMatchChange: (index: number) => void;
+  // Sub-view props (lifted from internal state)
+  mensSubView: RumbleSubView;
+  womensSubView: RumbleSubView;
 }
 
 export function TvViewNavigator({
@@ -79,20 +82,56 @@ export function TvViewNavigator({
   activeTab,
   undercardMatchIndex,
   onUndercardMatchChange,
+  mensSubView,
+  womensSubView,
 }: TvViewNavigatorProps) {
-  // Sub-tab state for rumble views
-  const [mensSubView, setMensSubView] = useState<RumbleSubView>("grid");
-  const [womensSubView, setWomensSubView] = useState<RumbleSubView>("grid");
-  
   // Get responsive scale values
   const { scale, gridGapClass } = useTvScale();
 
   // Helper to get player name
   const getPlayerName = useCallback((playerId: string | null): string => {
-    if (!playerId) return "Unassigned";
-    const player = players.find(p => p.id === playerId);
-    return player?.display_name || "Unknown";
+    if (!playerId) return "";
+    const player = players.find((p) => p.id === playerId);
+    return player?.display_name || "";
   }, [players]);
+
+  // Get player color based on their index in the players array
+  const getPlayerColor = useCallback(
+    (playerId: string | null) => {
+      if (!playerId) return null;
+      const index = players.findIndex((p) => p.id === playerId);
+      if (index === -1) return null;
+      return PLAYER_COLORS[index % PLAYER_COLORS.length];
+    },
+    [players]
+  );
+
+  // Detect the "current entrant" (most recent entry without elimination)
+  const getCurrentEntrantNumber = useCallback((numbers: RumbleNumber[]): number | null => {
+    const activeNumbers = numbers
+      .filter((n) => n.entry_timestamp && !n.elimination_timestamp)
+      .sort((a, b) => {
+        const aTime = a.entry_timestamp ? new Date(a.entry_timestamp).getTime() : 0;
+        const bTime = b.entry_timestamp ? new Date(b.entry_timestamp).getTime() : 0;
+        return bTime - aTime; // Most recent first
+      });
+    
+    if (activeNumbers.length === 0) return null;
+    
+    // The most recent entry (within last 60 seconds) is the "current entrant"
+    const mostRecent = activeNumbers[0];
+    if (!mostRecent.entry_timestamp) return null;
+    
+    const entryTime = new Date(mostRecent.entry_timestamp).getTime();
+    const now = Date.now();
+    const timeSinceEntry = now - entryTime;
+    
+    // Only show "current" glow for 60 seconds after entry
+    if (timeSinceEntry < 60000) {
+      return mostRecent.number;
+    }
+    return null;
+  }, []);
 
   // Keyboard navigation for undercard matches
   useEffect(() => {
@@ -110,41 +149,48 @@ export function TvViewNavigator({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeTab, undercardMatchIndex, onUndercardMatchChange]);
 
-  // Get player color based on their index in the players array
-  const getPlayerColor = useCallback((playerId: string | null) => {
-    if (!playerId) return null;
-    const index = players.findIndex(p => p.id === playerId);
-    if (index === -1) return null;
-    return PLAYER_COLORS[index % PLAYER_COLORS.length];
-  }, [players]);
-
   const renderNumberGrid = (numbers: RumbleNumber[], rumbleId: string) => {
     const winnerMatchId = rumbleId === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
-    const winnerResult = matchResults.find(r => r.match_id === winnerMatchId);
-    const winnerNumber = winnerResult 
-      ? numbers.find(n => n.wrestler_name === winnerResult.result)
+    const winnerResult = matchResults.find((r) => r.match_id === winnerMatchId);
+    const winnerNumber = winnerResult
+      ? numbers.find((n) => n.wrestler_name === winnerResult.result)
       : null;
+
+    const currentEntrantNumber = getCurrentEntrantNumber(numbers);
 
     return (
       <div className="space-y-4">
         <div className={cn("grid grid-cols-10", gridGapClass)}>
-          {numbers.map((num) => (
-            <TvNumberCell
-              key={num.number}
-              number={num.number}
-              wrestlerName={num.wrestler_name}
-              playerColor={getPlayerColor(num.assigned_to_player_id)}
-              status={getNumberStatus(num)}
-              scale={scale}
-            />
-          ))}
+          {numbers.map((num) => {
+            const playerColor = getPlayerColor(num.assigned_to_player_id);
+            const ownerName = getPlayerName(num.assigned_to_player_id);
+            const baseStatus = getNumberStatus(num);
+            
+            // Override to "current" if this is the most recent entrant
+            const status = currentEntrantNumber === num.number && baseStatus === "active" 
+              ? "current" as const
+              : baseStatus;
+
+            return (
+              <TvNumberCell
+                key={num.number}
+                number={num.number}
+                wrestlerName={num.wrestler_name}
+                ownerName={ownerName || null}
+                ownerColor={playerColor?.hex || null}
+                ownerTextColor={playerColor?.textColor}
+                status={status}
+                isAssigned={!!num.assigned_to_player_id}
+              />
+            );
+          })}
         </div>
-        
+
         {/* Enhanced Winner Display - show when declared */}
         {winnerNumber && winnerNumber.wrestler_name && (
           <div className="relative mt-8 p-8 bg-gradient-to-r from-primary/30 via-primary/15 to-primary/30 rounded-2xl border-4 border-primary overflow-hidden animate-scale-in">
             <div className="absolute inset-0 rounded-2xl bg-primary/20 animate-glow-pulse" />
-            
+
             <div className="relative z-10 flex flex-col items-center gap-4">
               <div className="flex items-center gap-2">
                 <Trophy className="w-8 h-8 text-primary" />
@@ -153,24 +199,25 @@ export function TvViewNavigator({
                 </span>
                 <Trophy className="w-8 h-8 text-primary" />
               </div>
-              
+
               <div className="relative animate-winner-glow">
-                <WrestlerImage 
-                  name={winnerNumber.wrestler_name} 
-                  size="xl" 
-                  className="border-4 border-primary rounded-full" 
+                <WrestlerImage
+                  name={winnerNumber.wrestler_name}
+                  size="xl"
+                  className="border-4 border-primary rounded-full"
                 />
               </div>
-              
+
               <div className="text-4xl font-black text-primary tracking-tight">
                 {winnerNumber.wrestler_name}
               </div>
-              
+
               <div className="text-lg text-muted-foreground">
-                Entry #{winnerNumber.number} • Owned by {getPlayerName(winnerNumber.assigned_to_player_id)}
+                Entry #{winnerNumber.number} • Owned by{" "}
+                {getPlayerName(winnerNumber.assigned_to_player_id) || "Vacant"}
               </div>
-              
-              <motion.div 
+
+              <motion.div
                 className="text-2xl font-bold text-success"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -196,14 +243,10 @@ export function TvViewNavigator({
   const renderRumbleContent = (gender: "mens" | "womens") => {
     const numbers = gender === "mens" ? mensNumbers : womensNumbers;
     const subView = gender === "mens" ? mensSubView : womensSubView;
-    const setSubView = gender === "mens" ? setMensSubView : setWomensSubView;
 
     return (
       <div className="space-y-4">
-        {/* Sub-tabs */}
-        <RumbleSubTabs value={subView} onChange={setSubView} />
-        
-        {/* Content based on sub-tab */}
+        {/* Content based on sub-view (tabs now in header) */}
         {subView === "grid" && renderNumberGrid(numbers, gender)}
         {subView === "props" && (
           <RumblePropsDisplay
