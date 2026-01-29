@@ -1,21 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SignJWT, jwtVerify } from "https://deno.land/x/jose@v5.2.0/index.ts";
 
-// Allowed origins for CORS
-const ALLOWED_ORIGINS = [
-  "https://rumble-buddy.lovable.app",
-  "https://id-preview--b2021f13-f1d4-4520-93bc-6b4e2c2aba98.lovable.app",
-  "http://localhost:5173",
-  "http://localhost:8080",
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get("origin") || "";
-  return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
 
 // In-memory rate limiting (resets on cold start, but provides basic protection)
 const attemptsByIP = new Map<string, { count: number; resetAt: number }>();
@@ -54,11 +43,9 @@ async function getSigningSecret(): Promise<Uint8Array> {
 }
 
 serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
-  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -126,7 +113,6 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in verify-admin-pin:", error);
-    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ valid: false, error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
