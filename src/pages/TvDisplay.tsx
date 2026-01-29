@@ -115,13 +115,14 @@ export default function TvDisplay() {
     if (!code) return;
 
     const fetchData = async () => {
+      // Use parties_public view (SELECT is blocked on parties table)
       const { data: partyData } = await supabase
-        .from("parties")
+        .from("parties_public")
         .select("status")
         .eq("code", code)
         .single();
 
-      if (partyData) setPartyStatus(partyData.status);
+      if (partyData?.status) setPartyStatus(partyData.status);
 
       const { data: playersData } = await supabase
         .from("players_public")
@@ -164,8 +165,9 @@ export default function TvDisplay() {
     const checkInitialReveal = async () => {
       const hasSeenReveal = sessionStorage.getItem(`tv-reveal-seen-${code}`);
       if (!hasSeenReveal) {
+        // Use parties_public view (SELECT is blocked on parties table)
         const { data: partyData } = await supabase
-          .from("parties")
+          .from("parties_public")
           .select("status, event_started_at")
           .eq("code", code)
           .single();
