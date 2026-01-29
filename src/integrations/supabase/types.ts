@@ -496,6 +496,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      seed_demo_picks: { Args: { p_picks: Json }; Returns: boolean }
       seed_demo_player: {
         Args: {
           p_display_name: string
