@@ -489,6 +489,15 @@ export type Database = {
         Args: { p_party_code: string; p_pin: string }
         Returns: boolean
       }
+      update_party_status_with_pin: {
+        Args: {
+          p_event_started_at?: string
+          p_party_code: string
+          p_pin: string
+          p_status: string
+        }
+        Returns: boolean
+      }
       verify_host_pin: {
         Args: { p_party_code: string; p_pin: string }
         Returns: {
