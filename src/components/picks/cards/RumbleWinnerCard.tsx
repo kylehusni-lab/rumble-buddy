@@ -6,6 +6,7 @@ import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data
 import { SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
 import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
 import { Input } from "@/components/ui/input";
+import { PickCardHeader } from "./PickCardHeader";
 import confetti from "canvas-confetti";
 
 interface RumbleWinnerCardProps {
@@ -60,18 +61,13 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
 
   return (
     <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full">
-      {/* Header */}
-      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-        <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
-        <div className="min-w-0">
-          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Royal Rumble Winner</div>
-          <h2 className="text-base sm:text-xl font-bold text-foreground truncate">{title}</h2>
-        </div>
-      </div>
-
-      <div className="text-xs sm:text-sm text-primary mb-3 sm:mb-4 font-bold">
-        +{SCORING.RUMBLE_WINNER_PICK} pts if correct
-      </div>
+      {/* Unified Header */}
+      <PickCardHeader
+        icon={Crown}
+        label="Royal Rumble Winner"
+        title={title}
+        pointsText={`+${SCORING.RUMBLE_WINNER_PICK} pts if correct`}
+      />
 
       {/* Current Selection */}
       {value && (
