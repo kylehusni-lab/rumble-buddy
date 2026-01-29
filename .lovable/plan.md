@@ -1,133 +1,55 @@
 
+# Consolidate Chaos Props into Single Table
 
-# Fix Plan: Consistent Picking Experience (Solo & Group)
+## Current State
+The Chaos Props display shows **two separate sections** - one for Men's and one for Women's - each listing the same 6 props vertically with your YES/NO picks. This takes up a lot of vertical space.
 
-## Issues Identified
+## Proposed Change
+Create a **single unified table** with the 6 Chaos Props as rows and columns for:
+- Prop Name
+- Men's Pick (with result indicator)
+- Women's Pick (with result indicator)
 
-### 1. Search Input Still Auto-Focusing
-The `RumbleWinnerCard.tsx` search input is missing `autoFocus={false}` which causes the mobile keyboard to auto-open and obscure the wrestler grid. While the previous fix added `autoFocus={false}` to other cards, the main RumbleWinnerCard was missed.
+This cuts the vertical space in half and makes it easy to compare picks across both Rumbles at a glance.
 
-### 2. Inconsistent Scrolling & Navigation Visibility
-The pick cards have inconsistent height constraints. Some cards like `MatchCard` don't fill the container properly, and on taller Rumble/Chaos cards, the navigation footer can get pushed out of view due to the card's internal scrolling fighting with the page structure.
+## Visual Layout
 
-**Root cause**: The cards use `max-h-[calc(100vh-220px)]` but this doesn't account for the parent container's flex structure, leading to overflow issues on mobile.
-
-### 3. Header & Footer Inconsistency Between Solo and Group
-- **Solo Picks** (`SoloPicks.tsx`): Uses `Home` icon in header, shows sync status
-- **Group Picks** (`PickCardStack.tsx`): Uses `ArrowLeft` icon, shows party code
-
-Both need consistent visual hierarchy:
-- Same header structure (back button, title/status, spacer)
-- Same fixed footer with Back/Save/Next buttons
-- Same swipe hint placement
-
----
-
-## Fix 1: Add Missing `autoFocus={false}` to RumbleWinnerCard
-
-**File:** `src/components/picks/cards/RumbleWinnerCard.tsx`
-
-Add the missing `autoFocus={false}` attribute to prevent the keyboard from auto-opening when the card renders.
-
----
-
-## Fix 2: Fix Page Layout to Ensure Footer Always Visible
-
-**Files:** `src/pages/SoloPicks.tsx` and `src/components/picks/PickCardStack.tsx`
-
-The page layout needs to properly constrain the card area so the navigation footer is never pushed off-screen:
-
-1. Change the card container from `flex-1` with internal overflow to a constrained height that respects the viewport minus header, progress bar, and footer heights
-2. Use a fixed calculation: `h-[calc(100vh-{header+progress+footer}px)]` 
-3. Move overflow handling inside the card container rather than letting cards fight for space
-
-**Current structure (problematic):**
-```
-h-screen flex-col
-├── header (shrink-0)
-├── progress bar (shrink-0)
-├── card container (flex-1, overflow-hidden) ← cards can push footer off
-├── swipe hint
-└── footer (shrink-0)
+```text
++-------------------+------------+------------+
+| Chaos Prop        | Men's Pick | Women's Pick|
++-------------------+------------+------------+
+| Kofi/Logan Save   |   YES ✓    |   NO       |
+| Bushwhacker Exit  |   NO ✗     |   YES ✓    |
+| Friendly Fire     |   YES      |   YES      |
+| ...               |   ...      |   ...      |
++-------------------+------------+------------+
 ```
 
-**Fixed structure:**
-```
-h-screen flex-col
-├── header (shrink-0)
-├── progress bar (shrink-0)
-├── card container (flex-1, min-h-0, overflow-hidden)
-│   └── card (h-full, internal scroll)
-├── swipe hint (shrink-0)
-└── footer (shrink-0)
-```
+## Files to Update
 
-Key changes:
-- Add `min-h-0` to card container to allow proper flex shrinking
-- Remove fixed `max-h-[calc(...)]` from cards and let them fill parent
-- Ensure cards use `h-full` and internal `overflow-y-auto` for their scrollable areas
+### 1. SoloDashboard.tsx - ChaosTab Component (lines 414-469)
+Replace the current implementation that loops through genders separately with a unified table:
+- Single table with prop name in first column
+- Men's pick in second column (with green/red styling for correct/incorrect)
+- Women's pick in third column
+- Show result status inline with colored checkmarks/X marks
 
----
+### 2. ChaosPropsSection.tsx (Dashboard component for Group mode)
+Apply the same unified table approach:
+- Combine the two separate card sections into one table
+- Prop name | Men's YES/NO + status | Women's YES/NO + status
 
-## Fix 3: Add `autoFocus={false}` to Final Four Modal
+## Technical Details
 
-**File:** `src/components/picks/cards/RumblePropsCard.tsx` (line ~466-473)
+**Table Structure:**
+- Header row: "Chaos Prop" | "Men's" | "Women's"
+- 6 data rows (one per prop)
+- Each cell shows: pick value (YES/NO) + result indicator (✓/✗) + points if correct
+- Color-coded backgrounds: `bg-success/10` for correct, `bg-destructive/10` for wrong, neutral otherwise
+- Responsive design: table fits well on mobile with compact cell padding
 
-The Final Four modal search input is missing `autoFocus={false}`:
+**Match ID Pattern:**
+- Men's: `mens_chaos_prop_{1-6}`
+- Women's: `womens_chaos_prop_{1-6}`
 
-```tsx
-<Input
-  type="text"
-  placeholder="Search wrestlers..."
-  value={searchQuery}
-  onChange={(e) => setSearchQuery(e.target.value)}
-  className="pl-10"
-  autoComplete="off"
-  autoCorrect="off"
-  autoCapitalize="off"
-  autoFocus={false}      // ADD
-  inputMode="search"     // ADD
-  enterKeyHint="search"  // ADD
-/>
-```
-
----
-
-## Fix 4: Standardize Card Height Constraints
-
-**Files:** All pick cards
-
-Remove `max-h-[calc(100vh-XXXpx)]` from individual cards and instead let them inherit from their parent container:
-
-| File | Current | Fixed |
-|------|---------|-------|
-| `RumbleWinnerCard.tsx` | `max-h-[calc(100vh-220px)]` | `h-full` |
-| `ChaosPropsCard.tsx` | `max-h-[calc(100vh-220px)]` | `h-full` |
-| `RumblePropsCard.tsx` | `max-h-[calc(100vh-180px)]` | `h-full` |
-| `MatchCard.tsx` | `min-h-[300px]` (keep as minimum) | No change needed |
-
-The parent container in `SoloPicks.tsx` and `PickCardStack.tsx` will control the height.
-
----
-
-## Technical Summary
-
-| Change | File(s) | Impact |
-|--------|---------|--------|
-| Add `autoFocus={false}` to search | `RumbleWinnerCard.tsx`, `RumblePropsCard.tsx` (Final Four) | Prevents keyboard auto-open |
-| Fix flex container with `min-h-0` | `SoloPicks.tsx`, `PickCardStack.tsx` | Footer always visible |
-| Standardize card heights to `h-full` | All 4 pick card components | Consistent sizing |
-| Add missing input attributes | `RumblePropsCard.tsx` (Final Four modal) | Search UX consistency |
-
----
-
-## Testing Checklist
-
-After implementation:
-1. Open Solo Picks on mobile - verify footer (Back/Save/Next) is always visible on all 8 cards
-2. Navigate to RumbleWinnerCard - verify keyboard does NOT auto-open
-3. Navigate to Chaos Props card - verify content scrolls and footer stays fixed
-4. Tap Final Four in Rumble Props - verify search doesn't auto-focus
-5. Test Group Picks flow - verify same behavior as Solo
-6. Compare Solo and Group header/footer - verify visual consistency
-
+Both will iterate over the same `CHAOS_PROPS` array and look up results from both genders in each row.
