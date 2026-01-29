@@ -35,23 +35,13 @@ export function ProgressBar({
   };
 
   return (
-    <div className="bg-card border-b border-border p-4 space-y-3">
+    <div className="bg-card border-b border-border p-3 space-y-2">
       {/* Progress Text */}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Pick Progress</span>
         <span className="text-primary font-bold">
           {completedCount}/{totalCards} complete
         </span>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-        <motion.div
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-secondary to-primary"
-          initial={{ width: 0 }}
-          animate={{ width: `${progressPercent}%` }}
-          transition={{ duration: 0.3 }}
-        />
       </div>
 
       {/* Grouped Sections */}
