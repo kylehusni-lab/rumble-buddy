@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, Play, ChevronDown, AlertCircle, Trophy, Pencil, Tv } from "lucide-react";
+import { Users, Play, ChevronDown, AlertCircle, Trophy, Pencil, Tv, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlayerSession, setPlayerSession, getSessionId } from "@/lib/session";
@@ -11,6 +11,8 @@ import { QuickActionsSheet } from "@/components/host/QuickActionsSheet";
 import { GuestStatusCard } from "@/components/host/GuestStatusCard";
 import { ConnectionStatus } from "@/components/host/ConnectionStatus";
 import { useAuth } from "@/hooks/useAuth";
+import { useTour } from "@/components/tour";
+import { HOST_SETUP_TOUR_STEPS } from "@/lib/demo-tour-steps";
 import { TOTAL_PICKS } from "@/lib/constants";
 import {
   Collapsible,
@@ -33,8 +35,10 @@ export default function HostSetup() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { startTour, isActive: isTourActive } = useTour();
 
   const [party, setParty] = useState<PartyData | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerPicks, setPlayerPicks] = useState<Record<string, number>>({});
   const [hostPicksCount, setHostPicksCount] = useState(0);
@@ -43,6 +47,7 @@ export default function HostSetup() {
   const [isConnected, setIsConnected] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hostPlayerId, setHostPlayerId] = useState<string | null>(null);
+  const [hasShownTour, setHasShownTour] = useState(false);
   
   // Collapsible states
   const [guestsOpen, setGuestsOpen] = useState(true);
@@ -119,7 +124,7 @@ export default function HostSetup() {
         // Fetch party data from public view (definer permissions bypass RLS)
         const { data: partyData, error } = await supabase
           .from("parties_public")
-          .select("status")
+          .select("status, is_demo")
           .eq("code", code)
           .single();
 
@@ -136,6 +141,7 @@ export default function HostSetup() {
         }
 
         setParty(partyData);
+        setIsDemo(partyData.is_demo || false);
 
         // Fetch players (use public view to avoid exposing sensitive data)
         const { data: playersData } = await supabase
@@ -308,6 +314,21 @@ export default function HostSetup() {
   const guestsReady = players.filter(p => (playerPicks[p.id] || 0) >= TOTAL_PICKS).length;
   const totalGuests = players.length;
 
+  // Auto-start tour for demo parties
+  useEffect(() => {
+    if (isDemo && !isLoading && !hasShownTour && !isTourActive) {
+      const timer = setTimeout(() => {
+        startTour(HOST_SETUP_TOUR_STEPS);
+        setHasShownTour(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isDemo, isLoading, hasShownTour, isTourActive, startTour]);
+
+  const handleStartTour = () => {
+    startTour(HOST_SETUP_TOUR_STEPS);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -328,15 +349,27 @@ export default function HostSetup() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-card border border-primary/30 rounded-2xl p-6"
+          data-tour="event-status"
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg">Event Status</h2>
-            <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-              Pre-Event
-            </span>
+            <div className="flex items-center gap-2">
+              {isDemo && (
+                <button
+                  onClick={handleStartTour}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                  title="Start guided tour"
+                >
+                  <HelpCircle size={18} />
+                </button>
+              )}
+              <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                Pre-Event
+              </span>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
+            <div data-tour="guests-count">
               <p className="text-3xl font-black text-primary">{totalGuests}</p>
               <p className="text-sm text-muted-foreground">Guests Joined</p>
             </div>
@@ -353,6 +386,7 @@ export default function HostSetup() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
           className="bg-card border border-border rounded-2xl p-5"
+          data-tour="my-picks"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -389,6 +423,7 @@ export default function HostSetup() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          data-tour="guests-list"
         >
           <Collapsible open={guestsOpen} onOpenChange={setGuestsOpen}>
             <CollapsibleTrigger className="w-full">
@@ -441,6 +476,7 @@ export default function HostSetup() {
               size="lg"
               className="flex-1"
               onClick={() => window.open(`/tv/${code}`, "_blank")}
+              data-tour="tv-mode"
             >
               <Tv className="mr-2" size={20} />
               TV Mode
@@ -451,6 +487,7 @@ export default function HostSetup() {
               className="flex-1"
               onClick={handleStartEvent}
               disabled={isStarting || players.length < 2}
+              data-tour="start-event"
             >
               <Play className="mr-2" size={20} />
               {isStarting ? "Starting..." : "Start Event"}
