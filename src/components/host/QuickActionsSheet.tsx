@@ -7,7 +7,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { clearPlayerSession, getPlayerSession } from "@/lib/session";
+import { clearPlayerSession, getPlayerSession, setPlayerSession, getSessionId } from "@/lib/session";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface QuickActionsSheetProps {
   open: boolean;
@@ -17,6 +19,7 @@ interface QuickActionsSheetProps {
 
 export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsSheetProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleOpenTv = () => {
     window.open(`/tv/${code}`, "_blank");
@@ -40,9 +43,42 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
     onOpenChange(false);
   };
 
-  const handleMakeMyPicks = () => {
+  const ensurePlayerSession = async (): Promise<boolean> => {
     const session = getPlayerSession();
-    if (session?.playerId) {
+    if (session?.playerId && session.partyCode === code) {
+      return true;
+    }
+    
+    // If we have an authenticated user, try to look up their player record
+    if (user) {
+      const { data: player } = await supabase
+        .from("players")
+        .select("id, display_name, email")
+        .eq("party_code", code)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (player) {
+        // Update the session with the correct player data
+        setPlayerSession({
+          sessionId: getSessionId(),
+          authUserId: user.id,
+          playerId: player.id,
+          partyCode: code,
+          displayName: player.display_name,
+          email: player.email,
+          isHost: false,
+        });
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  const handleMakeMyPicks = async () => {
+    const hasPlayer = await ensurePlayerSession();
+    if (hasPlayer) {
       navigate(`/player/picks/${code}`);
     } else {
       toast.info("Please join the group first");
@@ -51,9 +87,9 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
     onOpenChange(false);
   };
 
-  const handleMyDashboard = () => {
-    const session = getPlayerSession();
-    if (session?.playerId) {
+  const handleMyDashboard = async () => {
+    const hasPlayer = await ensurePlayerSession();
+    if (hasPlayer) {
       navigate(`/player/dashboard/${code}`);
     } else {
       toast.info("Please join the group first");
