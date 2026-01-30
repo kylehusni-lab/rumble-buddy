@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { getPlayerSession, setPlayerSession } from "@/lib/session";
 
 interface PartyMembership {
   player_id: string;
@@ -106,6 +107,18 @@ export default function MyParties() {
         is_demo: partyInfo?.is_demo || false,
       };
     });
+
+    // Sync localStorage session if user is host of any party
+    const session = getPlayerSession();
+    if (session && session.partyCode) {
+      const hostedParty = combined.find(p => p.is_host && p.party_code === session.partyCode);
+      if (hostedParty && !session.isHost) {
+        setPlayerSession({
+          ...session,
+          isHost: true,
+        });
+      }
+    }
 
     setParties(combined);
   };
