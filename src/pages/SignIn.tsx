@@ -4,8 +4,8 @@ import { ArrowLeft, Mail, Lock, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Logo } from "@/components/Logo";
-import { LegalFooter } from "@/components/LegalFooter";
+import { OttLogoSmall } from "@/components/OttLogo";
+import { FooterSection } from "@/components/home/FooterSection";
 import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -63,7 +63,7 @@ export default function SignIn() {
           <span>Back to home</span>
         </button>
 
-        <Logo size="lg" />
+        <OttLogoSmall />
 
         <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
           <div className="text-center space-y-2">
@@ -143,7 +143,7 @@ export default function SignIn() {
         onClose={() => setShowForgotPassword(false)}
       />
 
-      <LegalFooter />
+      <FooterSection />
     </div>
   );
 }
