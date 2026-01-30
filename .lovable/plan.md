@@ -1,115 +1,131 @@
 
-# Sign In Option and User Dashboard for Party Members
+# Host Dashboard Separation and Demo PIN Bypass
 
 ## Overview
 
-Currently, party hosts and players can only access their dashboards through the party join flow (`/player/auth?code=XXX`). Once signed in, if a user navigates away or closes their browser, there's no way to get back to their parties without re-entering a code. This plan adds a standalone sign-in option and a personal dashboard showing all parties a user belongs to.
+This plan addresses two improvements:
+1. Separate the My Parties dashboard to show hosted parties and joined parties in distinct sections
+2. Skip the PIN verification step for demo parties
 
 ---
 
 ## What We Will Build
 
-### 1. Homepage Sign In Button
-Add a "Sign In" button to the navigation bar that:
-- Shows for unauthenticated users alongside "Join Party"
-- Changes to "My Parties" for authenticated users
-- Works on both desktop and mobile nav
+### 1. Separated Party Sections in My Parties Dashboard
 
-### 2. Standalone Sign In Page (`/sign-in`)
-A new page for users to log in without needing a party code:
-- Email and password login form
-- "Forgot password?" link (already built)
-- Link to join a party if they don't have an account
-- After login, redirects to the new "My Parties" page
+The My Parties page will be reorganized into two collapsible sections:
 
-### 3. My Parties Page (`/my-parties`)
-A new dashboard showing all parties the authenticated user belongs to:
-- Lists each party with:
-  - Party code
-  - Status badge (pre_event, live, ended)
-  - Their display name in that party
-  - Points scored
-- Click any party to go to that party's dashboard
-- Quick link to join a new party
-- Sign out button
+**"My Hosted Parties"**
+- Shows parties where the user is the host (has Crown icon)
+- Each card shows: party code, status, member count
+- Click navigates to Host Setup/Control
+
+**"Parties I've Joined"**  
+- Shows parties where the user is a participant (not host)
+- Each card shows: party code, display name, points, status
+- Click navigates to Player Dashboard
+
+If a user is both host AND player of a party (common), it only appears in "My Hosted Parties" section.
+
+### 2. Demo Party PIN Bypass
+
+When accessing a demo party's host pages, the PIN verification screen will be skipped entirely:
+- Check if the party has `is_demo = true`
+- If demo, auto-verify and redirect to host setup
+- Keeps the PIN screen for regular parties
 
 ---
 
-## User Flows
+## User Flow Changes
 
 ```text
-Unauthenticated User:
-  Homepage -> "Sign In" -> /sign-in -> Login -> /my-parties
+Current Flow (Demo Party):
+  MyParties -> Click Demo Party -> /host/verify-pin/:code -> Enter PIN -> /host/setup/:code
 
-Authenticated User (returning):
-  Homepage -> "My Parties" -> /my-parties -> Select party -> /player/dashboard/:code
+New Flow (Demo Party):
+  MyParties -> Click Demo Party -> /host/setup/:code (direct)
 
-New User:
-  Homepage -> "Join Party" -> /join -> Enter code -> /player/auth -> Create account -> /player/picks/:code
+Regular Party Flow (unchanged):
+  MyParties -> Click Party -> /host/verify-pin/:code -> Enter PIN -> /host/setup/:code
 ```
 
 ---
 
-## Technical Details
+## Technical Implementation
 
-### New Files
+### Database Change
 
-| File | Purpose |
-|------|---------|
-| `src/pages/SignIn.tsx` | Standalone sign-in page with email/password form |
-| `src/pages/MyParties.tsx` | Dashboard showing all user's parties |
+Update the `parties_public` view to expose the `is_demo` column (this is safe - not sensitive data):
 
-### Modified Files
+```sql
+DROP VIEW IF EXISTS public.parties_public;
+
+CREATE VIEW public.parties_public
+WITH (security_invoker=on) AS
+SELECT 
+  code,
+  created_at,
+  event_started_at,
+  mens_rumble_entrants,
+  status,
+  womens_rumble_entrants,
+  is_demo  -- NEW: exposed for demo detection
+FROM public.parties;
+
+GRANT SELECT ON public.parties_public TO authenticated;
+```
+
+### File Changes
 
 | File | Changes |
 |------|---------|
-| `src/App.tsx` | Add routes for `/sign-in` and `/my-parties` |
-| `src/components/OttNavBar.tsx` | Add Sign In / My Parties button with auth state detection |
-| `src/components/home/HeroSection.tsx` | Optionally add "Sign In" link below CTAs |
+| `src/pages/MyParties.tsx` | Reorganize into two sections: hosted vs joined parties |
+| `src/pages/HostVerifyPin.tsx` | Check `is_demo` flag and auto-bypass PIN for demos |
 
-### Database Query
+### MyParties.tsx Updates
 
-To fetch user's parties, we'll query the `players` table joined with `parties_public`:
+- Fetch `is_demo` from `parties_public` for each party
+- Split parties into two arrays: `hostedParties` and `joinedParties`
+- Render two collapsible sections with distinct headers
+- "My Hosted Parties" section shows Crown icon and host-specific info
+- "Parties I've Joined" section shows Users icon and player stats
 
-```sql
-SELECT 
-  p.id as player_id,
-  p.party_code,
-  p.display_name,
-  p.points,
-  pp.status
-FROM players p
-JOIN parties_public pp ON pp.code = p.party_code
-WHERE p.user_id = auth.uid()
-ORDER BY pp.created_at DESC;
+### HostVerifyPin.tsx Updates
+
+Add logic at the start of the useEffect:
+
+```typescript
+// Check if this is a demo party
+const { data: partyInfo } = await supabase
+  .from("parties_public")
+  .select("is_demo")
+  .eq("code", code)
+  .single();
+
+if (partyInfo?.is_demo) {
+  // Auto-verify for demo parties
+  localStorage.setItem(`party_${code}_pin`, "verified");
+  navigate(`/host/setup/${code}`);
+  return;
+}
 ```
-
-This works with existing RLS since players can read their own records.
-
-### Auth State in NavBar
-
-The navbar will use the `useAuth` hook to detect authentication:
-- `isLoading`: Show nothing (prevent flash)
-- `isAuthenticated`: Show "My Parties" button
-- Not authenticated: Show "Sign In" button
 
 ---
 
 ## Security Considerations
 
-1. RLS already enforces that players can only read their own records
-2. The `parties_public` view is safe for authenticated reads
-3. No new database changes required - using existing schema
-4. Session persistence handled by Supabase Auth
+1. The `is_demo` flag is not sensitive - safe to expose in public view
+2. Demo parties are disposable test environments, PIN bypass is acceptable
+3. Regular parties still require proper PIN verification
+4. No changes to actual PIN storage or verification logic
 
 ---
 
 ## Files Summary
 
-**Create:**
-- `src/pages/SignIn.tsx` - Standalone login page
-- `src/pages/MyParties.tsx` - User's parties dashboard
+**Database Migration:**
+- Update `parties_public` view to include `is_demo`
 
 **Modify:**
-- `src/App.tsx` - Add new routes
-- `src/components/OttNavBar.tsx` - Add auth-aware navigation button
+- `src/pages/MyParties.tsx` - Split into hosted/joined sections
+- `src/pages/HostVerifyPin.tsx` - Add demo party bypass logic
