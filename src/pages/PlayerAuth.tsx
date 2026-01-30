@@ -5,7 +5,7 @@ import { ArrowLeft, Mail, Lock, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OttLogoMark } from "@/components/OttLogo";
+import { OttLogoMark, OttWordmark } from "@/components/OttLogo";
 import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
@@ -259,7 +259,13 @@ export default function PlayerAuth() {
           </div>
         </div>
 
-        <OttLogoMark size={48} className="mx-auto" />
+        <div className="flex flex-col items-center gap-3">
+          <OttLogoMark size={56} />
+          <div className="text-center">
+            <OttWordmark className="text-xl font-bold tracking-tight" />
+            <p className="text-sm text-muted-foreground mt-1">The Rumble App</p>
+          </div>
+        </div>
 
         <motion.form
           onSubmit={handleSubmit}
