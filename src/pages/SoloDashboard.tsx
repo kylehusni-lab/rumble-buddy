@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Trophy, Edit3, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check, X, Users, Plus, Pencil } from "lucide-react";
+import { Trophy, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check, X, Users, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { SoloScoringModal } from "@/components/solo/SoloScoringModal";
@@ -276,18 +276,10 @@ export default function SoloDashboard() {
 
       {/* Fixed Bottom Actions */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
-        <div className="flex gap-3 max-w-md mx-auto">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => navigate("/solo/picks")}
-          >
-            <Edit3 className="w-4 h-4 mr-2" />
-            Edit Picks
-          </Button>
+        <div className="max-w-md mx-auto">
           <Button
             variant="hero"
-            className="flex-1"
+            className="w-full"
             onClick={() => setIsScoringOpen(true)}
           >
             <Calculator className="w-4 h-4 mr-2" />
