@@ -18,6 +18,7 @@ interface Party {
   event_started_at: string | null;
   member_count: number;
   host_display_name: string | null;
+  is_demo: boolean;
 }
 
 interface Member {
@@ -123,6 +124,9 @@ export function PartyManagementModal({
             <code className="text-ott-accent font-mono bg-ott-accent/10 px-3 py-1 rounded text-lg">
               {party.code}
             </code>
+            {party.is_demo && (
+              <Badge variant="outline" className="border-ott-accent text-ott-accent">Demo</Badge>
+            )}
             {getStatusBadge(party.status)}
           </DialogTitle>
         </DialogHeader>

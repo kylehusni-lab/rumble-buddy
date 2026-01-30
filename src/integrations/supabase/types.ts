@@ -583,6 +583,7 @@ export type Database = {
           host_email: string
           host_session_id: string
           host_user_id: string
+          is_demo: boolean
           member_count: number
           status: string
         }[]
