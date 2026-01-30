@@ -51,13 +51,13 @@ export function HowItWorksSection() {
             {/* Preview Window */}
             <div className="mt-8 bg-ott-surface border border-border rounded-2xl p-4 sm:p-6 lg:p-8 min-h-[300px]">
               <TabsContent value="picks" className="mt-0">
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <h3 className="font-semibold text-lg">Make Your Predictions</h3>
                   <p className="text-muted-foreground">
                     Pick match winners, rumble participants, and chaos props before the show starts.
                   </p>
                   {/* Mobile-optimized wrestler list preview */}
-                  <div className="space-y-2 max-w-sm">
+                  <div className="space-y-3 max-w-sm">
                     {["Roman Reigns", "Cody Rhodes", "John Cena"].map((name) => (
                       <div 
                         key={name}

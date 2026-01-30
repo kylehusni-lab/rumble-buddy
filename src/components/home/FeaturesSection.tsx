@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Zap, Tv, UserX, Smartphone } from "lucide-react";
+import { Zap, Tv } from "lucide-react";
 
 const features = [
   {
@@ -11,16 +11,6 @@ const features = [
     icon: Tv,
     title: "TV Display Mode",
     description: "Cast to your big screen so everyone can follow along.",
-  },
-  {
-    icon: UserX,
-    title: "No Signup Required",
-    description: "Jump right in. No account needed to join a party.",
-  },
-  {
-    icon: Smartphone,
-    title: "Mobile First",
-    description: "Designed for phones because that's how you'll use it.",
   },
 ];
 
@@ -49,8 +39,8 @@ export function FeaturesSection({ id }: FeaturesSectionProps) {
             </h2>
           </div>
 
-          {/* Feature Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+          {/* Feature Grid - 2 columns centered */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 max-w-2xl mx-auto">
             {features.map(({ icon: Icon, title, description }, index) => (
               <motion.div
                 key={title}
