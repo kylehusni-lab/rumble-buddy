@@ -13,17 +13,22 @@ export default function HomePage() {
   const featuresRef = useRef<HTMLDivElement>(null);
   const tvModeRef = useRef<HTMLDivElement>(null);
 
-  const scrollToStory = () => {
-    storyRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
+    if (ref.current) {
+      const headerOffset = 80; // Account for fixed header (h-16 = 64px + some padding)
+      const elementPosition = ref.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.scrollY - headerOffset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
   };
 
-  const scrollToFeatures = () => {
-    featuresRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const scrollToTvMode = () => {
-    tvModeRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToStory = () => scrollToSection(storyRef);
+  const scrollToFeatures = () => scrollToSection(featuresRef);
+  const scrollToTvMode = () => scrollToSection(tvModeRef);
 
   return (
     <div className="min-h-screen bg-background">
