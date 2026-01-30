@@ -18,7 +18,7 @@ const PlayerJoin = lazy(() => import("./pages/PlayerJoin"));
 const PlayerAuth = lazy(() => import("./pages/PlayerAuth"));
 const PlayerPicks = lazy(() => import("./pages/PlayerPicks"));
 const PlayerDashboard = lazy(() => import("./pages/PlayerDashboard"));
-const HostVerifyPin = lazy(() => import("./pages/HostVerifyPin"));
+
 const HostSetup = lazy(() => import("./pages/HostSetup"));
 const HostControl = lazy(() => import("./pages/HostControl"));
 const TvDisplay = lazy(() => import("./pages/TvDisplay"));
@@ -64,7 +64,7 @@ const App = () => (
             <Route path="/player/auth" element={<PlayerAuth />} />
             <Route path="/player/picks/:code" element={<PlayerPicks />} />
             <Route path="/player/dashboard/:code" element={<PlayerDashboard />} />
-            <Route path="/host/verify-pin/:code" element={<HostVerifyPin />} />
+            
             <Route path="/host/setup/:code" element={<HostSetup />} />
             <Route path="/host/control/:code" element={<HostControl />} />
             <Route path="/host/:code/picks" element={<ViewAllPicks />} />
