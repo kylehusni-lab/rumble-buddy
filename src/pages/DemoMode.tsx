@@ -77,7 +77,6 @@ export default function DemoMode() {
         host_user_id: currentUser.id,
         status: "pre_event",
         host_pin: "0000",
-        is_demo: true, // Mark as demo party
       });
 
       if (partyError) throw partyError;
