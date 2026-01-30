@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { TourProvider, TourOverlay } from "@/components/tour";
 
 // Eagerly load the homepage for fast initial render
 import HomePage from "./pages/HomePage";
@@ -45,45 +46,48 @@ const PageLoader = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <BrowserRouter>
-        <Toaster />
-        <Sonner />
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            {/* Homepage loads eagerly */}
-            <Route path="/" element={<HomePage />} />
-            
-            {/* All other routes are lazy loaded */}
-            <Route path="/join" element={<JoinParty />} />
-            <Route path="/demo" element={<DemoMode />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
+      <TourProvider>
+        <BrowserRouter>
+          <Toaster />
+          <Sonner />
+          <TourOverlay />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Homepage loads eagerly */}
+              <Route path="/" element={<HomePage />} />
+              
+              {/* All other routes are lazy loaded */}
+              <Route path="/join" element={<JoinParty />} />
+              <Route path="/demo" element={<DemoMode />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
 
-            <Route path="/player/join" element={<PlayerJoin />} />
-            <Route path="/player/auth" element={<PlayerAuth />} />
-            <Route path="/player/picks/:code" element={<PlayerPicks />} />
-            <Route path="/player/dashboard/:code" element={<PlayerDashboard />} />
-            
-            <Route path="/host/setup/:code" element={<HostSetup />} />
-            <Route path="/host/control/:code" element={<HostControl />} />
-            <Route path="/host/:code/picks" element={<ViewAllPicks />} />
-            <Route path="/tv/:code" element={<TvDisplay />} />
-            
-            
-            <Route path="/legal" element={<Legal />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/sign-in" element={<SignIn />} />
-            <Route path="/my-parties" element={<MyParties />} />
+              <Route path="/player/join" element={<PlayerJoin />} />
+              <Route path="/player/auth" element={<PlayerAuth />} />
+              <Route path="/player/picks/:code" element={<PlayerPicks />} />
+              <Route path="/player/dashboard/:code" element={<PlayerDashboard />} />
+              
+              <Route path="/host/setup/:code" element={<HostSetup />} />
+              <Route path="/host/control/:code" element={<HostControl />} />
+              <Route path="/host/:code/picks" element={<ViewAllPicks />} />
+              <Route path="/tv/:code" element={<TvDisplay />} />
+              
+              
+              <Route path="/legal" element={<Legal />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/sign-in" element={<SignIn />} />
+              <Route path="/my-parties" element={<MyParties />} />
 
-            <Route path="/solo/setup" element={<SoloSetup />} />
-            <Route path="/solo/picks" element={<SoloPicks />} />
-            <Route path="/solo/dashboard" element={<SoloDashboard />} />
-            <Route path="/solo/tv" element={<SoloTvDisplay />} />
+              <Route path="/solo/setup" element={<SoloSetup />} />
+              <Route path="/solo/picks" element={<SoloPicks />} />
+              <Route path="/solo/dashboard" element={<SoloDashboard />} />
+              <Route path="/solo/tv" element={<SoloTvDisplay />} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </TourProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
