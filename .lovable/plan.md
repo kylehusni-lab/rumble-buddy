@@ -1,107 +1,154 @@
 
+## Streamlined Pick Editing and Visual Improvements
 
-## Update Chaos Props Bets
-
-This plan updates all Chaos Props to match the new 7-bet configuration across the entire application, with improved UI to ensure titles and explanations are always visible.
-
----
-
-### New Chaos Props Configuration
-
-| # | Title | Question |
-|---|-------|----------|
-| 1 | The Floor is Lava | A wrestler uses a stunt (chair, handstand, etc.) to keep their feet from touching |
-| 2 | The Revolving Door | A wrestler is thrown out in under 10 seconds of entering |
-| 3 | Betrayal! | Tag team partners or allies eliminate each other |
-| 4 | Over/Under: Surprises | Will there be more than 2.5 unannounced/legend entrants? |
-| 5 | The Giant Slayer | It takes 3 or more wrestlers working together to eliminate one person |
-| 6 | Brought a Toy | A chair, kendo stick, or other weapon is brought into the ring |
-| 7 | Left on Read | Music hits but no one appears, or the wrestler is attacked before reaching the ring |
+This plan implements three improvements to enhance the pick editing experience across the app.
 
 ---
 
-### Files to Update
+### Changes Overview
 
-#### 1. Constants Definition
-**File:** `src/lib/constants.ts`
+| Area | Change |
+|------|--------|
+| Chaos Props | Show title + explanation expanded by default (remove toggle) |
+| Edit Picks Button | Remove from dashboard - users edit inline only |
+| Undercard Match Picker | Replace text buttons with visual Face-Off style |
 
-- Replace `CHAOS_PROPS` array with new 7 props
-- Update `MATCH_IDS` to include `MENS_PROP_7` and `WOMENS_PROP_7`
-- Add `shortName` field (same as title for mobile-friendly display)
+---
 
-#### 2. Pick Card Display
-**File:** `src/components/picks/cards/ChaosPropsCard.tsx`
+### 1. Chaos Props - Always Show Explanation
 
-- Ensure title and question are both visible even on small screens
-- Reduce spacing between props to fit more content
-- Use slightly smaller text for the question while keeping title bold
-
-#### 3. Dashboard Chaos Tab
 **File:** `src/components/dashboard/UnifiedChaosTab.tsx`
 
-- Uses `shortName` from constants (already working, just data change)
+Remove the `expandedProp` state and the toggle mechanism. Show both title and question (explanation) on all screen sizes in a consistent layout.
 
-#### 4. TV Display
-**File:** `src/components/tv/ChaosPropsDisplay.tsx`
-
-- Uses `shortName` and `question` from constants (already working)
-
-#### 5. Host Control Scoring
-**File:** `src/pages/HostControl.tsx`
-
-- Uses CHAOS_PROPS dynamically (no code changes needed, just data)
-
-#### 6. Bulk Props Modal
-**File:** `src/components/host/BulkPropsModal.tsx`
-
-- Uses CHAOS_PROPS dynamically (no code changes needed)
-
-#### 7. Solo Scoring Modal
-**File:** `src/components/solo/SoloScoringModal.tsx`
-
-- Uses CHAOS_PROPS dynamically (no code changes needed)
-
-#### 8. Pick Validation
-**File:** `src/lib/pick-validation.ts`
-
-- Uses `CHAOS_PROPS.length` dynamically (no code changes needed)
+- Remove `useState` for `expandedProp`
+- Remove the `toggleExpand` function
+- Remove the `Info` icon button and tooltip wrapper
+- Display title and question in a stacked layout for all viewports
+- Use `text-xs` for the question to keep it compact while visible
 
 ---
 
-### Database Consideration
+### 2. Remove Edit Picks Button
 
-Existing pick data in the database for the old props will become orphaned but won't cause errors. The new props will use the same match_id pattern (`mens_chaos_prop_1`, `womens_chaos_prop_1`, etc.) so the structure remains compatible. Users will need to re-submit their Chaos Props picks if they had already made them.
+**File:** `src/pages/PlayerDashboard.tsx`
+
+Remove both instances of the "Edit Picks" button:
+
+1. **Pre-event banner** (lines 549-555): Remove the `Link` and `Button` component that navigates to `/player/picks/{code}`
+2. **Fixed bottom actions** (lines 619-626): Remove the "Edit Picks" button from the bottom action bar, leaving only the "TV Mode" button
+
+The dashboard already supports inline editing via the pencil icon on each pick row - this becomes the only way to edit picks.
+
+---
+
+### 3. Visual Undercard Match Picker
+
+**File:** `src/components/dashboard/SinglePickEditModal.tsx`
+
+Replace the plain text buttons for undercard matches with a visual Face-Off style picker featuring wrestler photos.
+
+Current implementation:
+```typescript
+// Binary options - plain text buttons
+{config.options.map((option) => (
+  <button className="w-full p-4 rounded-xl border-2 text-left font-semibold">
+    <span>{option}</span>
+  </button>
+))}
+```
+
+New implementation:
+- Display wrestler photos (72px circles) with names
+- Two stacked buttons with a centered "VS" badge between them
+- Selection state with primary border glow and checkmark overlay
+- Uses existing `getWrestlerImageUrl` utility for photos
+- Auto-save on selection (no Cancel/Save buttons needed)
 
 ---
 
 ### Technical Details
 
-```typescript
-// New CHAOS_PROPS in constants.ts
-export const CHAOS_PROPS = [
-  { id: 'prop_1', title: 'The Floor is Lava', question: 'A wrestler uses a stunt (chair, handstand, etc.) to keep their feet from touching.', shortName: 'Floor is Lava' },
-  { id: 'prop_2', title: 'The Revolving Door', question: 'A wrestler is thrown out in under 10 seconds of entering.', shortName: 'Revolving Door' },
-  { id: 'prop_3', title: 'Betrayal!', question: 'Tag team partners or allies eliminate each other.', shortName: 'Betrayal!' },
-  { id: 'prop_4', title: 'Over/Under: Surprises', question: 'Will there be more than 2.5 unannounced/legend entrants?', shortName: 'O/U Surprises' },
-  { id: 'prop_5', title: 'The Giant Slayer', question: 'It takes 3+ wrestlers working together to eliminate one person.', shortName: 'Giant Slayer' },
-  { id: 'prop_6', title: 'Brought a Toy', question: 'A chair, kendo stick, or other weapon is brought into the ring.', shortName: 'Brought a Toy' },
-  { id: 'prop_7', title: 'Left on Read', question: 'Music hits but no one appears, or attacked before reaching the ring.', shortName: 'Left on Read' },
-] as const;
+#### UnifiedChaosTab - Simplified Layout
 
-// Add to MATCH_IDS
-MENS_PROP_7: 'mens_chaos_prop_7',
-WOMENS_PROP_7: 'womens_chaos_prop_7',
+```typescript
+// Remove expandedProp state entirely
+// Replace mobile/desktop conditional with unified layout:
+<td className="px-3 py-2.5">
+  <div>
+    <div className="text-sm font-medium text-foreground">{prop.title}</div>
+    <div className="text-xs text-muted-foreground leading-tight mt-0.5">
+      {prop.question}
+    </div>
+  </div>
+</td>
+```
+
+#### SinglePickEditModal - Visual Match Picker
+
+```typescript
+// Binary options with wrestler photos
+if (config.type === "binary") {
+  const handleSelect = (option: string) => {
+    onSave(matchId, option);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-center">{config.title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-4 relative">
+          {config.options.map((option, index) => (
+            <Fragment key={option}>
+              <button
+                onClick={() => handleSelect(option)}
+                className={cn(
+                  "w-full p-3 rounded-xl border-2 flex items-center gap-4 transition-all",
+                  currentPick === option
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                <img
+                  src={getWrestlerImageUrl(option)}
+                  className="w-[72px] h-[72px] rounded-full object-cover border-2"
+                />
+                <span className="text-lg font-bold">{option}</span>
+                {currentPick === option && <Check />}
+              </button>
+              {index === 0 && (
+                <div className="flex justify-center py-1">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 border-2 border-primary/50 flex items-center justify-center">
+                    <span className="text-sm font-black text-primary">VS</span>
+                  </div>
+                </div>
+              )}
+            </Fragment>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 ```
 
 ---
 
-### Summary
+### Files Modified
 
-| Change | Scope |
-|--------|-------|
-| Update constants | 1 file |
-| Improve card readability | 1 file |
-| Total files modified | 2 files |
-| Database changes | None required |
-| Existing picks | Will need to be re-submitted |
+| File | Changes |
+|------|---------|
+| `src/components/dashboard/UnifiedChaosTab.tsx` | Remove toggle state, show explanation always |
+| `src/pages/PlayerDashboard.tsx` | Remove both Edit Picks buttons |
+| `src/components/dashboard/SinglePickEditModal.tsx` | Add visual Face-Off style for undercard matches |
 
+---
+
+### User Flow After Changes
+
+1. **Chaos Props**: Users see both prop title and explanation immediately - no tap required
+2. **Editing Picks**: Users tap directly on any pick row to open its edit modal
+3. **Undercard Matches**: Users see wrestler photos in the edit modal, tap to select and auto-save
