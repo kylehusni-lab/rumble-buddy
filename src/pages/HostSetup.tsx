@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Users, Play, ChevronDown, AlertCircle, Trophy, Pencil, Tv } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { getPlayerSession } from "@/lib/session";
+import { getPlayerSession, setPlayerSession, getSessionId } from "@/lib/session";
 import { toast } from "sonner";
 import { HostHeader } from "@/components/host/HostHeader";
 import { QuickActionsSheet } from "@/components/host/QuickActionsSheet";
 import { GuestStatusCard } from "@/components/host/GuestStatusCard";
 import { ConnectionStatus } from "@/components/host/ConnectionStatus";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Collapsible,
   CollapsibleContent,
@@ -30,6 +31,7 @@ interface PartyData {
 export default function HostSetup() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [party, setParty] = useState<PartyData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -39,9 +41,46 @@ export default function HostSetup() {
   const [isStarting, setIsStarting] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hostPlayerId, setHostPlayerId] = useState<string | null>(null);
   
   // Collapsible states
   const [guestsOpen, setGuestsOpen] = useState(true);
+
+  // Ensure host has valid player session
+  const ensurePlayerSession = useCallback(async (): Promise<boolean> => {
+    const session = getPlayerSession();
+    if (session?.playerId && session.partyCode === code) {
+      setHostPlayerId(session.playerId);
+      return true;
+    }
+    
+    // If we have an authenticated user, try to look up their player record
+    if (user) {
+      const { data: player } = await supabase
+        .from("players")
+        .select("id, display_name, email")
+        .eq("party_code", code)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (player) {
+        // Update the session with the correct player data
+        setPlayerSession({
+          sessionId: getSessionId(),
+          authUserId: user.id,
+          playerId: player.id,
+          partyCode: code,
+          displayName: player.display_name,
+          email: player.email,
+          isHost: true,
+        });
+        setHostPlayerId(player.id);
+        return true;
+      }
+    }
+    
+    return false;
+  }, [code, user]);
 
   useEffect(() => {
     if (!code) {
@@ -123,10 +162,13 @@ export default function HostSetup() {
           }
           setPlayerPicks(picksCountMap);
           
-          // Fetch host's picks count
-          const session = getPlayerSession();
-          if (session?.playerId) {
-            setHostPicksCount(picksCountMap[session.playerId] || 0);
+          // Ensure host has valid player session and fetch their picks count
+          const hasPlayer = await ensurePlayerSession();
+          if (hasPlayer) {
+            const currentSession = getPlayerSession();
+            if (currentSession?.playerId) {
+              setHostPicksCount(picksCountMap[currentSession.playerId] || 0);
+            }
           }
         }
       } catch (err) {
@@ -324,7 +366,7 @@ export default function HostSetup() {
               <div>
                 <h3 className="font-bold">My Picks</h3>
                 <p className="text-sm text-muted-foreground">
-                  {getPlayerSession()?.playerId 
+                  {hostPlayerId 
                     ? `${hostPicksCount}/20 picks made`
                     : "Join as a guest first"}
                 </p>
@@ -332,9 +374,9 @@ export default function HostSetup() {
             </div>
             <Button 
               variant="outline" 
-              onClick={() => {
-                const session = getPlayerSession();
-                if (session?.playerId) {
+              onClick={async () => {
+                const hasPlayer = await ensurePlayerSession();
+                if (hasPlayer) {
                   navigate(`/player/dashboard/${code}`);
                 } else {
                   toast.info("Please join the group first");

@@ -1303,7 +1303,7 @@ export default function HostControl() {
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.MENS_LONGEST_TIME}
-                title="Iron Man"
+                title="Longest Time"
                 question="Who lasts longest in the ring?"
                 scoredResult={getMatchResult(MATCH_IDS.MENS_LONGEST_TIME)}
                 derivedValue={mensDerivedProps.mens_longest_time}
@@ -1430,7 +1430,7 @@ export default function HostControl() {
               />
               <RumblePropScoringCard
                 propId={MATCH_IDS.WOMENS_LONGEST_TIME}
-                title="Iron Woman"
+                title="Longest Time"
                 question="Who lasts longest in the ring?"
                 scoredResult={getMatchResult(MATCH_IDS.WOMENS_LONGEST_TIME)}
                 derivedValue={womensDerivedProps.womens_longest_time}

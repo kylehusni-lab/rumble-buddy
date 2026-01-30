@@ -66,7 +66,7 @@ export function RumblePropsDisplay({ gender, players, picks, matchResults }: Rum
     { id: "entrant_30", label: "#30 Entrant", type: "wrestler" },
     { id: "first_elimination", label: "First Elimination", type: "wrestler" },
     { id: "most_eliminations", label: "Most Eliminations", type: "wrestler" },
-    { id: "longest_time", label: gender === "mens" ? "Iron Man" : "Iron Woman", type: "wrestler" },
+    { id: "longest_time", label: "Longest Time", type: "wrestler" },
   ];
 
   // Get player color by index

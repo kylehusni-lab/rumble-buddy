@@ -170,7 +170,7 @@ export const RUMBLE_PROPS = [
   { id: 'entrant_30', title: '#30 Entrant', question: 'Who enters at #30?', type: 'wrestler' as const },
   { id: 'first_elimination', title: 'First Eliminated', question: 'Who gets eliminated first?', type: 'wrestler' as const },
   { id: 'most_eliminations', title: 'Most Eliminations', question: 'Who has the most eliminations?', type: 'wrestler' as const },
-  { id: 'longest_time', title: 'Iron Man/Woman', question: 'Who lasts longest in the ring?', type: 'wrestler' as const },
+  { id: 'longest_time', title: 'Longest Time in Match', question: 'Who lasts longest in the ring?', type: 'wrestler' as const },
 ] as const;
 
 export const FINAL_FOUR_SLOTS = 4;

@@ -118,7 +118,7 @@ function formatPropName(propId: string): string {
   const names: Record<string, string> = {
     'first_elimination': 'First Elimination',
     'most_eliminations': 'Most Eliminations',
-    'longest_time': 'Iron Man/Woman',
+    'longest_time': 'Longest Time in Match',
     'entrant_1': '#1 Entrant',
     'entrant_30': '#30 Entrant',
   };
