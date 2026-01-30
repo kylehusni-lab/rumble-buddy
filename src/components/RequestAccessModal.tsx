@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Loader2, Play } from "lucide-react";
 
 interface RequestAccessModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface RequestAccessModalProps {
 }
 
 export function RequestAccessModal({ isOpen, onClose }: RequestAccessModalProps) {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [playStyle, setPlayStyle] = useState<"Solo" | "Group" | "">("");
@@ -76,12 +78,25 @@ export function RequestAccessModal({ isOpen, onClose }: RequestAccessModalProps)
               Thanks! We're manually spinning up parties to ensure a perfect experience tonight. 
               Watch your email for your unique Party Code.
             </DialogDescription>
-            <Button 
-              onClick={handleClose}
-              className="mt-4 bg-ott-accent text-background hover:bg-ott-accent/90"
-            >
-              Got it
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 mt-4 justify-center">
+              <Button 
+                onClick={handleClose}
+                className="bg-ott-accent text-background hover:bg-ott-accent/90"
+              >
+                Got it
+              </Button>
+              <Button 
+                onClick={() => {
+                  handleClose();
+                  navigate("/demo");
+                }}
+                variant="outline"
+                className="border-border"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Try the Demo
+              </Button>
+            </div>
           </div>
         ) : (
           <>
