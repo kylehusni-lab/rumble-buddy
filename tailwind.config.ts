@@ -55,7 +55,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        gold: "hsl(var(--riyadh-gold))",
+        gold: {
+          DEFAULT: "#FDB81E",
+          dark: "#D4A017",
+          medium: "#C69214",
+          bright: "#FFD700",
+          deep: "#B8860B",
+        },
         purple: "hsl(var(--royal-purple))",
         winner: {
           DEFAULT: "hsl(var(--winner))",
