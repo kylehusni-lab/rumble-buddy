@@ -1,67 +1,145 @@
-# Security Hardening Plan - COMPLETED
 
-**Status: All phases complete**
+## Combined UI Update Plan
 
-## Summary
+This plan addresses two related changes:
 
-Implemented comprehensive security hardening to remove legacy PIN-based authentication and align with Supabase email/password authentication.
+1. **Simplify unconfirmed wrestler styling** - Remove dashed borders and asterisks, use only italic text with a legend note
+2. **Consolidate wrestler admin into Commissioner Mode** - Move the Wrestler Database from `/admin/wrestlers` (PIN-protected) into the existing Admin Dashboard at `/admin` as a third tab
 
-## Completed Actions
+---
 
-### Phase 1: Database Cleanup (DONE)
-- Created new `update_party_status_by_host` RPC function (auth-based, no PIN)
-- Dropped legacy functions: `verify_host_pin`, `set_host_pin`, `update_party_status_with_pin`
-- Dropped legacy solo functions: `verify_solo_login`, `register_solo_player`
-- Removed `host_pin` column from `parties` table
-- Made `solo_players.pin` column nullable (legacy data preserved)
-- Recreated `parties_public` view without PIN references
+### Part A: Simplify Unconfirmed Wrestler Styling
 
-### Phase 2: Code Updates (DONE)
-- `src/pages/DemoMode.tsx` - Removed `host_pin: "0000"` from party creation
-- `src/pages/Index.tsx` - Removed `host_pin: "0000"` from demo creation
-- `src/pages/HostSetup.tsx` - Removed localStorage PIN logic, using new RPC
-- `src/pages/HostControl.tsx` - Removed localStorage PIN references
-- `src/pages/MyParties.tsx` - Removed localStorage PIN verification bypass
-- `src/components/host/QuickActionsSheet.tsx` - Removed localStorage PIN cleanup on sign out
+**Current behavior:**
+- Asterisk prefix (`*`) added to unconfirmed names
+- Dashed border around profile pictures
+- Italic text with reduced opacity
 
-### Phase 3: Edge Function Cleanup (DONE)
-- Deleted `supabase/functions/send-pin-recovery/` directory
-- Removed from `supabase/config.toml`
-- Deleted deployed edge function from Supabase
+**New behavior:**
+- No asterisk prefix - names display cleanly
+- No dashed border - transparent border like confirmed wrestlers  
+- Keep italic text only
+- Add a small legend note on picker screens: "Italic = unconfirmed"
 
-### Phase 4: Terminology Updates (DONE)
-- `src/pages/PlatformAdminVerify.tsx` - Changed "PIN" to "Passcode" in all UI text
+#### Files to Modify
 
-## Security Posture After Changes
+| File | Changes |
+|------|---------|
+| `src/hooks/usePlatformConfig.ts` | Remove `*` prefix logic from `mensEntrants`/`womensEntrants` arrays |
+| `src/lib/entrant-utils.ts` | Update `isUnconfirmedEntrant()` to accept optional entrant data array for lookup instead of asterisk detection |
+| `src/components/WrestlerPickerModal.tsx` | Remove `border-dashed` conditional; add legend note below search bar |
+| `src/components/picks/cards/RumbleWinnerCard.tsx` | Remove `border-dashed` conditional; add legend note in header area |
+| `src/components/picks/cards/RumblePropsCard.tsx` | Remove `border-dashed` conditionals in both picker dialogs |
 
-| Area | Status | Notes |
-|------|--------|-------|
-| Host authentication | Secure | Uses Supabase Auth (auth.uid() = host_user_id) |
-| Party status updates | Secure | New RPC verifies host via `is_party_host()` |
-| Solo mode auth | Secure | Uses Supabase Auth email/password |
-| Platform admin | Secure | Uses PLATFORM_ADMIN_PIN secret with JWT tokens |
-| Edge function CORS | Secure | Only verify-admin-pin and manage-wrestlers remain, both have proper origin validation |
+#### Legend Note Design
 
-## Documented Acceptable Risks
+A small, unobtrusive note below the search bar:
+```text
+Italic names = unconfirmed participants
+```
 
-1. **parties_public view without security_invoker**: Intentional for anonymous party code verification during join flow. Only exposes non-sensitive fields.
+---
 
-2. **Permissive INSERT on access_requests**: Intentional for public access request submissions.
+### Part B: Consolidate Wrestler Database into Commissioner Mode
 
-3. **solo_players.pin column retained**: Now nullable, not used for auth. Kept for legacy data preservation.
+**Current state:**
+- Wrestler Database lives at `/admin/wrestlers` and requires Platform Admin PIN verification
+- Commissioner Dashboard at `/admin` has 2 tabs: "Access Requests" and "Active Parties"
 
-## Files Modified
+**New state:**
+- Add a third tab "Wrestlers" to the Commissioner Dashboard
+- Remove the standalone `/admin/wrestlers` route
+- Keep the same PIN-based protection for this tab (since Commissioner Mode already requires admin role)
+- The Platform Admin PIN verification page (`/platform-admin/verify`) is only needed for the Wrestler tab
 
-- `src/pages/DemoMode.tsx`
-- `src/pages/Index.tsx`
-- `src/pages/HostSetup.tsx`
-- `src/pages/HostControl.tsx`
-- `src/pages/MyParties.tsx`
-- `src/components/host/QuickActionsSheet.tsx`
-- `src/pages/PlatformAdminVerify.tsx`
-- `supabase/config.toml`
-- Database migration applied
+#### Implementation Approach
 
-## Files Deleted
+1. **Create a new `WrestlerDatabaseTab` component** that contains the wrestler management UI currently in `WrestlerAdmin.tsx`
+2. **Update `AdminDashboard.tsx`** to add a third tab with PIN-based access for the Wrestler tab
+3. **Remove `/admin/wrestlers` route** from `App.tsx`
+4. **Delete or repurpose `WrestlerAdmin.tsx`** page
 
-- `supabase/functions/send-pin-recovery/index.ts`
+#### Tab Structure in Commissioner Mode
+
+```text
+[Access Requests] [Active Parties] [Wrestlers*]
+                                      |
+                                      +-- Requires PIN on first access
+```
+
+The Wrestlers tab will prompt for the Platform Admin PIN when first clicked, storing the session in localStorage (same as current `WrestlerAdmin.tsx` does).
+
+---
+
+### Technical Details
+
+#### Part A: Styling Changes
+
+**usePlatformConfig.ts (Lines 63-69)**
+```typescript
+// Before:
+const mensEntrants = mensData.map(e => 
+  e.isConfirmed ? e.name : `*${e.name}`
+);
+
+// After:
+const mensEntrants = mensData.map(e => e.name);
+```
+
+The `mensEntrantsData` and `womensEntrantsData` arrays already contain the `isConfirmed` boolean, so components can look up confirmation status directly.
+
+**entrant-utils.ts - New helper function**
+```typescript
+export function isUnconfirmedByData(
+  name: string, 
+  entrantsData: { name: string; isConfirmed: boolean }[]
+): boolean {
+  const entrant = entrantsData.find(e => e.name === name);
+  return entrant ? !entrant.isConfirmed : false;
+}
+```
+
+Components will be updated to:
+1. Accept `entrantsData` prop
+2. Use `isUnconfirmedByData()` instead of asterisk detection
+3. Remove `border-dashed border-muted-foreground/50` classes
+4. Keep `italic opacity-80` for unconfirmed names
+
+**Legend note component snippet**
+```tsx
+<p className="text-[10px] text-muted-foreground mt-1 text-center">
+  <span className="italic">Italic names</span> = unconfirmed participants
+</p>
+```
+
+#### Part B: Tab Consolidation
+
+**New WrestlerDatabaseTab component**
+- Extracts the core wrestler management UI from `WrestlerAdmin.tsx`
+- Includes PIN verification check before showing content
+- Uses existing `useWrestlerAdmin` hook
+
+**AdminDashboard.tsx changes**
+- Add third TabsTrigger: "Wrestlers"
+- Add third TabsContent wrapping `<WrestlerDatabaseTab />`
+- Update `TabsList` from `grid-cols-2` to `grid-cols-3`
+
+**App.tsx changes**
+- Remove the `/admin/wrestlers` route
+- Remove the `WrestlerAdmin` lazy import
+
+---
+
+### File Summary
+
+| File | Action |
+|------|--------|
+| `src/hooks/usePlatformConfig.ts` | Edit - remove asterisk prefix |
+| `src/lib/entrant-utils.ts` | Edit - add data-based lookup helper |
+| `src/components/WrestlerPickerModal.tsx` | Edit - remove dashed border, add legend |
+| `src/components/picks/cards/RumbleWinnerCard.tsx` | Edit - remove dashed border, add legend |
+| `src/components/picks/cards/RumblePropsCard.tsx` | Edit - remove dashed border in 2 places |
+| `src/components/admin/WrestlerDatabaseTab.tsx` | Create - new tab component |
+| `src/pages/AdminDashboard.tsx` | Edit - add third tab |
+| `src/pages/WrestlerAdmin.tsx` | Delete |
+| `src/App.tsx` | Edit - remove `/admin/wrestlers` route |
