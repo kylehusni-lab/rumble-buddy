@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
     const displayName = player.display_name || "Rumble Buddy";
 
     const emailResponse = await resend.emails.send({
-      from: "Rumble Buddy <onboarding@resend.dev>",
+      from: "Rumble Buddy <noreply@therumbleapp.com>",
       to: [email.toLowerCase().trim()],
       subject: "Your Rumble Buddy PIN 🎉",
       html: `
