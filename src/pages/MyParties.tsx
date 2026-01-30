@@ -133,13 +133,10 @@ export default function MyParties() {
 
   const handlePartyClick = (party: PartyMembership) => {
     if (party.is_host) {
-      // Demo parties skip PIN verification
-      if (party.is_demo) {
-        localStorage.setItem(`party_${party.party_code}_pin`, "verified");
-        navigate(`/host/setup/${party.party_code}`);
-      } else {
-        navigate(`/host/verify-pin/${party.party_code}`);
-      }
+      // Authenticated hosts skip PIN verification - they're already verified via email/password
+      // Mark as verified and go directly to setup
+      localStorage.setItem(`party_${party.party_code}_pin`, "verified");
+      navigate(`/host/setup/${party.party_code}`);
     } else {
       navigate(`/player/dashboard/${party.party_code}`);
     }
