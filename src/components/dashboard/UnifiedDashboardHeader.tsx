@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Cloud, Loader2, LogOut, Tv } from "lucide-react";
+import { Trophy, Cloud, LogOut, Tv, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OttLogoSmall } from "@/components/OttLogo";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ interface UnifiedDashboardHeaderProps {
   partyCode?: string;
   onLogout?: () => void;
   onOpenTv?: () => void;
+  onBack?: () => void;
 }
 
 export const UnifiedDashboardHeader = memo(function UnifiedDashboardHeader({
@@ -27,12 +28,25 @@ export const UnifiedDashboardHeader = memo(function UnifiedDashboardHeader({
   partyCode,
   onLogout,
   onOpenTv,
+  onBack,
 }: UnifiedDashboardHeaderProps) {
   return (
     <div className="sticky top-0 z-20 bg-gradient-to-b from-background via-background to-background/95 backdrop-blur-sm">
       <div className="p-4 pb-2">
         <div className="flex items-center justify-between mb-3">
-          <OttLogoSmall />
+          <div className="flex items-center gap-2">
+            {onBack && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="text-muted-foreground -ml-2"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            )}
+            <OttLogoSmall />
+          </div>
           <div className="flex items-center gap-3">
             {mode === "solo" && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">

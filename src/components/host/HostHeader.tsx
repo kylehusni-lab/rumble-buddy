@@ -24,8 +24,8 @@ export function HostHeader({ code, onMenuClick }: HostHeaderProps) {
   return (
     <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border">
       <div className="flex items-center justify-between p-4 max-w-lg mx-auto">
-        {/* Back to Home */}
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+        {/* Back to My Parties Hub */}
+        <Button variant="ghost" size="icon" onClick={() => navigate("/my-parties")}>
           <ArrowLeft size={24} />
         </Button>
         
