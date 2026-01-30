@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Lock, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { OttLogoSmall } from "@/components/OttLogo";
+import { RingIcon } from "@/components/logo";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function HostVerifyPin() {
   const { code } = useParams<{ code: string }>();
@@ -14,13 +15,25 @@ export default function HostVerifyPin() {
   const [isVerifying, setIsVerifying] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
   useEffect(() => {
+    if (authLoading) return;
+    
     if (!code) {
       navigate("/");
       return;
     }
     
-    // Check if already verified
+    // If user is authenticated, skip PIN verification entirely
+    // They've already proven their identity via email/password
+    if (isAuthenticated) {
+      localStorage.setItem(`party_${code}_pin`, "verified");
+      navigate(`/host/setup/${code}`);
+      return;
+    }
+    
+    // Check if already verified (legacy flow)
     const storedPin = localStorage.getItem(`party_${code}_pin`);
     if (storedPin) {
       navigate(`/host/setup/${code}`);
@@ -33,7 +46,7 @@ export default function HostVerifyPin() {
         .from("parties_public")
         .select("is_demo")
         .eq("code", code)
-        .single();
+        .maybeSingle();
 
       if (partyInfo?.is_demo) {
         // Auto-verify for demo parties
@@ -47,7 +60,7 @@ export default function HostVerifyPin() {
     };
 
     checkDemoAndFocus();
-  }, [code, navigate]);
+  }, [code, navigate, isAuthenticated, authLoading]);
 
   const handleDigitChange = (index: number, value: string) => {
     // Only allow digits
@@ -143,7 +156,7 @@ export default function HostVerifyPin() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-sm text-center"
       >
-        <OttLogoSmall className="mx-auto mb-8" />
+        <RingIcon size={32} className="mx-auto mb-8" />
         
         <div className="bg-primary/10 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
           <Lock className="text-primary" size={40} />
