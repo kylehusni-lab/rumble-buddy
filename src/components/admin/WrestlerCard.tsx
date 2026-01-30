@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pencil, Trash2, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,7 @@ interface WrestlerCardProps {
   onDelete: (wrestler: Wrestler) => void;
 }
 
-export function WrestlerCard({ wrestler, onEdit, onDelete }: WrestlerCardProps) {
+export const WrestlerCard = memo(function WrestlerCard({ wrestler, onEdit, onDelete }: WrestlerCardProps) {
   const imageUrl = getWrestlerImageUrl(wrestler.name, wrestler.image_url);
 
   return (
@@ -37,6 +38,7 @@ export function WrestlerCard({ wrestler, onEdit, onDelete }: WrestlerCardProps) 
           src={imageUrl}
           alt={wrestler.name}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
       </div>
 
@@ -72,4 +74,4 @@ export function WrestlerCard({ wrestler, onEdit, onDelete }: WrestlerCardProps) 
       </div>
     </div>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { compressImage, validateImageFile } from '@/lib/image-utils';
 import { toast } from 'sonner';
@@ -266,19 +266,21 @@ export function useWrestlerAdmin(enabled: boolean = true) {
     }
   };
 
-  // Filter wrestlers client-side for instant search feedback
-  const filteredWrestlers = wrestlers.filter((wrestler) => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (!wrestler.name.toLowerCase().includes(query)) {
+  // Memoized filtered wrestlers for performance
+  const filteredWrestlers = useMemo(() => {
+    return wrestlers.filter((wrestler) => {
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (!wrestler.name.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+      if (divisionFilter !== 'all' && wrestler.division !== divisionFilter) {
         return false;
       }
-    }
-    if (divisionFilter !== 'all' && wrestler.division !== divisionFilter) {
-      return false;
-    }
-    return true;
-  });
+      return true;
+    });
+  }, [wrestlers, searchQuery, divisionFilter]);
 
   return {
     wrestlers: filteredWrestlers,

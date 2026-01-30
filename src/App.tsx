@@ -23,7 +23,7 @@ const HostSetup = lazy(() => import("./pages/HostSetup"));
 const HostControl = lazy(() => import("./pages/HostControl"));
 const TvDisplay = lazy(() => import("./pages/TvDisplay"));
 const ViewAllPicks = lazy(() => import("./pages/ViewAllPicks"));
-const PlatformAdminVerify = lazy(() => import("./pages/PlatformAdminVerify"));
+
 const Legal = lazy(() => import("./pages/Legal"));
 const SoloSetup = lazy(() => import("./pages/SoloSetup"));
 const SoloPicks = lazy(() => import("./pages/SoloPicks"));
@@ -69,7 +69,7 @@ const App = () => (
             <Route path="/host/:code/picks" element={<ViewAllPicks />} />
             <Route path="/tv/:code" element={<TvDisplay />} />
             
-            <Route path="/platform-admin/verify" element={<PlatformAdminVerify />} />
+            
             <Route path="/legal" element={<Legal />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/sign-in" element={<SignIn />} />
