@@ -117,7 +117,7 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:justify-center lg:justify-start">
+            <div className="flex flex-col gap-3 w-full sm:w-auto">
               {isLive ? (
                 <Button 
                   onClick={() => navigate("/join")}
@@ -129,33 +129,37 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
                 </Button>
               ) : (
                 <>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:justify-center lg:justify-start">
+                    <Button 
+                      onClick={onRequestAccess}
+                      size="lg"
+                      className="w-full sm:w-auto bg-ott-accent text-background hover:bg-ott-accent/90 font-bold"
+                    >
+                      Request Access
+                    </Button>
+                    <Button 
+                      onClick={() => navigate("/join")}
+                      size="lg"
+                      variant="outline"
+                      className="w-full sm:w-auto border-border"
+                    >
+                      Join with Code
+                    </Button>
+                  </div>
+                  
+                  {/* Demo CTA - Prominent */}
                   <Button 
-                    onClick={onRequestAccess}
+                    onClick={() => navigate("/demo")}
                     size="lg"
-                    className="w-full sm:w-auto bg-ott-accent text-background hover:bg-ott-accent/90 font-bold"
+                    variant="ghost"
+                    className="w-full sm:w-auto text-ott-accent hover:text-ott-accent hover:bg-ott-accent/10 font-semibold"
                   >
-                    Request Access
-                  </Button>
-                  <Button 
-                    onClick={() => navigate("/join")}
-                    size="lg"
-                    variant="outline"
-                    className="w-full sm:w-auto border-border"
-                  >
-                    Join with Code
+                    Try the Demo
+                    <ArrowRight className="ml-2 w-4 h-4" />
                   </Button>
                 </>
               )}
             </div>
-
-            {/* Demo Link */}
-            <button 
-              onClick={() => navigate("/demo")}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 mx-auto lg:mx-0"
-            >
-              Try the demo
-              <ArrowRight className="w-3 h-3" />
-            </button>
           </motion.div>
 
           {/* Logo Right - desktop only */}
