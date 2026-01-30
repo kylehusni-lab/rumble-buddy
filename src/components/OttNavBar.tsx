@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, LogIn, Users } from "lucide-react";
-import { OttLogoMark } from "./OttLogo";
+import { RingIcon } from "./logo";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,8 +31,8 @@ export function OttNavBar({ onStoryClick, onFeaturesClick }: OttNavBarProps) {
       <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <OttLogoMark size={32} />
-          <span className="font-bold text-lg tracking-tight hidden sm:inline">OTT</span>
+          <RingIcon size={32} />
+          <span className="font-bold text-lg tracking-tight hidden sm:inline text-gold">OTT</span>
         </Link>
 
         {/* Nav Links - Desktop */}
@@ -106,8 +106,8 @@ export function OttNavBar({ onStoryClick, onFeaturesClick }: OttNavBarProps) {
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <OttLogoMark size={28} />
-                    <span className="font-bold">OTT</span>
+                    <RingIcon size={28} />
+                    <span className="font-bold text-gold">OTT</span>
                   </div>
                 </div>
 
