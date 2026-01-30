@@ -32,13 +32,13 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
 
         {/* Face-Off Arena */}
         <div className="flex-1 flex flex-col relative min-h-0">
-          {/* Wrestler 1 - Red Corner */}
+          {/* Wrestler 1 - Gold Corner */}
           <motion.button
             onClick={() => !disabled && onChange(wrestler1)}
             disabled={disabled}
             className={cn(
               "relative flex-1 flex flex-col items-center justify-center p-4 transition-all duration-300",
-              value === wrestler1 ? "faceoff-red-corner-selected" : "faceoff-red-corner",
+              value === wrestler1 ? "faceoff-corner-1-selected" : "faceoff-corner-1",
               value && value !== wrestler1 && "spotlight-dimmed",
               disabled && "cursor-not-allowed"
             )}
@@ -50,7 +50,7 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
               "w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32",
               value === wrestler1 
                 ? "gold-selection-glow scale-105" 
-                : "border-destructive/50"
+                : "border-primary/30"
             )}>
               <img
                 src={getWrestlerImageUrl(wrestler1)}
@@ -102,13 +102,13 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
             </div>
           </div>
 
-          {/* Wrestler 2 - Blue Corner */}
+          {/* Wrestler 2 - Green Corner */}
           <motion.button
             onClick={() => !disabled && onChange(wrestler2)}
             disabled={disabled}
             className={cn(
               "relative flex-1 flex flex-col items-center justify-center p-4 transition-all duration-300",
-              value === wrestler2 ? "faceoff-blue-corner-selected" : "faceoff-blue-corner",
+              value === wrestler2 ? "faceoff-corner-2-selected" : "faceoff-corner-2",
               value && value !== wrestler2 && "spotlight-dimmed",
               disabled && "cursor-not-allowed"
             )}
@@ -120,7 +120,7 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
               "w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32",
               value === wrestler2 
                 ? "gold-selection-glow scale-105" 
-                : "border-secondary/50"
+                : "border-secondary/30"
             )}>
               <img
                 src={getWrestlerImageUrl(wrestler2)}

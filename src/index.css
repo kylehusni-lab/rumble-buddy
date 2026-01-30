@@ -500,21 +500,21 @@
       inset 0 1px 0 hsla(43, 75%, 52%, 0.2);
   }
 
-  /* Face-Off Match Card Gradients */
-  .faceoff-red-corner {
-    background: linear-gradient(180deg, hsla(0, 60%, 20%, 0.4) 0%, hsla(0, 50%, 15%, 0.2) 50%, transparent 100%);
+  /* Face-Off Match Card Gradients - Using theme colors */
+  .faceoff-corner-1 {
+    background: linear-gradient(180deg, hsla(43, 75%, 25%, 0.25) 0%, hsla(43, 60%, 20%, 0.1) 50%, transparent 100%);
   }
   
-  .faceoff-red-corner-selected {
-    background: linear-gradient(180deg, hsla(0, 60%, 25%, 0.6) 0%, hsla(0, 50%, 20%, 0.4) 50%, transparent 100%);
+  .faceoff-corner-1-selected {
+    background: linear-gradient(180deg, hsla(43, 75%, 35%, 0.4) 0%, hsla(43, 60%, 25%, 0.25) 50%, transparent 100%);
   }
   
-  .faceoff-blue-corner {
-    background: linear-gradient(0deg, hsla(220, 60%, 20%, 0.4) 0%, hsla(220, 50%, 15%, 0.2) 50%, transparent 100%);
+  .faceoff-corner-2 {
+    background: linear-gradient(0deg, hsla(160, 100%, 20%, 0.25) 0%, hsla(160, 80%, 15%, 0.1) 50%, transparent 100%);
   }
   
-  .faceoff-blue-corner-selected {
-    background: linear-gradient(0deg, hsla(220, 60%, 25%, 0.6) 0%, hsla(220, 50%, 20%, 0.4) 50%, transparent 100%);
+  .faceoff-corner-2-selected {
+    background: linear-gradient(0deg, hsla(160, 100%, 25%, 0.4) 0%, hsla(160, 80%, 20%, 0.25) 50%, transparent 100%);
   }
 
   /* Gold selection glow - using primary token */
