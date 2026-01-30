@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { OttNavBar } from "@/components/OttNavBar";
 import { HeroSection } from "@/components/home/HeroSection";
 import { StorySection } from "@/components/home/StorySection";
-import { HowItWorksSection } from "@/components/home/HowItWorksSection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
 import { TvModeGallery } from "@/components/home/TvModeGallery";
 import { FooterSection } from "@/components/home/FooterSection";
@@ -31,8 +30,6 @@ export default function HomePage() {
         <div ref={storyRef}>
           <StorySection id="story" />
         </div>
-        
-        <HowItWorksSection />
         
         <div ref={featuresRef}>
           <FeaturesSection id="features" />
