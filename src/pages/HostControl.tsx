@@ -589,16 +589,23 @@ export default function HostControl() {
         picksByPlayer.set(pick.player_id, existing);
       });
 
-      // Award points for each correct pick
+      // Award points for each correct pick - fetch fresh player data for each update
       for (const [playerId, picks] of picksByPlayer) {
         const correctPicks = picks.filter(pick => finalFourNames.includes(pick));
         if (correctPicks.length > 0) {
-          const player = getPlayer(playerId);
-          if (player) {
-            const pointsToAward = correctPicks.length * SCORING.FINAL_FOUR_PICK;
+          const pointsToAward = correctPicks.length * SCORING.FINAL_FOUR_PICK;
+          
+          // Fetch fresh player data to avoid race condition
+          const { data: freshPlayer } = await supabase
+            .from("players")
+            .select("points")
+            .eq("id", playerId)
+            .single();
+          
+          if (freshPlayer) {
             await supabase
               .from("players")
-              .update({ points: player.points + pointsToAward })
+              .update({ points: freshPlayer.points + pointsToAward })
               .eq("id", playerId);
           }
         }
@@ -1085,7 +1092,6 @@ export default function HostControl() {
       MATCH_IDS.MENS_FIRST_ELIMINATION,
       MATCH_IDS.MENS_MOST_ELIMINATIONS,
       MATCH_IDS.MENS_LONGEST_TIME,
-      MATCH_IDS.MENS_NO_SHOW,
     ];
     let scored = 0;
     let points = 0;
@@ -1130,7 +1136,6 @@ export default function HostControl() {
       MATCH_IDS.WOMENS_FIRST_ELIMINATION,
       MATCH_IDS.WOMENS_MOST_ELIMINATIONS,
       MATCH_IDS.WOMENS_LONGEST_TIME,
-      MATCH_IDS.WOMENS_NO_SHOW,
     ];
     let scored = 0;
     let points = 0;
@@ -1305,16 +1310,6 @@ export default function HostControl() {
                 onReset={handleResetRumbleProp}
                 availableWrestlers={mensEntrants}
               />
-              <RumblePropScoringCard
-                propId={MATCH_IDS.MENS_NO_SHOW}
-                title="No-Show"
-                question="Will anyone not make it to the ring?"
-                scoredResult={getMatchResult(MATCH_IDS.MENS_NO_SHOW)}
-                derivedValue={null}
-                onScore={handleScoreRumbleProp}
-                onReset={handleResetRumbleProp}
-                type="yesno"
-              />
             </CollapsibleSection>
 
             {/* Men's Final Four Predictions */}
@@ -1442,16 +1437,6 @@ export default function HostControl() {
                 onReset={handleResetRumbleProp}
                 availableWrestlers={womensEntrants}
               />
-              <RumblePropScoringCard
-                propId={MATCH_IDS.WOMENS_NO_SHOW}
-                title="No-Show"
-                question="Will anyone not make it to the ring?"
-                scoredResult={getMatchResult(MATCH_IDS.WOMENS_NO_SHOW)}
-                derivedValue={null}
-                onScore={handleScoreRumbleProp}
-                onReset={handleResetRumbleProp}
-                type="yesno"
-              />
             </CollapsibleSection>
 
             {/* Women's Final Four Predictions */}
@@ -1547,20 +1532,25 @@ export default function HostControl() {
                   No wrestlers in the ring yet
                 </p>
               ) : (
-                mensActiveWrestlers.map((wrestler) => (
-                  <ActiveWrestlerCard
-                    key={wrestler.id}
-                    number={wrestler.number}
-                    wrestlerName={wrestler.wrestler_name || "Unknown"}
-                    ownerName={getPlayerName(wrestler.assigned_to_player_id)}
-                    duration={getDuration(wrestler.entry_timestamp!)}
-                    eliminationCount={getEliminationCount(wrestler.number, "mens")}
-                    onEliminate={() => {
-                      setEliminationTarget(wrestler);
-                      setEliminationType("mens");
-                    }}
-                  />
-                ))
+                mensActiveWrestlers.map((wrestler) => {
+                  const mensWinnerName = getMatchResult("mens_rumble_winner");
+                  const isWinner = mensWinnerName === wrestler.wrestler_name;
+                  return (
+                    <ActiveWrestlerCard
+                      key={wrestler.id}
+                      number={wrestler.number}
+                      wrestlerName={wrestler.wrestler_name || "Unknown"}
+                      ownerName={getPlayerName(wrestler.assigned_to_player_id)}
+                      duration={getDuration(wrestler.entry_timestamp!)}
+                      eliminationCount={getEliminationCount(wrestler.number, "mens")}
+                      onEliminate={() => {
+                        setEliminationTarget(wrestler);
+                        setEliminationType("mens");
+                      }}
+                      isWinner={isWinner}
+                    />
+                  );
+                })
               )}
             </div>
           </TabsContent>
@@ -1590,20 +1580,25 @@ export default function HostControl() {
                   No wrestlers in the ring yet
                 </p>
               ) : (
-                womensActiveWrestlers.map((wrestler) => (
-                  <ActiveWrestlerCard
-                    key={wrestler.id}
-                    number={wrestler.number}
-                    wrestlerName={wrestler.wrestler_name || "Unknown"}
-                    ownerName={getPlayerName(wrestler.assigned_to_player_id)}
-                    duration={getDuration(wrestler.entry_timestamp!)}
-                    eliminationCount={getEliminationCount(wrestler.number, "womens")}
-                    onEliminate={() => {
-                      setEliminationTarget(wrestler);
-                      setEliminationType("womens");
-                    }}
-                  />
-                ))
+                womensActiveWrestlers.map((wrestler) => {
+                  const womensWinnerName = getMatchResult("womens_rumble_winner");
+                  const isWinner = womensWinnerName === wrestler.wrestler_name;
+                  return (
+                    <ActiveWrestlerCard
+                      key={wrestler.id}
+                      number={wrestler.number}
+                      wrestlerName={wrestler.wrestler_name || "Unknown"}
+                      ownerName={getPlayerName(wrestler.assigned_to_player_id)}
+                      duration={getDuration(wrestler.entry_timestamp!)}
+                      eliminationCount={getEliminationCount(wrestler.number, "womens")}
+                      onEliminate={() => {
+                        setEliminationTarget(wrestler);
+                        setEliminationType("womens");
+                      }}
+                      isWinner={isWinner}
+                    />
+                  );
+                })
               )}
             </div>
           </TabsContent>
