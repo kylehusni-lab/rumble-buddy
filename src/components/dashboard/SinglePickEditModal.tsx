@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,7 @@ import {
 import { UNDERCARD_MATCHES, RUMBLE_PROPS, CHAOS_PROPS, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { WrestlerPickerModal } from "@/components/WrestlerPickerModal";
+import { getBlockedWrestlers } from "@/lib/pick-validation";
 
 interface SinglePickEditModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ interface SinglePickEditModalProps {
   onSave: (matchId: string, newValue: string) => void;
   mensEntrants?: string[];
   womensEntrants?: string[];
+  allPicks?: Record<string, string>;
 }
 
 // Determine the pick type and options based on matchId
@@ -62,6 +64,7 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
   // Rumble props (wrestler select)
   const rumblePropMatch = RUMBLE_PROPS.find(p => matchId.includes(p.id));
   if (rumblePropMatch) {
+    // Check for womens BEFORE mens to avoid substring collision
     const gender = matchId.includes("womens") ? "womens" : "mens";
     const entrants = gender === "mens" 
       ? (mensEntrants || DEFAULT_MENS_ENTRANTS)
@@ -71,11 +74,13 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
       title: rumblePropMatch.title,
       gender,
       entrants,
+      propId: rumblePropMatch.id,
     };
   }
 
   // Final four picks
   if (matchId.includes("final_four")) {
+    // Check for womens BEFORE mens to avoid substring collision
     const gender = matchId.includes("womens") ? "womens" : "mens";
     const slotNum = matchId.split("_").pop();
     const entrants = gender === "mens" 
@@ -86,6 +91,7 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
       title: `${gender === "mens" ? "Men's" : "Women's"} Final Four #${slotNum}`,
       gender,
       entrants,
+      propId: `final_four_${slotNum}`,
     };
   }
 
@@ -100,10 +106,31 @@ export function SinglePickEditModal({
   onSave,
   mensEntrants,
   womensEntrants,
+  allPicks,
 }: SinglePickEditModalProps) {
   const [selectedValue, setSelectedValue] = useState(currentPick);
 
   const config = getPickConfig(matchId, mensEntrants, womensEntrants);
+
+  // Calculate blocked wrestlers based on existing picks and validation rules
+  const blockedWrestlers = useMemo(() => {
+    if (!allPicks || config?.type !== "wrestler") return new Set<string>();
+    
+    // Extract gender and propId from matchId
+    // Check for womens BEFORE mens to avoid substring collision
+    const gender = matchId.includes("womens") ? "womens" : "mens";
+    
+    // Extract the propId by removing the gender prefix
+    let propId = matchId.replace(`${gender}_`, "");
+    
+    return getBlockedWrestlers(gender as "mens" | "womens", propId, allPicks);
+  }, [matchId, allPicks, config]);
+
+  // Filter entrants to exclude blocked wrestlers
+  const availableEntrants = useMemo(() => {
+    if (!config?.entrants) return [];
+    return config.entrants.filter(wrestler => !blockedWrestlers.has(wrestler));
+  }, [config?.entrants, blockedWrestlers]);
 
   if (!config) return null;
 
@@ -201,7 +228,7 @@ export function SinglePickEditModal({
           onClose();
         }}
         title={config.title}
-        wrestlers={config.entrants}
+        wrestlers={availableEntrants}
         currentSelection={currentPick}
         triggerConfetti={false}
       />

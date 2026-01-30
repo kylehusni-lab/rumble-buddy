@@ -301,6 +301,7 @@ export default function SoloDashboard() {
         onSave={handleSavePick}
         mensEntrants={mensEntrants}
         womensEntrants={womensEntrants}
+        allPicks={picks}
       />
     </div>
   );
@@ -355,7 +356,7 @@ const MatchesTab = memo(function MatchesTab({
                 src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
                 alt={getEntrantDisplayName(pick)}
                 className={cn(
-                  "w-16 h-16 rounded-full object-cover border-2",
+                  "w-[72px] h-[72px] rounded-full object-cover border-2 image-crisp",
                   isCorrect ? "border-success" :
                   isWrong ? "border-destructive" : 
                   "border-primary"
@@ -376,7 +377,7 @@ const MatchesTab = memo(function MatchesTab({
               )}
             </>
           ) : (
-            <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
+            <div className="w-[72px] h-[72px] rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
               <Plus className="w-5 h-5 text-muted-foreground/50" />
             </div>
           )}
@@ -434,7 +435,7 @@ const MatchesTab = memo(function MatchesTab({
         <MatchRow
           key={id}
           id={id}
-          label={id.includes("mens") ? "Men's Rumble Winner" : "Women's Rumble Winner"}
+          label={id === "mens_rumble_winner" ? "Men's Rumble Winner" : "Women's Rumble Winner"}
           pick={picks[id]}
           result={results[id]}
           points={SCORING.RUMBLE_WINNER_PICK}
@@ -509,7 +510,7 @@ const RumbleTab = memo(function RumbleTab({
                         src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
                         alt={getEntrantDisplayName(pick)}
                         className={cn(
-                          "w-16 h-16 rounded-full object-cover border-2",
+                          "w-[72px] h-[72px] rounded-full object-cover border-2 image-crisp",
                           isCorrect ? "border-success" :
                           isWrong ? "border-destructive" : 
                           "border-primary"
@@ -530,7 +531,7 @@ const RumbleTab = memo(function RumbleTab({
                       )}
                     </>
                   ) : (
-                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
+                    <div className="w-[72px] h-[72px] rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
                       <Plus className="w-5 h-5 text-muted-foreground/50" />
                     </div>
                   )}
