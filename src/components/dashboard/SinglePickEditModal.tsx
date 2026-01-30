@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import { UNDERCARD_MATCHES, RUMBLE_PROPS, CHAOS_PROPS, DEFAULT_MENS_ENTRANTS, DE
 import { cn } from "@/lib/utils";
 import { WrestlerPickerModal } from "@/components/WrestlerPickerModal";
 import { getBlockedWrestlers } from "@/lib/pick-validation";
+import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 
 interface SinglePickEditModalProps {
   isOpen: boolean;
@@ -141,40 +142,65 @@ export function SinglePickEditModal({
     onClose();
   };
 
-  // Binary options (match winner with 2 options)
+  // Binary options (match winner with 2 options) - Visual Face-Off style
   if (config.type === "binary") {
+    const handleSelect = (option: string) => {
+      onSave(matchId, option);
+      onClose();
+    };
+
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-center">{config.title}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-4">
-            {config.options.map((option) => (
-              <button
-                key={option}
-                onClick={() => setSelectedValue(option)}
-                className={cn(
-                  "w-full p-4 rounded-xl border-2 text-left font-semibold transition-all",
-                  selectedValue === option
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card hover:border-primary/50"
+          <div className="space-y-2 py-4 relative">
+            {config.options.map((option, index) => (
+              <Fragment key={option}>
+                <button
+                  onClick={() => handleSelect(option)}
+                  className={cn(
+                    "w-full p-3 rounded-xl border-2 flex items-center gap-4 transition-all",
+                    currentPick === option
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-card hover:border-primary/50"
+                  )}
+                >
+                  <div className={cn(
+                    "relative w-[72px] h-[72px] rounded-full overflow-hidden border-2 flex-shrink-0",
+                    currentPick === option ? "border-primary" : "border-border"
+                  )}>
+                    <img
+                      src={getWrestlerImageUrl(option)}
+                      alt={option}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = getPlaceholderImageUrl(option);
+                      }}
+                    />
+                  </div>
+                  <span className={cn(
+                    "text-lg font-bold flex-1 text-left",
+                    currentPick === option ? "text-primary" : "text-foreground"
+                  )}>
+                    {option}
+                  </span>
+                  {currentPick === option && (
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                      <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
+                    </div>
+                  )}
+                </button>
+                {index === 0 && (
+                  <div className="flex justify-center py-1">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 border-2 border-primary/50 flex items-center justify-center">
+                      <span className="text-sm font-black text-primary">VS</span>
+                    </div>
+                  </div>
                 )}
-              >
-                <div className="flex items-center justify-between">
-                  <span>{option}</span>
-                  {selectedValue === option && <Check size={20} className="text-primary" />}
-                </div>
-              </button>
+              </Fragment>
             ))}
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button className="flex-1" onClick={handleSave} disabled={!selectedValue}>
-              Save
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
