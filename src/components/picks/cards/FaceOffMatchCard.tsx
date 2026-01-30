@@ -31,13 +31,13 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
         </div>
 
         {/* Face-Off Arena */}
-        <div className="flex-1 flex flex-col relative min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
           {/* Wrestler 1 - Gold Corner */}
           <motion.button
             onClick={() => !disabled && onChange(wrestler1)}
             disabled={disabled}
             className={cn(
-              "relative flex-1 flex flex-col items-center justify-center p-4 transition-all duration-300",
+              "relative flex-1 flex flex-col items-center justify-center p-4 pb-2 transition-all duration-300",
               value === wrestler1 ? "faceoff-corner-1-selected" : "faceoff-corner-1",
               value && value !== wrestler1 && "spotlight-dimmed",
               disabled && "cursor-not-allowed"
@@ -47,7 +47,7 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
             {/* Wrestler Photo */}
             <div className={cn(
               "relative rounded-full overflow-hidden border-4 transition-all duration-300",
-              "w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32",
+              "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28",
               value === wrestler1 
                 ? "gold-selection-glow scale-105" 
                 : "border-primary/30"
@@ -67,8 +67,8 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
                   animate={{ scale: 1 }}
                   className="absolute inset-0 bg-primary/20 flex items-center justify-center"
                 >
-                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                    <Check className="w-6 h-6 text-primary-foreground" strokeWidth={3} />
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                    <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
                   </div>
                 </motion.div>
               )}
@@ -76,26 +76,27 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
             
             {/* Wrestler Name */}
             <div className={cn(
-              "mt-3 text-lg sm:text-xl font-bold text-center transition-colors duration-300",
+              "mt-2 text-base sm:text-lg font-bold text-center transition-colors duration-300 px-2",
               value === wrestler1 ? "text-primary" : "text-foreground"
             )}>
               {wrestler1}
             </div>
           </motion.button>
 
-          {/* VS Badge - Centered */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+          {/* VS Badge - Dedicated Row */}
+          <div className="relative py-2 flex items-center justify-center z-10">
+            <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
             <div className="relative">
               {/* Glow Effect */}
               <div className="absolute inset-0 bg-primary/30 blur-xl rounded-full scale-150" />
               {/* Badge */}
               <div className={cn(
-                "relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center",
+                "relative w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center",
                 "gold-shimmer",
                 "border-2 border-white/20",
                 "shadow-[0_0_30px_hsl(var(--primary)/0.5)]"
               )}>
-                <span className="text-lg sm:text-xl font-black text-primary-foreground drop-shadow-sm">
+                <span className="text-base sm:text-lg font-black text-primary-foreground drop-shadow-sm">
                   VS
                 </span>
               </div>
@@ -107,7 +108,7 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
             onClick={() => !disabled && onChange(wrestler2)}
             disabled={disabled}
             className={cn(
-              "relative flex-1 flex flex-col items-center justify-center p-4 transition-all duration-300",
+              "relative flex-1 flex flex-col items-center justify-center p-4 pt-2 transition-all duration-300",
               value === wrestler2 ? "faceoff-corner-2-selected" : "faceoff-corner-2",
               value && value !== wrestler2 && "spotlight-dimmed",
               disabled && "cursor-not-allowed"
@@ -117,7 +118,7 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
             {/* Wrestler Photo */}
             <div className={cn(
               "relative rounded-full overflow-hidden border-4 transition-all duration-300",
-              "w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32",
+              "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28",
               value === wrestler2 
                 ? "gold-selection-glow scale-105" 
                 : "border-secondary/30"
@@ -137,8 +138,8 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
                   animate={{ scale: 1 }}
                   className="absolute inset-0 bg-primary/20 flex items-center justify-center"
                 >
-                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                    <Check className="w-6 h-6 text-primary-foreground" strokeWidth={3} />
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                    <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
                   </div>
                 </motion.div>
               )}
@@ -146,7 +147,7 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
             
             {/* Wrestler Name */}
             <div className={cn(
-              "mt-3 text-lg sm:text-xl font-bold text-center transition-colors duration-300",
+              "mt-2 text-base sm:text-lg font-bold text-center transition-colors duration-300 px-2",
               value === wrestler2 ? "text-primary" : "text-foreground"
             )}>
               {wrestler2}
