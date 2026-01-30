@@ -4,7 +4,7 @@ import { ArrowLeft, Mail, Lock, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OttLogoSmall } from "@/components/OttLogo";
+import { OttLogoMark, OttWordmark } from "@/components/OttLogo";
 import { FooterSection } from "@/components/home/FooterSection";
 import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,7 +63,13 @@ export default function SignIn() {
           <span>Back to home</span>
         </button>
 
-        <OttLogoSmall />
+        <div className="flex flex-col items-center gap-3">
+          <OttLogoMark size={64} />
+          <div className="text-center">
+            <OttWordmark className="text-2xl font-bold tracking-tight" />
+            <p className="text-sm text-muted-foreground mt-1">The Rumble App</p>
+          </div>
+        </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
           <div className="text-center space-y-2">
