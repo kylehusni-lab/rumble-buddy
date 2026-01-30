@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          email: string
+          group_size: string | null
+          id: string
+          name: string
+          party_code: string | null
+          play_style: string
+          status: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          email: string
+          group_size?: string | null
+          id?: string
+          name: string
+          party_code?: string | null
+          play_style: string
+          status?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          email?: string
+          group_size?: string | null
+          id?: string
+          name?: string
+          party_code?: string | null
+          play_style?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       match_results: {
         Row: {
           id: string
@@ -379,6 +418,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       wrestlers: {
         Row: {
           created_at: string | null
@@ -510,6 +570,13 @@ export type Database = {
     }
     Functions: {
       get_tv_snapshot: { Args: { p_party_code: string }; Returns: Json }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_party_host: { Args: { p_party_code: string }; Returns: boolean }
       is_party_member: { Args: { p_party_code: string }; Returns: boolean }
       lookup_player_by_email: {
@@ -577,7 +644,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -704,6 +771,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const

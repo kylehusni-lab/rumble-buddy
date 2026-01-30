@@ -71,6 +71,10 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // OTT Brand Colors
+        "ott-accent": "hsl(var(--ott-accent))",
+        "ott-surface": "hsl(var(--ott-surface))",
+        "ott-surface-elevated": "hsl(var(--ott-surface-elevated))",
       },
       borderRadius: {
         lg: "var(--radius)",

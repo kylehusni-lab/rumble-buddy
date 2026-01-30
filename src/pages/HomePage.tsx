@@ -1,0 +1,49 @@
+import { useState, useRef } from "react";
+import { OttNavBar } from "@/components/OttNavBar";
+import { HeroSection } from "@/components/home/HeroSection";
+import { StorySection } from "@/components/home/StorySection";
+import { HowItWorksSection } from "@/components/home/HowItWorksSection";
+import { FeaturesSection } from "@/components/home/FeaturesSection";
+import { FooterSection } from "@/components/home/FooterSection";
+import { RequestAccessModal } from "@/components/RequestAccessModal";
+
+export default function HomePage() {
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const storyRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useRef<HTMLDivElement>(null);
+
+  const scrollToStory = () => {
+    storyRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToFeatures = () => {
+    featuresRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <OttNavBar onStoryClick={scrollToStory} onFeaturesClick={scrollToFeatures} />
+      
+      <main>
+        <HeroSection onRequestAccess={() => setIsRequestModalOpen(true)} />
+        
+        <div ref={storyRef}>
+          <StorySection id="story" />
+        </div>
+        
+        <HowItWorksSection />
+        
+        <div ref={featuresRef}>
+          <FeaturesSection id="features" />
+        </div>
+        
+        <FooterSection />
+      </main>
+
+      <RequestAccessModal 
+        isOpen={isRequestModalOpen} 
+        onClose={() => setIsRequestModalOpen(false)} 
+      />
+    </div>
+  );
+}
