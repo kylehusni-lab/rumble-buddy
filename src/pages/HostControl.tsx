@@ -120,20 +120,21 @@ export default function HostControl() {
       return;
     }
 
-    // Check PIN verification
+    // For authenticated users, auto-set verification status
+    // The real security is now auth.uid() matching host_user_id in RLS
     const storedPin = localStorage.getItem(`party_${code}_pin`);
     if (!storedPin) {
-      navigate(`/host/verify-pin/${code}`);
-      return;
+      // Auto-verify for authenticated users accessing their party
+      localStorage.setItem(`party_${code}_pin`, "verified");
     }
 
     const fetchData = async () => {
       try {
-        // Verify host access via session (PIN check is the real security)
+        // Verify host access via session
         const session = getPlayerSession();
         if (!session?.isHost || session.partyCode !== code) {
           toast.error("You are not the host of this group");
-          navigate("/");
+          navigate("/my-parties");
           return;
         }
 
