@@ -5,7 +5,7 @@ import { ArrowLeft, Lock, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OttLogoMark } from "@/components/OttLogo";
+import { RingIcon } from "@/components/logo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -104,7 +104,7 @@ export default function ResetPassword() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <OttLogoMark size={48} className="mx-auto" />
+          <RingIcon size={56} className="mx-auto" />
           <h1 className="text-2xl font-bold">Invalid or Expired Link</h1>
           <p className="text-muted-foreground">
             This password reset link is invalid or has expired. Please request a new one.
@@ -153,7 +153,7 @@ export default function ResetPassword() {
           </button>
         </div>
 
-        <OttLogoMark size={48} className="mx-auto" />
+        <RingIcon size={56} className="mx-auto" />
 
         <motion.form
           onSubmit={handleSubmit}
