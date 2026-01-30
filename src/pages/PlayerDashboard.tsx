@@ -546,12 +546,7 @@ export default function PlayerDashboard() {
             >
               <Clock className="mx-auto mb-2 text-muted-foreground" size={24} />
               <p className="text-muted-foreground">Waiting for event to start...</p>
-              <Link to={`/player/picks/${code}`}>
-                <Button variant="outline" size="sm" className="mt-3">
-                  <Edit size={16} className="mr-2" />
-                  Edit Picks
-                </Button>
-              </Link>
+              <p className="text-xs text-muted-foreground mt-2">Tap any pick to edit</p>
             </motion.div>
           )}
 
@@ -607,23 +602,15 @@ export default function PlayerDashboard() {
 
         {/* Fixed Bottom Actions */}
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
-          <div className="max-w-md mx-auto flex gap-2">
+          <div className="max-w-md mx-auto">
             <Button
               variant="outline"
-              className="flex-1"
+              className="w-full"
               onClick={handleOpenTv}
             >
               <Tv className="w-4 h-4 mr-2" />
               TV Mode
             </Button>
-            {canEditPicks && (
-              <Link to={`/player/picks/${code}`} className="flex-1">
-                <Button variant="hero" className="w-full">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Picks
-                </Button>
-              </Link>
-            )}
           </div>
         </div>
       </div>
