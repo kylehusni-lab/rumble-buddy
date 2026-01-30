@@ -1,117 +1,175 @@
 
 
-## Fix: WWE Face-Off Match Picker Layout
+## Fix Party Data and Improve Host Access Flow
 
-### Current Issues
+### Issues Identified
 
-Looking at the screenshot:
-1. **VS badge overlaps Drew McIntyre's zone** - The `h-0` container causes the VS badge to float on top of the first wrestler
-2. **No clear separation** - The divider doesn't create a visual break between the two zones
-3. **Unbalanced feel** - Top wrestler bleeds into the VS area
+**1. Party 9328 Cleanup**
+Party `9328` appears to be a test/broken party with demo players. This needs to be deleted from the database.
 
----
+**2. Party X629M5 Shows as "Joined" Instead of "Hosted"**
+When an admin approves a host request, the party is created with `host_user_id` set to the **admin's user ID** instead of the requesting host's ID. When Kyle (the actual host) later joined via the normal PlayerAuth flow, he was added as a regular player - not recognized as the host.
 
-### Solution: Proper Divider Row
-
-Replace the `h-0` floating approach with a dedicated divider row that has its own height and properly separates the two zones.
-
-**File**: `src/components/dashboard/SinglePickEditModal.tsx`
-
----
-
-### Proposed Layout Structure
-
+Current flow:
 ```text
-+--------------------------------+
-|    MATCH TITLE HEADER          |
-|    "Tap a wrestler to select"  |
-+--------------------------------+
-|                                |
-|  [Photo]  DREW MCINTYRE        |
-|           Tap to select        |
-|                                |
-+--------------------------------+
-|    ~~~~~ [ VS ] ~~~~~          |  <-- Dedicated row with padding
-+--------------------------------+
-|                                |
-|        SAMI ZAYN     [Photo]   |
-|        Tap to select           |
-|                                |
-+--------------------------------+
+Admin approves request
+   -> Party created with host_user_id = ADMIN'S ID
+   -> Kyle receives code via email
+   -> Kyle signs up/logs in at /player/auth?code=X629M5
+   -> Kyle is created as a PLAYER (not host)
+   -> Kyle sees party under "Parties I've Joined" (wrong!)
 ```
 
+**3. No Path for Approved Hosts to Claim Their Party**
+When someone requests access as a "Group" host, there's no mechanism for them to:
+- Claim ownership of the party when they first join
+- Have `host_user_id` updated to their `auth.uid()`
+- Be redirected to host setup instead of player dashboard
+
 ---
 
-### Key Changes
+### Solution
 
-**1. Replace the floating `h-0` divider with a proper section:**
+#### A. Delete Party 9328 (Data Cleanup)
+Use Supabase to delete the party and associated records.
+
+```sql
+-- Delete related records first
+DELETE FROM players WHERE party_code = '9328';
+DELETE FROM rumble_numbers WHERE party_code = '9328';
+DELETE FROM match_results WHERE party_code = '9328';
+DELETE FROM picks WHERE player_id IN (
+  SELECT id FROM players WHERE party_code = '9328'
+);
+
+-- Party delete requires admin RPC or direct query
+```
+
+#### B. Fix Party X629M5 Host Ownership
+Update the party to set Kyle as the actual host.
+
+```sql
+UPDATE parties 
+SET host_user_id = 'ba1a255c-e878-44da-83b1-082ac5413193'
+WHERE code = 'X629M5';
+```
+
+#### C. Improve Admin Approval Flow (Code Changes)
+
+**File**: `src/pages/AdminDashboard.tsx`
+
+When admin approves a request, create the party with `host_user_id = null` instead of the admin's user ID. This leaves ownership unclaimed until the actual host joins.
 
 ```typescript
-// CURRENT (broken)
-<div className="relative h-0 flex items-center justify-center z-10">
-  ...
-</div>
+// Current (broken)
+const { error: partyError } = await supabase
+  .from("parties")
+  .insert({
+    code: code,
+    host_session_id: `admin-approved-${request.id}`,
+    host_user_id: user.id, // <-- Admin's ID (wrong!)
+    status: "pre_event",
+  });
 
-// FIXED - Give the VS divider its own row with padding
-<div className="relative py-2 flex items-center justify-center z-10">
-  <div className="absolute inset-x-4 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent top-1/2" />
-  <div className="vs-badge-glow rounded-full relative z-20">
-    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 ...">
-      <span>VS</span>
-    </div>
-  </div>
-</div>
+// Fixed
+const { error: partyError } = await supabase
+  .from("parties")
+  .insert({
+    code: code,
+    host_session_id: `admin-approved-${request.id}`,
+    host_user_id: null, // <-- Leave null for host to claim
+    status: "pre_event",
+  });
 ```
 
-**2. Adjust wrestler zone padding:**
-- Reduce vertical padding from `py-6` to `py-4` to keep modal compact
-- Add slight bottom/top padding overlap with the VS area
+**Note**: This requires a database change since the current RLS policy requires `host_user_id` to match `auth.uid()` for INSERT. We need a migration to allow admin-created parties.
 
-**3. Shrink the VS badge slightly:**
-- Reduce from `w-14 h-14` to `w-12 h-12` for better proportion
-- Keep the glow effect but make it less dominant
+#### D. Add Host Claim Flow
 
----
+**File**: `src/pages/PlayerAuth.tsx`
 
-### Visual Comparison
+When a user joins a party that has no `host_user_id`, check if they're the intended host (based on access_request email match) and offer to claim host ownership.
 
-| Before | After |
-|--------|-------|
-| VS floats over Drew's zone | VS sits in dedicated row |
-| `h-0` creates overlap | `py-2` creates separation |
-| Zones feel merged | Clear separation between zones |
+**New Logic**:
+1. After user authenticates, check if `parties.host_user_id IS NULL`
+2. If null AND user's email matches an approved `access_request` for this party code, prompt to claim as host
+3. If they claim, update `parties.host_user_id` to their `auth.uid()` and redirect to host setup
+
+#### E. Include Host Flag in Email Link
+
+**File**: `src/pages/AdminDashboard.tsx`
+
+Update the email template to include `&host=true` in the join URL for approved Group requests.
+
+```typescript
+const handleEmailCode = (request: AccessRequest) => {
+  const isHost = request.play_style === "Group";
+  const joinUrl = isHost 
+    ? `https://therumbleapp.com/join?code=${request.party_code}&host=true`
+    : `https://therumbleapp.com/join?code=${request.party_code}`;
+  
+  // ... rest of email template
+};
+```
 
 ---
 
 ### Files to Modify
 
-| File | Change |
-|------|--------|
-| `src/components/dashboard/SinglePickEditModal.tsx` | Fix VS divider positioning from `h-0` to `py-2`, adjust sizing |
+| File | Changes |
+|------|---------|
+| Database | Delete party 9328 and fix X629M5 ownership |
+| `src/pages/AdminDashboard.tsx` | Create parties with `host_user_id = null`, update email with `&host=true` |
+| `src/pages/PlayerAuth.tsx` | Add host claim detection and redirect logic |
+| Database migration | Add RLS policy for admin party creation |
 
 ---
 
-### Technical Details
+### Database Changes Required
 
-The fix changes line 167-174:
-
-```typescript
-// Current broken approach
-<div className="relative h-0 flex items-center justify-center z-10">
-
-// Fixed approach with dedicated row
-<div className="relative py-3 flex items-center justify-center">
-  {/* Horizontal glow line */}
-  <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-  
-  {/* VS Badge - properly centered in its own row */}
-  <div className="relative z-10 vs-badge-glow rounded-full">
-    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center border-3 border-card shadow-lg">
-      <span className="text-sm font-black text-primary-foreground">VS</span>
-    </div>
-  </div>
-</div>
+**Migration 1**: Allow admin-created parties with null host_user_id
+```sql
+-- Add policy for admin party creation
+CREATE POLICY "Admins can create parties" ON parties
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    has_role(auth.uid(), 'admin')
+  );
 ```
 
-This gives the VS badge its own visual space while the glow line creates continuity between the zones.
+**Migration 2**: Allow host to claim unclaimed party
+```sql
+-- Add policy for claiming unclaimed party as host
+CREATE POLICY "Users can claim unclaimed parties" ON parties
+  FOR UPDATE
+  TO authenticated
+  USING (host_user_id IS NULL)
+  WITH CHECK (auth.uid() = host_user_id);
+```
+
+---
+
+### User Flow After Fix
+
+**Host requesting access:**
+```text
+1. User submits "Request Access" form (play_style = "Group")
+2. Admin approves -> Party created with host_user_id = NULL
+3. Admin emails code to user with link: /join?code=X629M5&host=true
+4. User clicks link -> /player/auth?code=X629M5&host=true
+5. User signs up/logs in
+6. System detects unclaimed party + host=true flag
+7. System claims party: UPDATE parties SET host_user_id = user.id
+8. User redirected to /host/setup/X629M5
+```
+
+**Regular player joining:**
+```text
+1. Player enters code at /join
+2. Player signs up/logs in at /player/auth?code=X629M5
+3. System detects party has host_user_id set
+4. Player created as regular player
+5. Player redirected to /player/picks/X629M5
+```
 
