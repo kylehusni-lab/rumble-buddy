@@ -188,13 +188,6 @@ export default function SoloDashboard() {
                 <Trophy className="w-7 h-7 text-primary" />
               </div>
             </div>
-            
-            {/* Compact Pick Progress */}
-            <CompactPickProgress 
-              picks={picks}
-              tabCompletion={tabCompletion}
-              onTabClick={setActiveTab}
-            />
           </motion.div>
         </div>
 
@@ -313,104 +306,6 @@ export default function SoloDashboard() {
   );
 }
 
-// Compact Pick Progress Component
-const CompactPickProgress = memo(function CompactPickProgress({
-  picks,
-  tabCompletion,
-  onTabClick,
-}: {
-  picks: Record<string, string>;
-  tabCompletion: Record<string, { complete: number; total: number }>;
-  onTabClick: (tab: TabType) => void;
-}) {
-  const groups = [
-    { 
-      id: "matches" as TabType, 
-      label: "Matches",
-      pickKeys: ["undercard_1", "undercard_3", "mens_rumble_winner", "womens_rumble_winner"],
-    },
-    { 
-      id: "mens" as TabType, 
-      label: "Men's",
-      pickKeys: [...RUMBLE_PROPS.map(p => `mens_${p.id}`), ...Array.from({length: 4}, (_, i) => `mens_final_four_${i+1}`)],
-    },
-    { 
-      id: "womens" as TabType, 
-      label: "Women's",
-      pickKeys: [...RUMBLE_PROPS.map(p => `womens_${p.id}`), ...Array.from({length: 4}, (_, i) => `womens_final_four_${i+1}`)],
-    },
-  ];
-
-  return (
-    <div className="flex gap-2 mt-3">
-      {groups.map((group) => {
-        const completedPicks = group.pickKeys
-          .filter(key => picks[key])
-          .slice(0, 3);
-        const { complete, total } = tabCompletion[group.id];
-        const isComplete = complete === total;
-
-        return (
-          <button
-            key={group.id}
-            onClick={() => onTabClick(group.id)}
-            className={cn(
-              "flex-1 rounded-lg border p-2 transition-all active:scale-[0.98]",
-              isComplete 
-                ? "border-success/50 bg-success/5" 
-                : "border-border bg-muted/30 hover:border-primary/50"
-            )}
-          >
-            {/* Photo Thumbnails Row */}
-            <div className="flex items-center gap-1 mb-1 min-h-[28px]">
-              {completedPicks.length > 0 ? (
-                <>
-                  {completedPicks.map((key) => (
-                    <img
-                      key={key}
-                      src={getWrestlerImageUrl(getEntrantDisplayName(picks[key]))}
-                      alt=""
-                      className="w-7 h-7 rounded-full border border-primary/50 object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(picks[key]));
-                      }}
-                    />
-                  ))}
-                  {complete > completedPicks.length && (
-                    <span className="text-[10px] text-muted-foreground ml-0.5">
-                      +{complete - completedPicks.length}
-                    </span>
-                  )}
-                </>
-              ) : (
-                <div className="w-7 h-7 rounded-full border border-dashed border-muted-foreground/30 flex items-center justify-center">
-                  <Plus className="w-3 h-3 text-muted-foreground/50" />
-                </div>
-              )}
-            </div>
-            
-            {/* Label and Count */}
-            <div className="flex items-center justify-between">
-              <span className={cn(
-                "text-[10px] font-semibold uppercase",
-                isComplete ? "text-success" : "text-muted-foreground"
-              )}>
-                {group.label}
-              </span>
-              <span className={cn(
-                "text-[10px] font-bold flex items-center gap-0.5",
-                isComplete ? "text-success" : "text-muted-foreground"
-              )}>
-                {isComplete && <Check className="w-3 h-3" />}
-                {complete}/{total}
-              </span>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-});
 
 // Matches Tab Component with Wrestler Photos
 const MatchesTab = memo(function MatchesTab({ 
@@ -438,15 +333,18 @@ const MatchesTab = memo(function MatchesTab({
 
     return (
       <button
-        onClick={() => canEdit && !result && onEditPick?.(id, pick || "")}
-        disabled={!canEdit || !!result}
+        onClick={() => {
+          if (canEdit && !result) {
+            onEditPick?.(id, pick || "");
+          }
+        }}
         className={cn(
           "w-full min-h-[64px] p-3 rounded-xl border flex items-center gap-4",
           "transition-all active:scale-[0.98]",
           isCorrect ? "bg-success/10 border-success" :
           isWrong ? "bg-destructive/10 border-destructive" :
           "bg-card border-border",
-          canEdit && !result && "hover:border-primary/50"
+          canEdit && !result && "hover:border-primary/50 cursor-pointer"
         )}
       >
         {/* Wrestler Avatar */}
@@ -457,7 +355,7 @@ const MatchesTab = memo(function MatchesTab({
                 src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
                 alt={getEntrantDisplayName(pick)}
                 className={cn(
-                  "w-14 h-14 rounded-full object-cover border-2",
+                  "w-16 h-16 rounded-full object-cover border-2",
                   isCorrect ? "border-success" :
                   isWrong ? "border-destructive" : 
                   "border-primary"
@@ -478,7 +376,7 @@ const MatchesTab = memo(function MatchesTab({
               )}
             </>
           ) : (
-            <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
+            <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
               <Plus className="w-5 h-5 text-muted-foreground/50" />
             </div>
           )}
@@ -493,7 +391,7 @@ const MatchesTab = memo(function MatchesTab({
             "font-semibold text-foreground truncate",
             isWrong && "line-through text-destructive/80"
           )}>
-            {pick ? getEntrantDisplayName(pick) : "Tap to select"}
+            {pick ? getEntrantDisplayName(pick) : `+${points} pts`}
           </div>
           {result && !isCorrect && (
             <div className="text-xs text-muted-foreground mt-0.5">
@@ -502,7 +400,7 @@ const MatchesTab = memo(function MatchesTab({
           )}
         </div>
         
-        {/* Right side - points/edit */}
+        {/* Right side - edit indicator or points */}
         <div className="flex-shrink-0 flex items-center gap-2">
           {isCorrect && (
             <span className="text-xs font-bold text-success bg-success/20 px-2 py-1 rounded">
@@ -510,7 +408,10 @@ const MatchesTab = memo(function MatchesTab({
             </span>
           )}
           {canEdit && !result && (
-            <ChevronRight size={18} className="text-muted-foreground" />
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Pencil size={14} />
+              <ChevronRight size={16} />
+            </div>
           )}
         </div>
       </button>
@@ -519,7 +420,6 @@ const MatchesTab = memo(function MatchesTab({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-bold text-foreground mb-4">Undercard Matches</h3>
       {matchCards.map((card) => (
         <MatchRow
           key={card.id}
@@ -530,9 +430,6 @@ const MatchesTab = memo(function MatchesTab({
           points={SCORING.UNDERCARD_WINNER}
         />
       ))}
-
-      {/* Rumble Winners */}
-      <h3 className="text-lg font-bold text-foreground mt-6 mb-4">Rumble Winners</h3>
       {["mens_rumble_winner", "womens_rumble_winner"].map((id) => (
         <MatchRow
           key={id}
@@ -575,7 +472,6 @@ const RumbleTab = memo(function RumbleTab({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-bold text-foreground mb-4">{title}</h3>
       
       {isMobile ? (
         // MOBILE: Single-column list with large avatars
@@ -591,15 +487,18 @@ const RumbleTab = memo(function RumbleTab({
             return (
               <button
                 key={matchId}
-                onClick={() => canEdit && !result && onEditPick?.(matchId, pick || "")}
-                disabled={!canEdit || !!result}
+                onClick={() => {
+                  if (canEdit && !result) {
+                    onEditPick?.(matchId, pick || "");
+                  }
+                }}
                 className={cn(
                   "w-full min-h-[64px] p-3 rounded-xl border flex items-center gap-4",
                   "transition-all active:scale-[0.98]",
                   isCorrect ? "bg-success/10 border-success" :
                   isWrong ? "bg-destructive/10 border-destructive" :
                   "bg-card border-border",
-                  canEdit && !result && "hover:border-primary/50"
+                  canEdit && !result && "hover:border-primary/50 cursor-pointer"
                 )}
               >
                 {/* Large avatar on left */}
@@ -610,7 +509,7 @@ const RumbleTab = memo(function RumbleTab({
                         src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
                         alt={getEntrantDisplayName(pick)}
                         className={cn(
-                          "w-14 h-14 rounded-full object-cover border-2",
+                          "w-16 h-16 rounded-full object-cover border-2",
                           isCorrect ? "border-success" :
                           isWrong ? "border-destructive" : 
                           "border-primary"
@@ -631,7 +530,7 @@ const RumbleTab = memo(function RumbleTab({
                       )}
                     </>
                   ) : (
-                    <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
+                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
                       <Plus className="w-5 h-5 text-muted-foreground/50" />
                     </div>
                   )}
@@ -646,19 +545,22 @@ const RumbleTab = memo(function RumbleTab({
                     "font-semibold truncate",
                     pick ? "text-foreground" : "text-muted-foreground"
                   )}>
-                    {pick ? getEntrantDisplayName(pick) : "Tap to select"}
+                    {pick ? getEntrantDisplayName(pick) : `+${points} pts`}
                   </div>
                 </div>
                 
-                {/* Edit icon or points badge */}
-                <div className="flex-shrink-0 flex items-center gap-1">
+                {/* Right side - edit indicator or points */}
+                <div className="flex-shrink-0 flex items-center gap-2">
                   {isCorrect && (
                     <span className="text-xs font-bold text-success bg-success/20 px-2 py-1 rounded">
                       +{points}
                     </span>
                   )}
                   {canEdit && !result && (
-                    <ChevronRight size={18} className="text-muted-foreground" />
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Pencil size={14} />
+                      <ChevronRight size={16} />
+                    </div>
                   )}
                 </div>
               </button>
