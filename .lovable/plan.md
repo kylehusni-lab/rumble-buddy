@@ -1,213 +1,204 @@
 
 
-# Cinematic Story Section Redesign
+# Request Access Modal + Enhanced Navigation + Learn More CTA
 
-## Overview
-
-Transform the "Our Story" section into a high-energy, sports broadcast visual experience with three distinct sections: The Origin (timeline layout), The Manifesto (bento grid with icon trifecta), and The Gateway (centered closer).
-
----
-
-## Design System Alignment
-
-Using existing CSS variables and utilities:
-- **Gold accent**: `--ott-accent` / `text-yellow-500`
-- **Dark surfaces**: `bg-zinc-900`, `bg-background`
-- **Muted text**: `text-zinc-400`, `text-muted-foreground`
+## Summary
+This plan addresses three improvements to the homepage and join flow:
+1. Make all "Request Access" buttons trigger the modal (currently JoinParty navigates away)
+2. Replace the bouncing "Scroll" indicator with a more engaging "Learn More" button
+3. Expand the top navigation with more section links
 
 ---
 
-## Section A: The Origin (Vertical Timeline)
+## 1. Consistent Request Access Modal on JoinParty Page
 
-### Layout Structure
+**Current behavior**: The "Request Access" button on `/join` navigates back to the homepage instead of opening the modal directly.
 
+**New behavior**: Opens the same Request Access modal inline without leaving the page.
+
+**File**: `src/pages/JoinParty.tsx`
+
+**Changes**:
+- Import `RequestAccessModal` component
+- Add `isModalOpen` state
+- Replace `navigate("/")` with `setIsModalOpen(true)` on the Request Access button
+- Render the modal at the bottom of the component
+
+---
+
+## 2. Replace Scroll Indicator with "Learn More" Button
+
+**Current behavior**: Passive "Scroll" text with a bouncing chevron that has no interactivity.
+
+**New behavior**: An interactive "Learn More" button that:
+- Displays as a subtle pill/button with border
+- Smooth-scrolls to the Story section when clicked
+- Still has the animated chevron to draw attention
+- Feels intentional and actionable
+
+**Files**: 
+- `src/components/home/HeroSection.tsx` - Accept new `onLearnMore` prop, update UI
+- `src/pages/HomePage.tsx` - Pass `scrollToStory` as `onLearnMore`
+
+**Visual treatment**:
 ```text
-+------------------------------------------+
-|  OUR STORY  (gold badge)                 |
-|                                          |
-|  [Gold dot] ──────────────────           |
-|  THE EXPERIMENT                          |
-|  Three years ago...                      |
-|           │ (gold timeline line)         |
-|           │                              |
-|  [Gold dot] ──────────────────           |
-|  THE SPARK  (Gold headline)              |
-|  "...electric." (white highlight)        |
-|           │                              |
-|           ▼                              |
-|  +------------------------------------+  |
-|  │ OVER THE TOP  (Feature Card)       │  |
-|  │ Gold left border, dark bg          │  |
-|  +------------------------------------+  |
-+------------------------------------------+
++---------------------------+
+|  Learn More               |
+|      v (animated)         |
++---------------------------+
 ```
-
-### Component Changes
-
-| Element | Styling |
-|---------|---------|
-| Timeline line | `border-l-2 border-yellow-500/30` with padding-left |
-| Timeline dots | `w-3 h-3 rounded-full bg-yellow-500` absolute positioned |
-| "The Experiment" | `text-2xl font-bold text-white` |
-| "The Spark" | `text-2xl font-bold text-yellow-500` |
-| "electric" phrase | `<span className="text-white">` within zinc-400 paragraph |
-| Evolution card | `bg-zinc-900 border-l-4 border-yellow-500 p-8 rounded-r-lg` |
+- Rounded pill shape with border
+- Hover state that brightens
+- Text changes from "Scroll" to "Learn More"
 
 ---
 
-## Section B: The Manifesto (Bento Grid)
+## 3. Expanded Top Navigation
 
-### Layout Structure
+**Current nav links**: Our Story, Features
 
-```text
-+------------------------------------------+
-|                                          |
-|         WHY WE'RE OBSESSED               |
-|     (Massive uppercase, 5xl-6xl)         |
-|                                          |
-|  "People always ask: 'Why wrestling?'"   |
-|           (Italic, Gold)                 |
-|                                          |
-|  +----------+----------+----------+      |
-|  | [Clapper]| [Laugh]  | [Trophy] |      |
-|  | Intense  | Comedy   | World-   |      |
-|  | Movie    |          | Class    |      |
-|  | Action   |          | Athletics|      |
-|  +----------+----------+----------+      |
-|                                          |
-+------------------------------------------+
-```
+**Proposed nav links**: Our Story, Features, TV Mode, Demo
 
-### Icon Trifecta Grid
+| Link | Action |
+|------|--------|
+| Our Story | Scroll to Story section |
+| Features | Scroll to Features section |
+| TV Mode | Scroll to TV Mode Gallery section |
+| Demo | Navigate to `/demo` |
 
-Using `lucide-react` icons:
-- `Clapperboard` - Intense Movie Action
-- `Laugh` - Laugh-Out-Loud Comedy  
-- `Trophy` - World-Class Athletics
+**Files**:
+- `src/components/OttNavBar.tsx` - Add new props and nav items
+- `src/pages/HomePage.tsx` - Add tvModeRef, pass new handlers
 
-Grid: `grid-cols-1 md:grid-cols-3 gap-6`
+---
 
-Each card:
+## Technical Implementation Details
+
+### JoinParty.tsx Changes
 ```tsx
-<div className="flex flex-col items-center text-center space-y-3 p-6">
-  <Icon className="w-12 h-12 text-yellow-500" />
-  <span className="text-lg font-bold text-white">Label</span>
+// New imports
+import { RequestAccessModal } from "@/components/RequestAccessModal";
+
+// New state
+const [isModalOpen, setIsModalOpen] = useState(false);
+
+// Updated button handler
+<Button
+  variant="ghost"
+  size="sm"
+  onClick={() => setIsModalOpen(true)}
+  className="text-ott-accent hover:text-ott-accent/80"
+>
+  Request Access
+</Button>
+
+// Add modal at end of component
+<RequestAccessModal 
+  isOpen={isModalOpen} 
+  onClose={() => setIsModalOpen(false)} 
+/>
+```
+
+### HeroSection.tsx Changes
+```tsx
+// Updated props interface
+interface HeroSectionProps {
+  onRequestAccess: () => void;
+  onLearnMore?: () => void;  // New
+}
+
+// Replace scroll indicator with interactive button
+<motion.button
+  onClick={onLearnMore}
+  className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 
+             px-4 py-2 rounded-full border border-border/50 bg-background/50 backdrop-blur-sm
+             text-muted-foreground hover:text-foreground hover:border-border transition-colors
+             group cursor-pointer"
+  initial={{ opacity: 0, y: -10 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 1, duration: 0.5 }}
+>
+  <span className="text-xs font-medium uppercase tracking-wider">Learn More</span>
+  <motion.div
+    animate={{ y: [0, 4, 0] }}
+    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+  >
+    <ChevronDown className="w-4 h-4" />
+  </motion.div>
+</motion.button>
+```
+
+### OttNavBar.tsx Changes
+```tsx
+// Updated props
+interface OttNavBarProps {
+  onStoryClick?: () => void;
+  onFeaturesClick?: () => void;
+  onTvModeClick?: () => void;  // New
+}
+
+// Updated nav links section
+<div className="hidden md:flex items-center gap-6">
+  <button onClick={onStoryClick} className="...">
+    Our Story
+  </button>
+  <button onClick={onFeaturesClick} className="...">
+    Features
+  </button>
+  <button onClick={onTvModeClick} className="...">
+    TV Mode
+  </button>
+  <button onClick={() => navigate("/demo")} className="...">
+    Demo
+  </button>
+</div>
+```
+
+### HomePage.tsx Changes
+```tsx
+// Add new ref
+const tvModeRef = useRef<HTMLDivElement>(null);
+
+// Add scroll function
+const scrollToTvMode = () => {
+  tvModeRef.current?.scrollIntoView({ behavior: "smooth" });
+};
+
+// Update HeroSection
+<HeroSection 
+  onRequestAccess={() => setIsRequestModalOpen(true)} 
+  onLearnMore={scrollToStory}  // New prop
+/>
+
+// Update OttNavBar
+<OttNavBar 
+  onStoryClick={scrollToStory} 
+  onFeaturesClick={scrollToFeatures}
+  onTvModeClick={scrollToTvMode}  // New prop
+/>
+
+// Wrap TvModeGallery with ref
+<div ref={tvModeRef}>
+  <TvModeGallery id="tv-mode" />
 </div>
 ```
 
 ---
 
-## Section C: The Gateway (Centered Closer)
-
-### Layout Structure
-
-```text
-+------------------------------------------+
-|                                          |
-|       But if you don't watch every       |
-|       week, it can be hard to keep up.   |
-|                                          |
-|       That's why the **Royal Rumble**    |
-|       is perfect. 30 superstars,         |
-|       constant action, one winner.       |
-|                                          |
-|       It is the ultimate gateway event,  |
-|       and **OTT** is the key to          |
-|       unlocking it.                      |
-|                                          |
-+------------------------------------------+
-```
-
-### Typography
-
-- Container: `text-center max-w-2xl mx-auto`
-- Text: `text-xl lg:text-2xl font-light text-zinc-300`
-- Highlighted terms: `<span className="font-bold text-yellow-500">Royal Rumble</span>` and `<span className="font-bold text-yellow-500">OTT</span>`
-
----
-
-## Spacing & Transitions
-
-| Between | Gap |
-|---------|-----|
-| Section A → Section B | `py-32` or `gap-32` (large vertical spacer) |
-| Section B → Section C | `py-20` (moderate spacer) |
-
----
-
-## Code Structure
-
-```tsx
-import { motion } from "framer-motion";
-import { Clapperboard, Laugh, Trophy } from "lucide-react";
-
-export function StorySection({ id }: StorySectionProps) {
-  return (
-    <>
-      {/* Section A: The Origin - Timeline Layout */}
-      <section id={id} className="bg-background py-20 lg:py-28">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Badge */}
-          {/* Timeline with 3 steps */}
-          {/* Evolution Feature Card */}
-        </div>
-      </section>
-
-      {/* Section B: The Manifesto */}
-      <section className="bg-zinc-950 py-32 lg:py-40">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Massive headline */}
-          {/* Italic gold subhead */}
-          {/* 3-column icon grid */}
-        </div>
-      </section>
-
-      {/* Section C: The Gateway */}
-      <section className="bg-background py-20 lg:py-28">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          {/* Closing statement with highlighted terms */}
-        </div>
-      </section>
-    </>
-  );
-}
-```
-
----
-
-## Animation Details
-
-All sections use Framer Motion scroll-triggered animations:
-- `initial={{ opacity: 0, y: 30 }}`
-- `whileInView={{ opacity: 1, y: 0 }}`
-- `viewport={{ once: true }}`
-- Staggered delays for timeline steps (0, 0.1, 0.2)
-- Icon grid uses stagger animation (0.1s between each)
-
----
-
-## Files to Update
+## Files Changed Summary
 
 | File | Changes |
 |------|---------|
-| `src/components/home/StorySection.tsx` | Complete rewrite with timeline, manifesto grid, and gateway sections |
+| `src/pages/JoinParty.tsx` | Add modal import, state, and rendering |
+| `src/components/home/HeroSection.tsx` | Add `onLearnMore` prop, replace scroll indicator with button |
+| `src/pages/HomePage.tsx` | Add tvModeRef, pass scroll handlers to both components |
+| `src/components/OttNavBar.tsx` | Add TV Mode and Demo nav links with new props |
 
 ---
 
-## Visual Summary
+## User Experience Impact
 
-**Section A (The Origin)**:
-- Dark background with left-aligned timeline
-- Gold vertical line connecting 3 milestones
-- Feature card for "Over The Top" conclusion
-
-**Section B (The Manifesto)**:
-- Near-black background (`bg-zinc-950`) for maximum contrast
-- Massive condensed headline
-- 3-column icon bento grid
-
-**Section C (The Gateway)**:
-- Centered, elegant closer
-- Light, readable typography
-- Gold highlights on key terms
+- **Request Access**: Users can now request access from any page without losing context
+- **Learn More**: Clear call-to-action that invites exploration rather than passive scrolling hint
+- **Navigation**: Users can quickly jump to any section from the top nav, including TV Mode and Demo
 
