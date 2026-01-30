@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { OttLogoHero, OttWordmark } from "@/components/OttLogo";
+import { RingIcon, TypographyLockup } from "@/components/logo";
 import { EVENT_CONFIG } from "@/lib/constants";
 
 interface HeroSectionProps {
@@ -93,14 +93,7 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
 
             {/* Title */}
             <div className="space-y-2">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
-                <OttWordmark />
-              </h1>
-              
-              {/* Subtitle tagline */}
-              <p className="text-sm sm:text-base font-semibold uppercase tracking-widest text-ott-accent">
-                The Rumble App
-              </p>
+              <TypographyLockup size="lg" showTagline={true} layout="stacked" />
             </div>
 
             {/* Tagline */}
@@ -160,8 +153,8 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
           >
             <div className="relative">
               {/* Glow effect */}
-              <div className="absolute inset-0 bg-ott-accent/10 rounded-full blur-3xl scale-150" />
-              <OttLogoHero size={180} className="relative z-10 sm:w-[240px] sm:h-[240px] lg:w-[300px] lg:h-[300px]" />
+              <div className="absolute inset-0 bg-gold/10 rounded-full blur-3xl scale-150" />
+              <RingIcon size={180} className="relative z-10 sm:w-[240px] sm:h-[240px] lg:w-[300px] lg:h-[300px]" />
             </div>
           </motion.div>
         </div>
