@@ -120,13 +120,8 @@ export default function HostControl() {
       return;
     }
 
-    // For authenticated users, auto-set verification status
-    // The real security is now auth.uid() matching host_user_id in RLS
-    const storedPin = localStorage.getItem(`party_${code}_pin`);
-    if (!storedPin) {
-      // Auto-verify for authenticated users accessing their party
-      localStorage.setItem(`party_${code}_pin`, "verified");
-    }
+    // Host verification is now handled via auth.uid() matching host_user_id in RLS
+    // No PIN verification needed - authentication is the security layer
 
     const fetchData = async () => {
       try {

@@ -146,9 +146,7 @@ export default function MyParties() {
 
   const handlePartyClick = (party: PartyMembership) => {
     if (party.is_host) {
-      // Authenticated hosts skip PIN verification - they're already verified via email/password
-      // Mark as verified and go directly to setup
-      localStorage.setItem(`party_${party.party_code}_pin`, "verified");
+      // Authenticated hosts are verified via Supabase Auth (auth.uid() matches host_user_id)
       navigate(`/host/setup/${party.party_code}`);
     } else {
       navigate(`/player/dashboard/${party.party_code}`);

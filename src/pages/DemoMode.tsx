@@ -81,7 +81,6 @@ export default function DemoMode() {
         host_session_id: sessionId,
         host_user_id: currentUser.id,
         status: "pre_event",
-        host_pin: "0000",
         is_demo: true,
       });
 
@@ -99,8 +98,6 @@ export default function DemoMode() {
         email: "demo@example.com",
         isHost: true,
       });
-
-      localStorage.setItem(`party_${demoCode}_pin`, "0000");
 
       toast.success(`Demo party ${demoCode} created!`);
       navigate(`/host/setup/${demoCode}`);
