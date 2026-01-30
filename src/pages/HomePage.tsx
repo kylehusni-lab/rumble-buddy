@@ -3,7 +3,6 @@ import { OttNavBar } from "@/components/OttNavBar";
 import { HeroSection } from "@/components/home/HeroSection";
 import { StorySection } from "@/components/home/StorySection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
-import { TvModeGallery } from "@/components/home/TvModeGallery";
 import { FooterSection } from "@/components/home/FooterSection";
 import { RequestAccessModal } from "@/components/RequestAccessModal";
 
@@ -11,11 +10,10 @@ export default function HomePage() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const storyRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
-  const tvModeRef = useRef<HTMLDivElement>(null);
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
-      const headerOffset = 80; // Account for fixed header (h-16 = 64px + some padding)
+      const headerOffset = 80;
       const elementPosition = ref.current.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.scrollY - headerOffset;
       
@@ -28,14 +26,12 @@ export default function HomePage() {
 
   const scrollToStory = () => scrollToSection(storyRef);
   const scrollToFeatures = () => scrollToSection(featuresRef);
-  const scrollToTvMode = () => scrollToSection(tvModeRef);
 
   return (
     <div className="min-h-screen bg-background">
       <OttNavBar 
         onStoryClick={scrollToStory} 
         onFeaturesClick={scrollToFeatures}
-        onTvModeClick={scrollToTvMode}
       />
       
       <main>
@@ -50,10 +46,6 @@ export default function HomePage() {
         
         <div ref={featuresRef}>
           <FeaturesSection id="features" />
-        </div>
-        
-        <div ref={tvModeRef}>
-          <TvModeGallery id="tv-mode" />
         </div>
         
         <FooterSection />

@@ -8,10 +8,9 @@ import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 interface OttNavBarProps {
   onStoryClick?: () => void;
   onFeaturesClick?: () => void;
-  onTvModeClick?: () => void;
 }
 
-export function OttNavBar({ onStoryClick, onFeaturesClick, onTvModeClick }: OttNavBarProps) {
+export function OttNavBar({ onStoryClick, onFeaturesClick }: OttNavBarProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -47,12 +46,6 @@ export function OttNavBar({ onStoryClick, onFeaturesClick, onTvModeClick }: OttN
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Features
-          </button>
-          <button 
-            onClick={onTvModeClick}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            TV Mode
           </button>
           <button 
             onClick={() => navigate("/demo")}
@@ -105,12 +98,6 @@ export function OttNavBar({ onStoryClick, onFeaturesClick, onTvModeClick }: OttN
                       className="flex items-center px-3 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition-colors text-left"
                     >
                       Features
-                    </button>
-                    <button
-                      onClick={() => handleNavClick(onTvModeClick)}
-                      className="flex items-center px-3 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition-colors text-left"
-                    >
-                      TV Mode
                     </button>
                     <button
                       onClick={() => handleRouteClick("/demo")}
