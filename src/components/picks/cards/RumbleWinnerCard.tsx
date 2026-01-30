@@ -60,75 +60,61 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
   }, [disabled, onChange]);
 
   return (
-    <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-card border border-border flex flex-col overflow-hidden h-full">
-      {/* Unified Header */}
-      <PickCardHeader
-        icon={Crown}
-        label="Royal Rumble Winner"
-        title={title}
-        pointsText={`+${SCORING.RUMBLE_WINNER_PICK} pts if correct`}
-      />
-
-      {/* Current Selection */}
-      {value && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary flex items-center gap-3"
-        >
-          <img
-            src={getWrestlerImageUrl(value)}
-            alt={value}
-            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-primary flex-shrink-0"
-            onError={(e) => {
-              e.currentTarget.src = getPlaceholderImageUrl(value);
-            }}
-          />
-          <div className="flex-1 min-w-0">
-            <div className="text-xs text-muted-foreground">Your Pick:</div>
-            <div className="text-lg font-bold text-primary truncate">{getEntrantDisplayName(value)}</div>
-          </div>
-          <Check className="w-6 h-6 text-primary flex-shrink-0" />
-        </motion.div>
-      )}
-
-      {/* Search Bar - readOnly until tapped to prevent auto-keyboard */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="Search wrestlers..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          autoFocus={false}
-          inputMode="search"
-          enterKeyHint="search"
+    <div className="bg-card rounded-2xl shadow-card border border-border flex flex-col overflow-hidden h-full relative">
+      {/* Header */}
+      <div className="p-4 sm:p-6 pb-2">
+        <PickCardHeader
+          icon={Crown}
+          label="Royal Rumble Winner"
+          title={title}
+          pointsText={`+${SCORING.RUMBLE_WINNER_PICK} pts if correct`}
         />
       </div>
 
-      {/* Wrestler Grid (Scrollable) */}
-      <div className="flex-1 min-h-0 -mx-2 px-2 overflow-y-auto">
-        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2 sm:gap-3 pb-8">
+      {/* Sticky Search Bar */}
+      <div className="sticky top-0 z-10 px-4 sm:px-6 py-2 bg-card/95 backdrop-blur-sm border-b border-border/50">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search wrestlers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            autoFocus={false}
+            inputMode="search"
+            enterKeyHint="search"
+          />
+        </div>
+      </div>
+
+      {/* Wrestler Grid (Scrollable) - with bottom padding for sticky footer */}
+      <div className="flex-1 min-h-0 px-4 sm:px-6 overflow-y-auto">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2 py-3 pb-24">
           {filteredEntrants.map((wrestler) => {
             const isSelected = value === wrestler;
+            const isDimmed = value && !isSelected;
+            
             return (
               <motion.button
                 key={wrestler}
                 onClick={() => handleSelect(wrestler)}
                 disabled={disabled}
-                className="flex flex-col items-center"
+                className={cn(
+                  "flex flex-col items-center transition-all duration-300",
+                  isDimmed && "opacity-40 grayscale-[30%]"
+                )}
                 whileTap={!disabled ? { scale: 0.95 } : undefined}
               >
-                {/* Photo Container - using aspect-square for responsive sizing */}
+                {/* Photo Container */}
                 <div
                   className={cn(
-                    "relative w-full aspect-square max-w-[70px] sm:max-w-[80px] md:max-w-[90px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
+                    "relative w-full aspect-square max-w-[65px] sm:max-w-[70px] md:max-w-[80px] rounded-full overflow-hidden border-[3px] transition-all duration-300",
                     isSelected
-                      ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
+                      ? "gold-selection-glow scale-105"
                       : isUnconfirmedEntrant(wrestler)
                         ? "border-dashed border-muted-foreground/50"
                         : "border-transparent"
@@ -151,7 +137,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      <Check className="text-primary-foreground w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
+                      <Check className="text-primary-foreground w-5 h-5 sm:w-6 sm:h-6 drop-shadow-lg" strokeWidth={3} />
                     </motion.div>
                   )}
                 </div>
@@ -159,7 +145,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
                 {/* Name */}
                 <span
                   className={cn(
-                    "mt-1 text-[9px] sm:text-[10px] md:text-xs text-center leading-tight line-clamp-2 w-full max-w-[70px] sm:max-w-[80px] md:max-w-[90px]",
+                    "mt-1 text-[9px] sm:text-[10px] md:text-xs text-center leading-tight line-clamp-2 w-full max-w-[65px] sm:max-w-[70px] md:max-w-[80px] transition-colors duration-300",
                     isSelected ? "text-primary font-semibold" : "text-foreground",
                     isUnconfirmedEntrant(wrestler) && "italic opacity-80"
                   )}
@@ -171,6 +157,33 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
           })}
         </div>
       </div>
+
+      {/* Sticky Bottom Selection Footer - Glassmorphism */}
+      {value && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 glass-panel"
+        >
+          <div className="flex items-center gap-3">
+            <img
+              src={getWrestlerImageUrl(value)}
+              alt={value}
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-primary flex-shrink-0 shadow-[0_0_15px_hsl(var(--primary)/0.3)]"
+              onError={(e) => {
+                e.currentTarget.src = getPlaceholderImageUrl(value);
+              }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-muted-foreground">Your Pick:</div>
+              <div className="text-lg font-bold text-primary truncate">{getEntrantDisplayName(value)}</div>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+              <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 });

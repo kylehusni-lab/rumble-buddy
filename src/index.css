@@ -500,6 +500,43 @@
       inset 0 1px 0 hsla(43, 75%, 52%, 0.2);
   }
 
+  /* Face-Off Match Card Gradients */
+  .faceoff-red-corner {
+    background: linear-gradient(180deg, hsla(0, 60%, 20%, 0.4) 0%, hsla(0, 50%, 15%, 0.2) 50%, transparent 100%);
+  }
+  
+  .faceoff-red-corner-selected {
+    background: linear-gradient(180deg, hsla(0, 60%, 25%, 0.6) 0%, hsla(0, 50%, 20%, 0.4) 50%, transparent 100%);
+  }
+  
+  .faceoff-blue-corner {
+    background: linear-gradient(0deg, hsla(220, 60%, 20%, 0.4) 0%, hsla(220, 50%, 15%, 0.2) 50%, transparent 100%);
+  }
+  
+  .faceoff-blue-corner-selected {
+    background: linear-gradient(0deg, hsla(220, 60%, 25%, 0.6) 0%, hsla(220, 50%, 20%, 0.4) 50%, transparent 100%);
+  }
+
+  /* Gold selection glow - using primary token */
+  .gold-selection-glow {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 30px hsla(43, 75%, 52%, 0.4);
+  }
+
+  /* Spotlight dimming for unselected items */
+  .spotlight-dimmed {
+    opacity: 0.4;
+    filter: grayscale(30%);
+    transition: all 300ms ease-out;
+  }
+
+  /* Glassmorphism panel */
+  .glass-panel {
+    backdrop-filter: blur(12px);
+    background: hsla(0, 0%, 0%, 0.7);
+    border-top: 1px solid hsla(0, 0%, 100%, 0.1);
+  }
+
   .tv-tab-active::after {
     content: '';
     position: absolute;

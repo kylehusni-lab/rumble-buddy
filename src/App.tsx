@@ -29,6 +29,7 @@ const Legal = lazy(() => import("./pages/Legal"));
 const SoloSetup = lazy(() => import("./pages/SoloSetup"));
 const SoloPicks = lazy(() => import("./pages/SoloPicks"));
 const SoloDashboard = lazy(() => import("./pages/SoloDashboard"));
+const SoloTvDisplay = lazy(() => import("./pages/SoloTvDisplay"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const SignIn = lazy(() => import("./pages/SignIn"));
 const MyParties = lazy(() => import("./pages/MyParties"));
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/solo/setup" element={<SoloSetup />} />
             <Route path="/solo/picks" element={<SoloPicks />} />
             <Route path="/solo/dashboard" element={<SoloDashboard />} />
+            <Route path="/solo/tv" element={<SoloTvDisplay />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
