@@ -16,6 +16,8 @@ interface TvScaleResult {
   /** Responsive column spans */
   mainColSpan: string;
   sideColSpan: string;
+  /** Computed optimal cell size in pixels */
+  cellSize: number;
 }
 
 export function useTvScale(): TvScaleResult {
@@ -36,14 +38,27 @@ export function useTvScale(): TvScaleResult {
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  // Calculate scale based on width
+  // Calculate scale based on BOTH width and height
   const scale = useMemo(() => {
-    if (dimensions.width >= 3840) return 2.0;      // 4K
-    if (dimensions.width >= 2560) return 1.5;      // 1440p
-    if (dimensions.width >= 1920) return 1.25;     // 1080p+
-    if (dimensions.width >= 1600) return 1.0;      // Standard
-    return 0.85;                                    // Smaller screens
-  }, [dimensions.width]);
+    const widthScale = (() => {
+      if (dimensions.width >= 3840) return 2.0;      // 4K
+      if (dimensions.width >= 2560) return 1.5;      // 1440p
+      if (dimensions.width >= 1920) return 1.25;     // 1080p+
+      if (dimensions.width >= 1600) return 1.0;      // Standard
+      return 0.85;                                    // Smaller screens
+    })();
+    
+    const heightScale = (() => {
+      if (dimensions.height >= 2160) return 2.0;     // 4K height
+      if (dimensions.height >= 1440) return 1.5;     // 1440p height
+      if (dimensions.height >= 1080) return 1.25;    // 1080p height
+      if (dimensions.height >= 900) return 1.0;      // Standard height
+      return 0.85;                                    // Smaller screens
+    })();
+    
+    // Use the smaller of the two to ensure content fits
+    return Math.min(widthScale, heightScale);
+  }, [dimensions.width, dimensions.height]);
 
   // Determine photo size variant
   const photoSize = useMemo((): TvPhotoSize => {
@@ -59,6 +74,20 @@ export function useTvScale(): TvScaleResult {
     return "gap-2";
   }, [scale]);
 
+  // Calculate optimal cell size based on viewport
+  const cellSize = useMemo(() => {
+    // 10 columns + gaps (9 x gap) + padding (2 x 24px)
+    const availableWidth = dimensions.width - 48; // 24px padding each side
+    const gapSize = scale >= 2.0 ? 12 : scale >= 1.5 ? 10 : 8;
+    const maxCellWidth = (availableWidth - (9 * gapSize)) / 10;
+    
+    // Also consider height (3 rows + winner section + predictions)
+    const availableHeight = dimensions.height - 200; // Header + padding + ticker
+    const maxCellHeight = (availableHeight - (2 * gapSize)) / 3 * 0.8; // 80% of row height
+    
+    return Math.min(maxCellWidth, maxCellHeight);
+  }, [dimensions.width, dimensions.height, scale]);
+
   // Responsive layout columns
   const isLargeScreen = scale >= 1.25;
   const mainColSpan = isLargeScreen ? "col-span-10" : "col-span-9";
@@ -72,5 +101,6 @@ export function useTvScale(): TvScaleResult {
     gridGapClass,
     mainColSpan,
     sideColSpan,
+    cellSize,
   };
 }

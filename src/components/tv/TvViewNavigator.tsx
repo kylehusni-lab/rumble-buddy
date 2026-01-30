@@ -159,8 +159,11 @@ export function TvViewNavigator({
     const currentEntrantNumber = getCurrentEntrantNumber(numbers);
 
     return (
-      <div className="space-y-4">
-        <div className={cn("grid grid-cols-10", gridGapClass)}>
+      <div className="space-y-4 flex-1 flex flex-col">
+        <div 
+          className={cn("grid grid-cols-10 flex-1", gridGapClass)}
+          style={{ gridAutoRows: "1fr" }}
+        >
           {numbers.map((num) => {
             const playerColor = getPlayerColor(num.assigned_to_player_id);
             const ownerName = getPlayerName(num.assigned_to_player_id);

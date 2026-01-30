@@ -526,9 +526,9 @@ export default function TvDisplay() {
         )}
 
         {/* Main Content Area - Full Width with top padding for header */}
-        <div className={`flex-1 p-6 ${partyStatus !== "pre_event" ? "pt-20" : ""}`}>
+        <div className={`flex-1 flex flex-col p-6 ${partyStatus !== "pre_event" ? "pt-20" : ""}`}>
           {partyStatus === "pre_event" ? (
-            <div className="flex items-center justify-center h-96">
+            <div className="flex items-center justify-center flex-1">
               <div className="text-center">
                 <OttLogoHero size={180} className="mx-auto mb-4" />
                 <h2 className="text-3xl font-bold mb-2">Waiting for Event to Start</h2>

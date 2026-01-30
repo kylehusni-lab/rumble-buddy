@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Calendar } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OttLogoHero, OttWordmark } from "@/components/OttLogo";
 import { EVENT_CONFIG } from "@/lib/constants";
@@ -59,7 +59,7 @@ export function HeroSection({ onRequestAccess }: HeroSectionProps) {
   }, []);
 
   return (
-    <section className="min-h-[calc(100vh-64px)] flex items-center pt-16">
+    <section className="relative min-h-[calc(100vh-64px)] flex items-center pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid lg:grid-cols-[1fr_380px] gap-12 lg:gap-20 items-center">
           {/* Content Left */}
@@ -91,9 +91,16 @@ export function HeroSection({ onRequestAccess }: HeroSectionProps) {
             </div>
 
             {/* Title */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
-              <OttWordmark />
-            </h1>
+            <div className="space-y-2">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none">
+                <OttWordmark />
+              </h1>
+              
+              {/* Subtitle tagline */}
+              <p className="text-sm sm:text-base font-semibold uppercase tracking-widest text-ott-accent">
+                The Rumble App
+              </p>
+            </div>
 
             {/* Tagline */}
             <p className="text-lg sm:text-xl text-muted-foreground max-w-md">
@@ -158,6 +165,22 @@ export function HeroSection({ onRequestAccess }: HeroSectionProps) {
           </motion.div>
         </div>
       </div>
+
+      {/* Scroll indicator */}
+      <motion.div 
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1, duration: 0.5 }}
+      >
+        <span className="text-xs text-muted-foreground uppercase tracking-wider">Scroll</span>
+        <motion.div
+          animate={{ y: [0, 6, 0] }}
+          transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+        >
+          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+        </motion.div>
+      </motion.div>
     </section>
   );
 }
