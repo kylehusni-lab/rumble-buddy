@@ -491,6 +491,7 @@ export type Database = {
           code: string | null
           created_at: string | null
           event_started_at: string | null
+          is_demo: boolean | null
           mens_rumble_entrants: Json | null
           status: string | null
           womens_rumble_entrants: Json | null
@@ -499,6 +500,7 @@ export type Database = {
           code?: string | null
           created_at?: string | null
           event_started_at?: string | null
+          is_demo?: boolean | null
           mens_rumble_entrants?: Json | null
           status?: string | null
           womens_rumble_entrants?: Json | null
@@ -507,6 +509,7 @@ export type Database = {
           code?: string | null
           created_at?: string | null
           event_started_at?: string | null
+          is_demo?: boolean | null
           mens_rumble_entrants?: Json | null
           status?: string | null
           womens_rumble_entrants?: Json | null
