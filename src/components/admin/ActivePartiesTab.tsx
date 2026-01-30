@@ -16,6 +16,7 @@ interface Party {
   member_count: number;
   host_email: string | null;
   host_display_name: string | null;
+  is_demo: boolean;
 }
 
 export function ActivePartiesTab() {
@@ -130,6 +131,7 @@ export function ActivePartiesTab() {
               <thead className="bg-ott-surface-elevated border-b border-border">
                 <tr>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Code</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Type</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Status</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Host</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Members</th>
@@ -144,6 +146,13 @@ export function ActivePartiesTab() {
                       <code className="text-ott-accent font-mono text-sm bg-ott-accent/10 px-2 py-1 rounded">
                         {party.code}
                       </code>
+                    </td>
+                    <td className="px-4 py-3">
+                      {party.is_demo ? (
+                        <Badge variant="outline" className="border-ott-accent text-ott-accent">Demo</Badge>
+                      ) : (
+                        <Badge variant="secondary">Regular</Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {getStatusBadge(party.status)}
