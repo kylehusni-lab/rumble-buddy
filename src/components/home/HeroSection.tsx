@@ -175,27 +175,27 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
             </div>
           </motion.div>
         </div>
-      </div>
 
-      {/* Learn More button */}
-      <motion.button
-        onClick={onLearnMore}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 
-                   px-5 py-2.5 rounded-full border border-border/50 bg-background/50 backdrop-blur-sm
-                   text-muted-foreground hover:text-foreground hover:border-border transition-colors
-                   cursor-pointer"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1, duration: 0.5 }}
-      >
-        <span className="text-xs font-medium uppercase tracking-wider">Learn More</span>
-        <motion.div
-          animate={{ y: [0, 4, 0] }}
-          transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+        {/* Learn More - below grid, not absolute */}
+        <motion.button
+          onClick={onLearnMore}
+          className="mt-12 mx-auto flex flex-col items-center gap-1.5 
+                     px-5 py-2.5 rounded-full border border-border/50 bg-background/50 backdrop-blur-sm
+                     text-muted-foreground hover:text-foreground hover:border-border transition-colors
+                     cursor-pointer"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1, duration: 0.5 }}
         >
-          <ChevronDown className="w-4 h-4" />
-        </motion.div>
-      </motion.button>
+          <span className="text-xs font-medium uppercase tracking-wider">Learn More</span>
+          <motion.div
+            animate={{ y: [0, 4, 0] }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+          >
+            <ChevronDown className="w-4 h-4" />
+          </motion.div>
+        </motion.button>
+      </div>
     </section>
   );
 }
