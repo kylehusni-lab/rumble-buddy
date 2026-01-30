@@ -1,137 +1,188 @@
 
 
-# Update Features Section with 4 Core Features
+# Cinematic Story Section Redesign
 
 ## Overview
 
-Replace the current 2-feature grid with 4 features that accurately represent the app's value propositions. The inaccurate "Real-time Updates" will be replaced with "Watch at Your Pace" to reflect the host-driven scoring model.
+Transform the "Our Story" section into a high-energy, sports broadcast visual experience with three distinct sections: The Origin (timeline layout), The Manifesto (bento grid with icon trifecta), and The Gateway (centered closer).
 
 ---
 
-## New Features List
+## Design System Alignment
 
-| # | Title | Icon | Description |
-|---|-------|------|-------------|
-| 1 | **Solo Mode** | `User` | Play by yourself - make picks and score your own match without a group. |
-| 2 | **Party Mode** | `Users` | Host a watch party with up to 9 friends and compete on a live leaderboard. |
-| 3 | **Watch at Your Pace** | `Clock` (or `Pause`) | Host controls scoring, so it works whether you're live or slightly behind. |
-| 4 | **TV Display Mode** | `Tv` | Cast to your big screen so everyone can follow along. |
+Using existing CSS variables and utilities:
+- **Gold accent**: `--ott-accent` / `text-yellow-500`
+- **Dark surfaces**: `bg-zinc-900`, `bg-background`
+- **Muted text**: `text-zinc-400`, `text-muted-foreground`
 
 ---
 
-## Layout Update
+## Section A: The Origin (Vertical Timeline)
 
-**Current**: 2-column grid, max-width 2xl (centered)
-
-**New**: 2x2 grid on desktop, stacked on mobile
+### Layout Structure
 
 ```text
-+----------------------+----------------------+
-|     Solo Mode        |     Party Mode       |
-+----------------------+----------------------+
-|  Watch at Your Pace  |   TV Display Mode    |
-+----------------------+----------------------+
++------------------------------------------+
+|  OUR STORY  (gold badge)                 |
+|                                          |
+|  [Gold dot] ──────────────────           |
+|  THE EXPERIMENT                          |
+|  Three years ago...                      |
+|           │ (gold timeline line)         |
+|           │                              |
+|  [Gold dot] ──────────────────           |
+|  THE SPARK  (Gold headline)              |
+|  "...electric." (white highlight)        |
+|           │                              |
+|           ▼                              |
+|  +------------------------------------+  |
+|  │ OVER THE TOP  (Feature Card)       │  |
+|  │ Gold left border, dark bg          │  |
+|  +------------------------------------+  |
++------------------------------------------+
 ```
 
-### Grid Classes
-```tsx
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 max-w-3xl mx-auto">
-```
+### Component Changes
 
-Expanding from `max-w-2xl` to `max-w-3xl` gives the 4 cards more breathing room.
+| Element | Styling |
+|---------|---------|
+| Timeline line | `border-l-2 border-yellow-500/30` with padding-left |
+| Timeline dots | `w-3 h-3 rounded-full bg-yellow-500` absolute positioned |
+| "The Experiment" | `text-2xl font-bold text-white` |
+| "The Spark" | `text-2xl font-bold text-yellow-500` |
+| "electric" phrase | `<span className="text-white">` within zinc-400 paragraph |
+| Evolution card | `bg-zinc-900 border-l-4 border-yellow-500 p-8 rounded-r-lg` |
 
 ---
 
-## Code Changes
+## Section B: The Manifesto (Bento Grid)
 
-**File: `src/components/home/FeaturesSection.tsx`**
+### Layout Structure
 
-### 1. Update imports
-```tsx
-import { User, Users, Clock, Tv } from "lucide-react";
+```text
++------------------------------------------+
+|                                          |
+|         WHY WE'RE OBSESSED               |
+|     (Massive uppercase, 5xl-6xl)         |
+|                                          |
+|  "People always ask: 'Why wrestling?'"   |
+|           (Italic, Gold)                 |
+|                                          |
+|  +----------+----------+----------+      |
+|  | [Clapper]| [Laugh]  | [Trophy] |      |
+|  | Intense  | Comedy   | World-   |      |
+|  | Movie    |          | Class    |      |
+|  | Action   |          | Athletics|      |
+|  +----------+----------+----------+      |
+|                                          |
++------------------------------------------+
 ```
 
-### 2. Replace features array
-```tsx
-const features = [
-  {
-    icon: User,
-    title: "Solo Mode",
-    description: "Play by yourself - make picks and score your own match without a group.",
-  },
-  {
-    icon: Users,
-    title: "Party Mode",
-    description: "Host a watch party with up to 9 friends and compete on a live leaderboard.",
-  },
-  {
-    icon: Clock,
-    title: "Watch at Your Pace",
-    description: "Host controls scoring, so it works whether you're live or slightly behind.",
-  },
-  {
-    icon: Tv,
-    title: "TV Display Mode",
-    description: "Cast to your big screen so everyone can follow along.",
-  },
-];
-```
+### Icon Trifecta Grid
 
-### 3. Update grid container
-Change `max-w-2xl` to `max-w-3xl` for better spacing with 4 items:
+Using `lucide-react` icons:
+- `Clapperboard` - Intense Movie Action
+- `Laugh` - Laugh-Out-Loud Comedy  
+- `Trophy` - World-Class Athletics
+
+Grid: `grid-cols-1 md:grid-cols-3 gap-6`
+
+Each card:
 ```tsx
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 max-w-3xl mx-auto">
+<div className="flex flex-col items-center text-center space-y-3 p-6">
+  <Icon className="w-12 h-12 text-yellow-500" />
+  <span className="text-lg font-bold text-white">Label</span>
+</div>
 ```
 
 ---
 
-## Visual Preview
+## Section C: The Gateway (Centered Closer)
 
-**Mobile (375px)**:
+### Layout Structure
+
 ```text
-+----------------------------------+
-|  FEATURES                        |
-|  Built for the big night         |
-+----------------------------------+
-
-+----------------------------------+
-|  [User Icon]                     |
-|  Solo Mode                       |
-|  Play by yourself - make picks   |
-|  and score your own match...     |
-+----------------------------------+
-
-+----------------------------------+
-|  [Users Icon]                    |
-|  Party Mode                      |
-|  Host a watch party with up to   |
-|  9 friends and compete...        |
-+----------------------------------+
-
-+----------------------------------+
-|  [Clock Icon]                    |
-|  Watch at Your Pace              |
-|  Host controls scoring, so it    |
-|  works whether you're live...    |
-+----------------------------------+
-
-+----------------------------------+
-|  [TV Icon]                       |
-|  TV Display Mode                 |
-|  Cast to your big screen so      |
-|  everyone can follow along.      |
-+----------------------------------+
++------------------------------------------+
+|                                          |
+|       But if you don't watch every       |
+|       week, it can be hard to keep up.   |
+|                                          |
+|       That's why the **Royal Rumble**    |
+|       is perfect. 30 superstars,         |
+|       constant action, one winner.       |
+|                                          |
+|       It is the ultimate gateway event,  |
+|       and **OTT** is the key to          |
+|       unlocking it.                      |
+|                                          |
++------------------------------------------+
 ```
 
-**Desktop (1024px+)**:
-```text
-+------------------+------------------+
-|  Solo Mode       |  Party Mode      |
-+------------------+------------------+
-|  Watch at Your   |  TV Display      |
-|  Pace            |  Mode            |
-+------------------+------------------+
+### Typography
+
+- Container: `text-center max-w-2xl mx-auto`
+- Text: `text-xl lg:text-2xl font-light text-zinc-300`
+- Highlighted terms: `<span className="font-bold text-yellow-500">Royal Rumble</span>` and `<span className="font-bold text-yellow-500">OTT</span>`
+
+---
+
+## Spacing & Transitions
+
+| Between | Gap |
+|---------|-----|
+| Section A → Section B | `py-32` or `gap-32` (large vertical spacer) |
+| Section B → Section C | `py-20` (moderate spacer) |
+
+---
+
+## Code Structure
+
+```tsx
+import { motion } from "framer-motion";
+import { Clapperboard, Laugh, Trophy } from "lucide-react";
+
+export function StorySection({ id }: StorySectionProps) {
+  return (
+    <>
+      {/* Section A: The Origin - Timeline Layout */}
+      <section id={id} className="bg-background py-20 lg:py-28">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Badge */}
+          {/* Timeline with 3 steps */}
+          {/* Evolution Feature Card */}
+        </div>
+      </section>
+
+      {/* Section B: The Manifesto */}
+      <section className="bg-zinc-950 py-32 lg:py-40">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Massive headline */}
+          {/* Italic gold subhead */}
+          {/* 3-column icon grid */}
+        </div>
+      </section>
+
+      {/* Section C: The Gateway */}
+      <section className="bg-background py-20 lg:py-28">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          {/* Closing statement with highlighted terms */}
+        </div>
+      </section>
+    </>
+  );
+}
 ```
+
+---
+
+## Animation Details
+
+All sections use Framer Motion scroll-triggered animations:
+- `initial={{ opacity: 0, y: 30 }}`
+- `whileInView={{ opacity: 1, y: 0 }}`
+- `viewport={{ once: true }}`
+- Staggered delays for timeline steps (0, 0.1, 0.2)
+- Icon grid uses stagger animation (0.1s between each)
 
 ---
 
@@ -139,14 +190,24 @@ Change `max-w-2xl` to `max-w-3xl` for better spacing with 4 items:
 
 | File | Changes |
 |------|---------|
-| `src/components/home/FeaturesSection.tsx` | Update imports, replace features array, expand grid max-width |
+| `src/components/home/StorySection.tsx` | Complete rewrite with timeline, manifesto grid, and gateway sections |
 
 ---
 
-## Testing Checklist
+## Visual Summary
 
-1. View Features section on mobile - verify 4 cards stack vertically
-2. View Features section on tablet/desktop - verify 2x2 grid layout
-3. Confirm icons display correctly for each feature
-4. Verify scroll animations trigger on viewport entry
+**Section A (The Origin)**:
+- Dark background with left-aligned timeline
+- Gold vertical line connecting 3 milestones
+- Feature card for "Over The Top" conclusion
+
+**Section B (The Manifesto)**:
+- Near-black background (`bg-zinc-950`) for maximum contrast
+- Massive condensed headline
+- 3-column icon bento grid
+
+**Section C (The Gateway)**:
+- Centered, elegant closer
+- Light, readable typography
+- Gold highlights on key terms
 
