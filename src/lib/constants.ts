@@ -1,9 +1,9 @@
 // Royal Rumble 2026 Constants
 
 export const EVENT_CONFIG = {
-  DATE: new Date('2026-02-01T19:00:00+03:00'), // Riyadh time (UTC+3)
-  VENUE: 'Kingdom Arena',
-  LOCATION: 'Riyadh, Saudi Arabia',
+  DATE: new Date('2026-01-31T14:00:00-05:00'), // 2pm EST (UTC-5)
+  VENUE: 'Lucas Oil Stadium',
+  LOCATION: 'Indianapolis, Indiana',
   TITLE: 'WWE Royal Rumble 2026',
 } as const;
 
