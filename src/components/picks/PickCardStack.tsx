@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Loader2, Save, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { MatchCard } from "./cards/MatchCard";
+import { FaceOffMatchCard } from "./cards/FaceOffMatchCard";
 import { RumbleWinnerCard } from "./cards/RumbleWinnerCard";
 import { ChaosPropsCard } from "./cards/ChaosPropsCard";
 import { RumblePropsCard } from "./cards/RumblePropsCard";
@@ -330,7 +330,7 @@ export function PickCardStack({
               className="w-full max-w-md h-full"
             >
               {currentCard.type === "match" && (
-                <MatchCard
+                <FaceOffMatchCard
                   title={currentCard.title}
                   options={currentCard.options as readonly [string, string]}
                   value={picks[currentCard.id] || null}
