@@ -10,6 +10,7 @@ import { SinglePickEditModal } from "@/components/dashboard/SinglePickEditModal"
 import { useSoloCloud } from "@/hooks/useSoloCloud";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   getSoloPicks, 
   getSoloResults, 
@@ -31,7 +32,8 @@ type TabType = "matches" | "mens" | "womens" | "chaos";
 
 export default function SoloDashboard() {
   const navigate = useNavigate();
-  const { isLoading, isAuthenticated, player, logout, savePicksToCloud, saveResultsToCloud } = useSoloCloud();
+  const { user, isLoading: authLoading, signOut } = useAuth();
+  const { isLoading: soloLoading, isAuthenticated, player, logout, savePicksToCloud, saveResultsToCloud } = useSoloCloud();
   const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
   
   const [activeTab, setActiveTab] = useState<TabType>("matches");
@@ -46,7 +48,13 @@ export default function SoloDashboard() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!authLoading && !user) {
+      navigate("/sign-in");
+      return;
+    }
+    
+    if (!soloLoading && user && !isAuthenticated) {
+      // User is logged in but no solo player record - redirect to setup
       navigate("/solo/setup");
       return;
     }
@@ -54,7 +62,7 @@ export default function SoloDashboard() {
     // Load local data
     setPicks(getSoloPicks());
     setResults(getSoloResults());
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [authLoading, soloLoading, user, isAuthenticated, navigate]);
 
   const score = useMemo(() => calculateSoloScore(picks, results), [picks, results]);
 
@@ -124,12 +132,13 @@ export default function SoloDashboard() {
     await saveResultsToCloud(newResults);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     logout();
+    await signOut();
     navigate("/");
   };
 
-  if (isLoading || configLoading) {
+  if (authLoading || soloLoading || configLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -137,7 +146,7 @@ export default function SoloDashboard() {
     );
   }
 
-  if (!isAuthenticated || !player) return null;
+  if (!user || !isAuthenticated || !player) return null;
 
   const tabs = [
     { id: "matches" as const, icon: Swords, label: "Matches" },

@@ -1,102 +1,256 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { User, ArrowRight, Sparkles, Mail, Lock, LogIn, UserPlus, Loader2, HelpCircle } from "lucide-react";
+import { User, ArrowRight, Sparkles, Mail, Lock, LogIn, UserPlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { OttLogoMark } from "@/components/OttLogo";
-import { useSoloCloud } from "@/hooks/useSoloCloud";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function SoloSetup() {
   const navigate = useNavigate();
-  const { isLoading, isAuthenticated, player, error, register, login } = useSoloCloud();
+  const { user, isLoading: authLoading, signUp, signIn } = useAuth();
   
   const [mode, setMode] = useState<"new" | "returning">("new");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
-  const [pin, setPin] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSendingRecovery, setIsSendingRecovery] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Redirect if already authenticated
+  // Check if user is already authenticated
   useEffect(() => {
-    if (!isLoading && isAuthenticated && player) {
-      navigate("/solo/picks");
+    if (!authLoading && user) {
+      // User is authenticated, check for existing solo player
+      checkAndSetupSoloPlayer();
     }
-  }, [isLoading, isAuthenticated, player, navigate]);
+  }, [authLoading, user]);
+
+  const checkAndSetupSoloPlayer = async () => {
+    if (!user) return;
+
+    try {
+      // Check if solo player exists for this user
+      const { data, error } = await supabase
+        .from("solo_players")
+        .select("id, display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        // Already has solo player, redirect to dashboard
+        navigate("/solo/dashboard");
+      }
+      // If no solo player, show the setup form (just display name since already authenticated)
+    } catch (err) {
+      console.error("Error checking solo player:", err);
+    }
+  };
 
   const handleRegister = async () => {
+    setError(null);
+    
     if (!email.trim()) {
-      toast.error("Please enter your email");
+      setError("Please enter your email");
       return;
     }
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-      toast.error("PIN must be 4 digits");
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
       return;
     }
 
     setIsSubmitting(true);
-    const success = await register(email, pin, displayName);
-    setIsSubmitting(false);
+    
+    try {
+      // Sign up with email/password
+      const result = await signUp(email, password);
+      
+      if (result.error) {
+        setError(result.error);
+        setIsSubmitting(false);
+        return;
+      }
 
-    if (success) {
-      toast.success("Account created! Let's make some picks! 🎉");
+      // Create solo player record
+      const { data, error: rpcError } = await supabase.rpc("get_or_create_solo_player", {
+        p_display_name: displayName || "Me",
+      });
+
+      if (rpcError) throw rpcError;
+
+      toast.success("Account created! Let's make some picks!");
       navigate("/solo/picks");
+    } catch (err) {
+      console.error("Registration error:", err);
+      setError("Registration failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleLogin = async () => {
+    setError(null);
+    
     if (!email.trim()) {
-      toast.error("Please enter your email");
+      setError("Please enter your email");
       return;
     }
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-      toast.error("PIN must be 4 digits");
+    if (!password) {
+      setError("Please enter your password");
       return;
     }
 
     setIsSubmitting(true);
-    const success = await login(email, pin);
-    setIsSubmitting(false);
-
-    if (success) {
-      toast.success("Welcome back! 🎉");
-      navigate("/solo/dashboard");
-    }
-  };
-
-  const handleForgotPin = async () => {
-    if (!email.trim()) {
-      toast.error("Please enter your email first");
-      return;
-    }
-
-    setIsSendingRecovery(true);
+    
     try {
-      const { data, error } = await supabase.functions.invoke("send-pin-recovery", {
-        body: { email: email.trim() },
+      const result = await signIn(email, password);
+      
+      if (result.error) {
+        setError(result.error);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check/create solo player record
+      const { data, error: rpcError } = await supabase.rpc("get_or_create_solo_player", {
+        p_display_name: "Me",
       });
 
-      if (error) throw error;
+      if (rpcError) throw rpcError;
 
-      toast.success("If an account exists, your PIN has been sent to your email!");
+      toast.success("Welcome back!");
+      navigate("/solo/dashboard");
     } catch (err) {
-      console.error("PIN recovery error:", err);
-      toast.error("Failed to send recovery email. Please try again.");
+      console.error("Login error:", err);
+      setError("Login failed. Please try again.");
     } finally {
-      setIsSendingRecovery(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
+  const handleSetupSoloMode = async () => {
+    if (!user) return;
+    
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      // Create solo player for authenticated user
+      const { data, error: rpcError } = await supabase.rpc("get_or_create_solo_player", {
+        p_display_name: displayName || "Me",
+      });
+
+      if (rpcError) throw rpcError;
+
+      toast.success("Solo mode activated! Let's make some picks!");
+      navigate("/solo/picks");
+    } catch (err) {
+      console.error("Setup error:", err);
+      setError("Failed to set up solo mode. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // If user is authenticated but hasn't set up solo mode yet
+  if (user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-secondary/20" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
+
+        <div className="relative z-10 w-full max-w-md space-y-8">
+          <OttLogoMark size={64} className="mx-auto" />
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="bg-card/80 backdrop-blur-sm border-border">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                  <User className="w-8 h-8 text-primary" />
+                </div>
+                <CardTitle className="text-2xl">Set Up Solo Mode</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  You're signed in as {user.email}. Set up your solo profile to start making picks.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-sm text-muted-foreground">
+                    Display Name (optional)
+                  </Label>
+                  <Input
+                    id="name"
+                    placeholder="What should we call you?"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="text-center"
+                    maxLength={20}
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-sm text-destructive text-center">{error}</p>
+                )}
+
+                <Button
+                  variant="hero"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleSetupSoloMode}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Setting up...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Start Making Picks
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-center"
+          >
+            <Button
+              variant="link"
+              onClick={() => navigate("/my-parties")}
+              className="text-muted-foreground"
+            >
+              Back to My Parties
+            </Button>
+          </motion.div>
+        </div>
       </div>
     );
   }
@@ -157,7 +311,7 @@ export default function SoloSetup() {
                   <div className="space-y-2">
                     <Label htmlFor="email-new" className="text-sm text-muted-foreground flex items-center gap-2">
                       <Mail className="w-4 h-4" />
-                      Email (for account recovery)
+                      Email
                     </Label>
                     <Input
                       id="email-new"
@@ -170,20 +324,17 @@ export default function SoloSetup() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="pin-new" className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Label htmlFor="password-new" className="text-sm text-muted-foreground flex items-center gap-2">
                       <Lock className="w-4 h-4" />
-                      4-Digit PIN
+                      Password
                     </Label>
                     <Input
-                      id="pin-new"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={4}
-                      placeholder="••••"
-                      value={pin}
-                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                      className="text-center text-2xl tracking-[0.5em] font-mono"
+                      id="password-new"
+                      type="password"
+                      placeholder="At least 6 characters"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="text-center"
                     />
                   </div>
 
@@ -230,41 +381,26 @@ export default function SoloSetup() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="pin-login" className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Label htmlFor="password-login" className="text-sm text-muted-foreground flex items-center gap-2">
                       <Lock className="w-4 h-4" />
-                      4-Digit PIN
+                      Password
                     </Label>
                     <Input
-                      id="pin-login"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={4}
-                      placeholder="••••"
-                      value={pin}
-                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                      className="text-center text-2xl tracking-[0.5em] font-mono"
+                      id="password-login"
+                      type="password"
+                      placeholder="Your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="text-center"
                     />
-                    </div>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={handleForgotPin}
-                    disabled={isSendingRecovery}
-                    className="w-full text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1 py-1"
+                  <Link
+                    to="/forgot-password"
+                    className="block w-full text-sm text-muted-foreground hover:text-primary transition-colors text-center py-1"
                   >
-                    {isSendingRecovery ? (
-                      <>
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <HelpCircle className="w-3 h-3" />
-                        Forgot PIN? Email it to me
-                      </>
-                    )}
-                  </button>
+                    Forgot password?
+                  </Link>
 
                   {error && (
                     <p className="text-sm text-destructive text-center">{error}</p>
@@ -294,7 +430,7 @@ export default function SoloSetup() {
 
               <div className="text-center text-xs text-muted-foreground pt-2">
                 <p>Your picks sync across all your devices.</p>
-                <p>Email + PIN keeps it simple!</p>
+                <p>Same account works for parties and solo mode!</p>
               </div>
             </CardContent>
           </Card>
@@ -311,7 +447,7 @@ export default function SoloSetup() {
             onClick={() => navigate("/")}
             className="text-muted-foreground"
           >
-            ← Back to Home
+            Back to Home
           </Button>
         </motion.div>
       </div>

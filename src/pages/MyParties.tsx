@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Plus, LogOut, Crown, ChevronRight, Loader2, ChevronDown } from "lucide-react";
+import { Users, Plus, LogOut, Crown, ChevronRight, Loader2, ChevronDown, User, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/Logo";
@@ -20,13 +20,21 @@ interface PartyMembership {
   is_demo: boolean | null;
 }
 
+interface SoloPlayerInfo {
+  id: string;
+  display_name: string;
+  created_at: string;
+}
+
 export default function MyParties() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const [parties, setParties] = useState<PartyMembership[]>([]);
+  const [soloPlayer, setSoloPlayer] = useState<SoloPlayerInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hostedOpen, setHostedOpen] = useState(true);
   const [joinedOpen, setJoinedOpen] = useState(true);
+  const [soloOpen, setSoloOpen] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -35,63 +43,85 @@ export default function MyParties() {
     }
 
     if (user) {
-      fetchParties();
+      fetchData();
     }
   }, [user, authLoading, navigate]);
 
-  const fetchParties = async () => {
+  const fetchData = async () => {
     try {
-      // Fetch player records for current user
-      const { data: playerData, error: playerError } = await supabase
-        .from("players")
-        .select("id, party_code, display_name, points")
-        .eq("user_id", user!.id);
-
-      if (playerError) throw playerError;
-
-      if (!playerData || playerData.length === 0) {
-        setParties([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch party statuses including is_demo
-      const partyCodes = playerData.map(p => p.party_code);
-      const { data: partyData, error: partyError } = await supabase
-        .from("parties_public")
-        .select("code, status, is_demo")
-        .in("code", partyCodes);
-
-      if (partyError) throw partyError;
-
-      // Check which parties user is host of
-      const { data: hostData } = await supabase
-        .from("parties")
-        .select("code")
-        .eq("host_user_id", user!.id);
-
-      const hostCodes = new Set(hostData?.map(p => p.code) || []);
-
-      // Combine data
-      const combined: PartyMembership[] = playerData.map(player => {
-        const partyInfo = partyData?.find(p => p.code === player.party_code);
-        return {
-          player_id: player.id,
-          party_code: player.party_code,
-          display_name: player.display_name,
-          points: player.points,
-          status: partyInfo?.status || "pre_event",
-          is_host: hostCodes.has(player.party_code),
-          is_demo: partyInfo?.is_demo || false,
-        };
-      });
-
-      setParties(combined);
+      // Fetch in parallel: player records AND solo player record
+      const [partiesResult, soloResult] = await Promise.all([
+        fetchParties(),
+        fetchSoloPlayer(),
+      ]);
     } catch (err) {
-      console.error("Error fetching parties:", err);
-      toast.error("Failed to load your parties");
+      console.error("Error fetching data:", err);
+      toast.error("Failed to load your data");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchParties = async () => {
+    // Fetch player records for current user
+    const { data: playerData, error: playerError } = await supabase
+      .from("players")
+      .select("id, party_code, display_name, points")
+      .eq("user_id", user!.id);
+
+    if (playerError) throw playerError;
+
+    if (!playerData || playerData.length === 0) {
+      setParties([]);
+      return;
+    }
+
+    // Fetch party statuses including is_demo
+    const partyCodes = playerData.map(p => p.party_code);
+    const { data: partyData, error: partyError } = await supabase
+      .from("parties_public")
+      .select("code, status, is_demo")
+      .in("code", partyCodes);
+
+    if (partyError) throw partyError;
+
+    // Check which parties user is host of
+    const { data: hostData } = await supabase
+      .from("parties")
+      .select("code")
+      .eq("host_user_id", user!.id);
+
+    const hostCodes = new Set(hostData?.map(p => p.code) || []);
+
+    // Combine data
+    const combined: PartyMembership[] = playerData.map(player => {
+      const partyInfo = partyData?.find(p => p.code === player.party_code);
+      return {
+        player_id: player.id,
+        party_code: player.party_code,
+        display_name: player.display_name,
+        points: player.points,
+        status: partyInfo?.status || "pre_event",
+        is_host: hostCodes.has(player.party_code),
+        is_demo: partyInfo?.is_demo || false,
+      };
+    });
+
+    setParties(combined);
+  };
+
+  const fetchSoloPlayer = async () => {
+    // Check for solo player record
+    const { data, error } = await supabase
+      .from("solo_players")
+      .select("id, display_name, created_at")
+      .eq("user_id", user!.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (data) {
+      setSoloPlayer(data);
     }
   };
 
@@ -210,6 +240,8 @@ export default function MyParties() {
     </CollapsibleTrigger>
   );
 
+  const hasNoAccess = parties.length === 0 && !soloPlayer;
+
   return (
     <div className="min-h-screen flex flex-col items-center p-6 relative overflow-hidden">
       {/* Background effects */}
@@ -222,7 +254,7 @@ export default function MyParties() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">My Parties</h1>
+            <h1 className="text-2xl font-bold">My Dashboard</h1>
             <p className="text-muted-foreground text-sm">
               {user?.email}
             </p>
@@ -233,24 +265,84 @@ export default function MyParties() {
           </Button>
         </div>
 
-        {parties.length === 0 ? (
+        {hasNoAccess ? (
           <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4">
             <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center">
               <Users className="h-8 w-8 text-muted-foreground" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-lg font-semibold">No parties yet</h2>
+              <h2 className="text-lg font-semibold">No access yet</h2>
               <p className="text-muted-foreground text-sm">
-                Join a party to start making picks and competing with friends
+                Join a party or start solo mode to make your picks
               </p>
             </div>
-            <Button onClick={() => navigate("/join")} className="mt-4">
-              <Plus className="h-4 w-4 mr-2" />
-              Join a Party
-            </Button>
+            <div className="flex flex-col gap-2 mt-4">
+              <Button onClick={() => navigate("/join")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Join a Party
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/solo/setup")}>
+                <User className="h-4 w-4 mr-2" />
+                Start Solo Mode
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Solo Mode Section */}
+            {soloPlayer ? (
+              <Collapsible open={soloOpen} onOpenChange={setSoloOpen}>
+                <SectionHeader 
+                  title="Solo Mode" 
+                  count={1} 
+                  icon={User}
+                  isOpen={soloOpen}
+                  onToggle={() => setSoloOpen(!soloOpen)}
+                />
+                <CollapsibleContent className="space-y-2">
+                  <button
+                    onClick={() => navigate("/solo/dashboard")}
+                    className="w-full bg-card border border-border rounded-xl p-4 hover:bg-muted/50 transition-colors text-left group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">{soloPlayer.display_name}</div>
+                          <p className="text-sm text-muted-foreground">
+                            Track your own picks and results
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
+                  </button>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : (
+              <button
+                onClick={() => navigate("/solo/setup")}
+                className="w-full bg-card border border-dashed border-primary/30 rounded-xl p-4 hover:bg-primary/5 transition-colors text-left group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-primary">Start Solo Mode</div>
+                      <p className="text-sm text-muted-foreground">
+                        Make picks on your own
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-primary" />
+                </div>
+              </button>
+            )}
+
             {/* Hosted Parties Section */}
             {hostedParties.length > 0 && (
               <Collapsible open={hostedOpen} onOpenChange={setHostedOpen}>
