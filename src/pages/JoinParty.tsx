@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OttLogoMark } from "@/components/OttLogo";
+import { RequestAccessModal } from "@/components/RequestAccessModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -17,6 +18,7 @@ export default function JoinParty() {
   
   const [code, setCode] = useState(initialCode);
   const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,13 +125,18 @@ export default function JoinParty() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate("/")}
+            onClick={() => setIsModalOpen(true)}
             className="text-ott-accent hover:text-ott-accent/80"
           >
             Request Access
           </Button>
         </div>
       </motion.div>
+
+      <RequestAccessModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </div>
   );
 }

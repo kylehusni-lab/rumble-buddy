@@ -8,6 +8,7 @@ import { EVENT_CONFIG } from "@/lib/constants";
 
 interface HeroSectionProps {
   onRequestAccess: () => void;
+  onLearnMore?: () => void;
 }
 
 interface TimeRemaining {
@@ -30,7 +31,7 @@ function CountdownUnit({ value, label }: { value: number; label: string }) {
   );
 }
 
-export function HeroSection({ onRequestAccess }: HeroSectionProps) {
+export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) {
   const navigate = useNavigate();
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
   const [isLive, setIsLive] = useState(false);
@@ -166,21 +167,25 @@ export function HeroSection({ onRequestAccess }: HeroSectionProps) {
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <motion.div 
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+      {/* Learn More button */}
+      <motion.button
+        onClick={onLearnMore}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 
+                   px-5 py-2.5 rounded-full border border-border/50 bg-background/50 backdrop-blur-sm
+                   text-muted-foreground hover:text-foreground hover:border-border transition-colors
+                   cursor-pointer"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1, duration: 0.5 }}
       >
-        <span className="text-xs text-muted-foreground uppercase tracking-wider">Scroll</span>
+        <span className="text-xs font-medium uppercase tracking-wider">Learn More</span>
         <motion.div
-          animate={{ y: [0, 6, 0] }}
+          animate={{ y: [0, 4, 0] }}
           transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
         >
-          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+          <ChevronDown className="w-4 h-4" />
         </motion.div>
-      </motion.div>
+      </motion.button>
     </section>
   );
 }
