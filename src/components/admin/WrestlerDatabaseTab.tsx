@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Upload, Search, Lock } from 'lucide-react';
+import { Plus, Upload, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,80 +9,9 @@ import { WrestlerFormModal } from '@/components/admin/WrestlerFormModal';
 import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
 import { BulkImportModal } from '@/components/admin/BulkImportModal';
 import { useWrestlerAdmin, Wrestler } from '@/hooks/useWrestlerAdmin';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 export function WrestlerDatabaseTab() {
-  const navigate = useNavigate();
-  const [isSessionValid, setIsSessionValid] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [pin, setPin] = useState('');
-
-  // Verify admin session on mount
-  useEffect(() => {
-    const session = localStorage.getItem('platform_admin_session');
-    const expiresAt = localStorage.getItem('platform_admin_expires');
-
-    if (session && expiresAt && new Date(expiresAt) > new Date()) {
-      setIsSessionValid(true);
-    }
-  }, []);
-
-  const handleVerifyPin = async () => {
-    if (!pin.trim()) return;
-    
-    setIsVerifying(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('verify-admin-pin', {
-        body: { pin: pin.trim() }
-      });
-
-      if (error) throw error;
-      if (!data?.success) throw new Error('Invalid PIN');
-
-      // Set session
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-      localStorage.setItem('platform_admin_session', 'active');
-      localStorage.setItem('platform_admin_expires', expiresAt.toISOString());
-      
-      setIsSessionValid(true);
-      toast.success('Access granted');
-    } catch (err) {
-      toast.error('Invalid PIN');
-      setPin('');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  if (!isSessionValid) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
-          <Lock className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold mb-2">Platform Admin PIN Required</h3>
-        <p className="text-sm text-muted-foreground mb-6 text-center max-w-xs">
-          Enter your Platform Admin PIN to access the Wrestler Database
-        </p>
-        <div className="flex gap-2 w-full max-w-xs">
-          <Input
-            type="password"
-            placeholder="Enter PIN"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleVerifyPin()}
-            className="flex-1"
-          />
-          <Button onClick={handleVerifyPin} disabled={isVerifying || !pin.trim()}>
-            {isVerifying ? 'Verifying...' : 'Unlock'}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
+  // No PIN check needed - parent page already enforces admin role
   return <WrestlerDatabaseContent />;
 }
 
