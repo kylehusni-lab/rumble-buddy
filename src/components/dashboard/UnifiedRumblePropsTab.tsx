@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { getEntrantDisplayName } from "@/lib/entrant-utils";
 import { RUMBLE_PROPS, FINAL_FOUR_SLOTS, SCORING } from "@/lib/constants";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Pick {
   match_id: string;
@@ -57,13 +56,12 @@ export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
   onEditPick,
   canEdit = false,
 }: UnifiedRumblePropsTabProps) {
-  const isMobile = useIsMobile();
   const normalizedPicks = normalizePicks(picks);
   const normalizedResults = normalizeResults(results);
 
   return (
     <div className="space-y-3">
-      {isMobile ? (
+      {/* Universal list layout - consistent across all viewports */}
         // MOBILE: Single-column list with large avatars
         <div className="space-y-2">
           {RUMBLE_PROPS.map((prop) => {
@@ -157,78 +155,6 @@ export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
             );
           })}
         </div>
-      ) : (
-        // DESKTOP: 2-column responsive grid
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-          {RUMBLE_PROPS.map((prop) => {
-            const matchId = `${gender}_${prop.id}`;
-            const pick = normalizedPicks[matchId];
-            const result = normalizedResults[matchId];
-            const isCorrect = pick && result && pick === result;
-            const isWrong = pick && result && pick !== result;
-            const points = propPoints[prop.id] || SCORING.PROP_BET;
-
-            return (
-              <div
-                key={matchId}
-                className={cn(
-                  "p-3 rounded-xl border transition-all relative group",
-                  isCorrect
-                    ? "bg-success/10 border-success"
-                    : isWrong
-                    ? "bg-destructive/10 border-destructive"
-                    : "bg-card border-border",
-                  canEdit && !result && "hover:border-primary/50 cursor-pointer"
-                )}
-                onClick={() => canEdit && !result && onEditPick?.(matchId, pick || "")}
-              >
-                <div className="text-xs text-muted-foreground mb-2">{prop.title}</div>
-                {pick ? (
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <img
-                        src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
-                        alt={getEntrantDisplayName(pick)}
-                        className={cn(
-                          "w-10 h-10 rounded-full object-cover border-2",
-                          isCorrect 
-                            ? "border-success" 
-                            : isWrong 
-                              ? "border-destructive" 
-                              : "border-primary"
-                        )}
-                        onError={(e) => {
-                          e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(pick));
-                        }}
-                      />
-                      {isCorrect && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-success flex items-center justify-center">
-                          <Check className="w-2.5 h-2.5 text-success-foreground" />
-                        </div>
-                      )}
-                      {isWrong && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-destructive flex items-center justify-center">
-                          <X className="w-2.5 h-2.5 text-destructive-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-sm font-medium text-foreground truncate flex-1">
-                      {getEntrantDisplayName(pick)}
-                    </span>
-                    {canEdit && !result && (
-                      <Pencil size={12} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground">
-                    No pick - +{points} pts
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* Final Four Section */}
       <div className="mt-6 p-4 rounded-xl border border-primary/50 bg-primary/5">
@@ -265,9 +191,8 @@ export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
                       <img
                         src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
                         alt={getEntrantDisplayName(pick)}
-                        className={cn(
-                          isMobile ? "w-[72px] h-[72px]" : "w-16 h-16",
-                          "rounded-full object-cover border-2",
+                      className={cn(
+                          "w-[72px] h-[72px] rounded-full object-cover border-2",
                           isCorrect 
                             ? "border-success" 
                             : isWrong 
@@ -296,8 +221,7 @@ export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
                     </>
                   ) : (
                     <div className={cn(
-                      isMobile ? "w-[72px] h-[72px]" : "w-16 h-16",
-                      "rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center",
+                      "w-[72px] h-[72px] rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center",
                       canEdit && "hover:border-primary/50"
                     )}>
                       <Plus className="w-5 h-5 text-muted-foreground/50" />

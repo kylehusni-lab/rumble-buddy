@@ -89,7 +89,7 @@ export const UnifiedChaosTab = memo(function UnifiedChaosTab({
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <table className="w-full">
+      <table className="w-full table-fixed">
         <thead>
           <tr className="bg-muted/50 border-b border-border">
             <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">

@@ -32,7 +32,7 @@ export const UnifiedDashboardHeader = memo(function UnifiedDashboardHeader({
 }: UnifiedDashboardHeaderProps) {
   return (
     <div className="sticky top-0 z-20 bg-gradient-to-b from-background via-background to-background/95 backdrop-blur-sm">
-      <div className="p-4 pb-2">
+      <div className="max-w-2xl mx-auto p-4 pb-2">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             {onBack && (
