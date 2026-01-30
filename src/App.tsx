@@ -29,6 +29,7 @@ const Legal = lazy(() => import("./pages/Legal"));
 const SoloSetup = lazy(() => import("./pages/SoloSetup"));
 const SoloPicks = lazy(() => import("./pages/SoloPicks"));
 const SoloDashboard = lazy(() => import("./pages/SoloDashboard"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/platform-admin/verify" element={<PlatformAdminVerify />} />
             <Route path="/admin/wrestlers" element={<WrestlerAdmin />} />
             <Route path="/legal" element={<Legal />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             <Route path="/solo/setup" element={<SoloSetup />} />
             <Route path="/solo/picks" element={<SoloPicks />} />
