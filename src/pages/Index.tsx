@@ -8,7 +8,6 @@ import { JoinPartyModal } from "@/components/JoinPartyModal";
 import { LegalFooter } from "@/components/LegalFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
-import { useAuth } from "@/hooks/useAuth";
 import { EVENT_CONFIG } from "@/lib/constants";
 import { seedDemoParty } from "@/lib/demo-seeder";
 import { toast } from "sonner";
@@ -42,7 +41,6 @@ export default function Index() {
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
   const [step, setStep] = useState<Step>("initial");
   const navigate = useNavigate();
-  const { ensureAuth } = useAuth();
 
   useEffect(() => {
     function calculateTimeRemaining(): TimeRemaining {
@@ -93,11 +91,29 @@ export default function Index() {
     setIsCreating(true);
 
     try {
-      // Ensure user is authenticated (anonymous if needed)
-      const authUser = await ensureAuth();
-      if (!authUser) {
-        toast.error("Authentication failed. Please try again.");
-        setIsCreating(false);
+      // Check if user is already logged in
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // User needs to authenticate first - redirect to auth with a special flow
+        // We'll generate the code first, then redirect to auth
+        const sessionId = getSessionId();
+        const groupCode = await generateGroupCode();
+
+        // Create party with pending host (will be claimed after auth)
+        const { error } = await supabase.from("parties").insert({
+          code: groupCode,
+          host_session_id: sessionId,
+          status: "pre_event",
+        });
+
+        if (error) throw error;
+
+        // Store pending party info
+        localStorage.setItem("pending_host_party", groupCode);
+        
+        toast.success(`Group ${groupCode} created! Now sign up to claim it.`);
+        navigate(`/player/auth?code=${groupCode}&host=true`);
         return;
       }
 
@@ -107,7 +123,7 @@ export default function Index() {
       const { error } = await supabase.from("parties").insert({
         code: groupCode,
         host_session_id: sessionId,
-        host_user_id: authUser.id, // Link to auth user
+        host_user_id: user.id,
         status: "pre_event",
       });
 
@@ -115,13 +131,13 @@ export default function Index() {
 
       setPlayerSession({
         sessionId,
-        authUserId: authUser.id,
+        authUserId: user.id,
         partyCode: groupCode,
         isHost: true,
       });
 
       toast.success(`Group ${groupCode} created!`);
-      navigate(`/player/join?code=${groupCode}&host=true`);
+      navigate(`/player/auth?code=${groupCode}&host=true`);
     } catch (err) {
       console.error("Error creating group:", err);
       toast.error("Failed to create group. Please try again.");
@@ -134,12 +150,28 @@ export default function Index() {
     setIsCreatingDemo(true);
 
     try {
-      // Ensure user is authenticated (anonymous if needed)
-      const authUser = await ensureAuth();
-      if (!authUser) {
-        toast.error("Authentication failed. Please try again.");
-        setIsCreatingDemo(false);
-        return;
+      // Check if user is already logged in
+      let userId: string;
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // For demo mode, create a temporary demo account
+        const demoEmail = `demo-${Date.now()}@rumble-buddy.demo`;
+        const demoPassword = `demo-${Date.now()}-${Math.random().toString(36)}`;
+        
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: demoEmail,
+          password: demoPassword,
+        });
+        
+        if (signUpError || !signUpData.user) {
+          toast.error("Failed to create demo session");
+          setIsCreatingDemo(false);
+          return;
+        }
+        userId = signUpData.user.id;
+      } else {
+        userId = user.id;
       }
 
       const sessionId = getSessionId();
@@ -148,18 +180,18 @@ export default function Index() {
       const { error: partyError } = await supabase.from("parties").insert({
         code: demoCode,
         host_session_id: sessionId,
-        host_user_id: authUser.id, // Link to auth user
+        host_user_id: userId,
         status: "pre_event",
         host_pin: "0000",
       });
 
       if (partyError) throw partyError;
 
-      const { hostPlayerId } = await seedDemoParty(demoCode, sessionId, authUser.id);
+      const { hostPlayerId } = await seedDemoParty(demoCode, sessionId, userId);
 
       setPlayerSession({
         sessionId,
-        authUserId: authUser.id,
+        authUserId: userId,
         playerId: hostPlayerId,
         partyCode: demoCode,
         displayName: "Kyle",

@@ -25,6 +25,7 @@ export type Database = {
           name: string
           party_code: string | null
           play_style: string
+          rejected_at: string | null
           status: string | null
         }
         Insert: {
@@ -37,6 +38,7 @@ export type Database = {
           name: string
           party_code?: string | null
           play_style: string
+          rejected_at?: string | null
           status?: string | null
         }
         Update: {
@@ -49,6 +51,7 @@ export type Database = {
           name?: string
           party_code?: string | null
           play_style?: string
+          rejected_at?: string | null
           status?: string | null
         }
         Relationships: []
@@ -569,6 +572,33 @@ export type Database = {
       }
     }
     Functions: {
+      admin_create_party: { Args: { p_code: string }; Returns: boolean }
+      admin_get_all_parties: {
+        Args: never
+        Returns: {
+          code: string
+          created_at: string
+          event_started_at: string
+          host_display_name: string
+          host_email: string
+          host_session_id: string
+          host_user_id: string
+          member_count: number
+          status: string
+        }[]
+      }
+      admin_get_party_members: {
+        Args: { p_party_code: string }
+        Returns: {
+          display_name: string
+          email: string
+          id: string
+          joined_at: string
+          points: number
+          user_id: string
+        }[]
+      }
+      admin_remove_player: { Args: { p_player_id: string }; Returns: boolean }
       get_tv_snapshot: { Args: { p_party_code: string }; Returns: Json }
       has_role: {
         Args: {

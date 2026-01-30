@@ -15,6 +15,7 @@ const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const PlayerJoin = lazy(() => import("./pages/PlayerJoin"));
+const PlayerAuth = lazy(() => import("./pages/PlayerAuth"));
 const PlayerPicks = lazy(() => import("./pages/PlayerPicks"));
 const PlayerDashboard = lazy(() => import("./pages/PlayerDashboard"));
 const HostVerifyPin = lazy(() => import("./pages/HostVerifyPin"));
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/admin/login" element={<AdminLogin />} />
 
             <Route path="/player/join" element={<PlayerJoin />} />
+            <Route path="/player/auth" element={<PlayerAuth />} />
             <Route path="/player/picks/:code" element={<PlayerPicks />} />
             <Route path="/player/dashboard/:code" element={<PlayerDashboard />} />
             <Route path="/host/verify-pin/:code" element={<HostVerifyPin />} />

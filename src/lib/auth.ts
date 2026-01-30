@@ -1,48 +1,88 @@
-// Auth utilities wrapping Supabase Anonymous Auth
-// Provides seamless authentication without requiring passwords
+// Auth utilities wrapping Supabase Auth
+// Provides authentication functions for email/password auth
 
 import { supabase } from "@/integrations/supabase/client";
 
 export interface AuthUser {
   id: string;
+  email?: string;
   isAnonymous: boolean;
 }
 
-/**
- * Ensure user is authenticated (anonymously if needed)
- * Call this at entry points before creating/updating records
- */
-export async function ensureAuthenticated(): Promise<AuthUser | null> {
-  try {
-    // Check existing session first
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session?.user) {
-      return {
-        id: session.user.id,
-        isAnonymous: session.user.is_anonymous ?? false,
-      };
-    }
+export interface SignUpResult {
+  user: AuthUser | null;
+  error: string | null;
+}
 
-    // No session - sign in anonymously
-    const { data, error } = await supabase.auth.signInAnonymously();
-    
+export interface SignInResult {
+  user: AuthUser | null;
+  error: string | null;
+}
+
+/**
+ * Sign up with email and password
+ */
+export async function signUp(email: string, password: string): Promise<SignUpResult> {
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.toLowerCase().trim(),
+      password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
     if (error) {
-      console.error("Anonymous sign-in failed:", error);
-      return null;
+      return { user: null, error: error.message };
     }
 
     if (data.user) {
       return {
-        id: data.user.id,
-        isAnonymous: true,
+        user: {
+          id: data.user.id,
+          email: data.user.email ?? undefined,
+          isAnonymous: false,
+        },
+        error: null,
       };
     }
 
-    return null;
+    return { user: null, error: "Failed to create account" };
   } catch (err) {
-    console.error("Error ensuring authentication:", err);
-    return null;
+    console.error("Sign up error:", err);
+    return { user: null, error: "An unexpected error occurred" };
+  }
+}
+
+/**
+ * Sign in with email and password
+ */
+export async function signIn(email: string, password: string): Promise<SignInResult> {
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password,
+    });
+
+    if (error) {
+      return { user: null, error: error.message };
+    }
+
+    if (data.user) {
+      return {
+        user: {
+          id: data.user.id,
+          email: data.user.email ?? undefined,
+          isAnonymous: false,
+        },
+        error: null,
+      };
+    }
+
+    return { user: null, error: "Login failed" };
+  } catch (err) {
+    console.error("Sign in error:", err);
+    return { user: null, error: "An unexpected error occurred" };
   }
 }
 
@@ -56,6 +96,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     if (session?.user) {
       return {
         id: session.user.id,
+        email: session.user.email ?? undefined,
         isAnonymous: session.user.is_anonymous ?? false,
       };
     }
@@ -76,6 +117,14 @@ export async function signOut(): Promise<void> {
   } catch (err) {
     console.error("Error signing out:", err);
   }
+}
+
+/**
+ * Ensure user is authenticated - for backward compatibility
+ * Now returns null if not authenticated (doesn't auto-create anonymous)
+ */
+export async function ensureAuthenticated(): Promise<AuthUser | null> {
+  return getCurrentUser();
 }
 
 /**

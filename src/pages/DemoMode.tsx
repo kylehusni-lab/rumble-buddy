@@ -4,14 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { OttLogoMark } from "@/components/OttLogo";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { getSessionId, setPlayerSession } from "@/lib/session";
 import { seedDemoParty } from "@/lib/demo-seeder";
 import { toast } from "sonner";
 
 export default function DemoMode() {
   const navigate = useNavigate();
-  const { ensureAuth } = useAuth();
   const [status, setStatus] = useState("Initializing demo...");
 
   useEffect(() => {
@@ -40,9 +38,30 @@ export default function DemoMode() {
 
   const createDemoParty = async () => {
     try {
-      setStatus("Authenticating...");
-      const authUser = await ensureAuth();
-      if (!authUser) {
+      setStatus("Checking authentication...");
+      
+      // Check if user is already logged in
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // For demo mode, we'll create a temporary demo account
+        const demoEmail = `demo-${Date.now()}@rumble-buddy.demo`;
+        const demoPassword = `demo-${Date.now()}-${Math.random().toString(36)}`;
+        
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: demoEmail,
+          password: demoPassword,
+        });
+        
+        if (signUpError || !signUpData.user) {
+          toast.error("Failed to create demo session");
+          navigate("/");
+          return;
+        }
+      }
+      
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
         toast.error("Authentication failed");
         navigate("/");
         return;
@@ -55,7 +74,7 @@ export default function DemoMode() {
       const { error: partyError } = await supabase.from("parties").insert({
         code: demoCode,
         host_session_id: sessionId,
-        host_user_id: authUser.id,
+        host_user_id: currentUser.id,
         status: "pre_event",
         host_pin: "0000",
       });
@@ -63,11 +82,11 @@ export default function DemoMode() {
       if (partyError) throw partyError;
 
       setStatus("Seeding players and picks...");
-      const { hostPlayerId } = await seedDemoParty(demoCode, sessionId, authUser.id);
+      const { hostPlayerId } = await seedDemoParty(demoCode, sessionId, currentUser.id);
 
       setPlayerSession({
         sessionId,
-        authUserId: authUser.id,
+        authUserId: currentUser.id,
         playerId: hostPlayerId,
         partyCode: demoCode,
         displayName: "Kyle",

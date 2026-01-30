@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, Mail, Check, Clock, LogOut, RefreshCw, Users, UserCheck } from "lucide-react";
+import { Loader2, Mail, Check, X, Clock, LogOut, RefreshCw, Users, UserCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OttLogoMark } from "@/components/OttLogo";
+import { ActivePartiesTab } from "@/components/admin/ActivePartiesTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -17,6 +19,7 @@ interface AccessRequest {
   group_size: string | null;
   status: string;
   party_code: string | null;
+  rejected_at: string | null;
 }
 
 function generatePartyCode(): string {
@@ -34,6 +37,8 @@ export default function AdminDashboard() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("requests");
 
   useEffect(() => {
     checkAuth();
@@ -114,6 +119,30 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleReject = async (request: AccessRequest) => {
+    setRejectingId(request.id);
+    
+    try {
+      const { error } = await supabase
+        .from("access_requests")
+        .update({
+          status: "rejected",
+          rejected_at: new Date().toISOString(),
+        })
+        .eq("id", request.id);
+
+      if (error) throw error;
+
+      toast.success("Request rejected");
+      fetchRequests();
+    } catch (err) {
+      console.error("Reject error:", err);
+      toast.error("Failed to reject request");
+    } finally {
+      setRejectingId(null);
+    }
+  };
+
   const handleEmailCode = (request: AccessRequest) => {
     const subject = encodeURIComponent(`Your Royal Rumble Party Code: ${request.party_code}`);
     const body = encodeURIComponent(
@@ -132,6 +161,18 @@ export default function AdminDashboard() {
 
   const pendingCount = requests.filter(r => r.status === "pending").length;
   const approvedCount = requests.filter(r => r.status === "approved").length;
+  const rejectedCount = requests.filter(r => r.status === "rejected").length;
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <Badge className="bg-success">Approved</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Rejected</Badge>;
+      default:
+        return <Badge className="bg-ott-accent text-background">Pending</Badge>;
+    }
+  };
 
   if (!isAuthorized) {
     return (
@@ -159,7 +200,7 @@ export default function AdminDashboard() {
 
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -188,6 +229,19 @@ export default function AdminDashboard() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-ott-surface border border-border rounded-lg p-4"
+          >
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <XCircle className="w-4 h-4" />
+              <span className="text-sm">Rejected</span>
+            </div>
+            <div className="text-3xl font-bold text-destructive">{rejectedCount}</div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             className="bg-ott-surface border border-border rounded-lg p-4"
           >
@@ -199,99 +253,126 @@ export default function AdminDashboard() {
           </motion.div>
         </div>
 
-        {/* Refresh button */}
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Access Requests</h2>
-          <Button variant="outline" size="sm" onClick={fetchRequests} disabled={isLoading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="requests">Access Requests</TabsTrigger>
+            <TabsTrigger value="parties">Active Parties</TabsTrigger>
+          </TabsList>
 
-        {/* Requests Table */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : requests.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            No access requests yet
-          </div>
-        ) : (
-          <div className="bg-ott-surface border border-border rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-ott-surface-elevated border-b border-border">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Status</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Name</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Email</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Style</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Code</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {requests.map((request) => (
-                    <tr key={request.id} className="hover:bg-ott-surface-elevated/50 transition-colors">
-                      <td className="px-4 py-3">
-                        <Badge 
-                          variant={request.status === "approved" ? "default" : "secondary"}
-                          className={request.status === "approved" ? "bg-success" : "bg-ott-accent text-background"}
-                        >
-                          {request.status}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 font-medium">{request.name}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{request.email}</td>
-                      <td className="px-4 py-3 text-sm">
-                        {request.play_style}
-                        {request.group_size && ` (${request.group_size})`}
-                      </td>
-                      <td className="px-4 py-3">
-                        {request.party_code ? (
-                          <code className="text-ott-accent font-mono text-sm bg-ott-accent/10 px-2 py-1 rounded">
-                            {request.party_code}
-                          </code>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {request.status === "pending" ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleApprove(request)}
-                            disabled={approvingId === request.id}
-                            className="bg-success hover:bg-success/90"
-                          >
-                            {approvingId === request.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Check className="w-4 h-4 mr-1" />
-                                Approve
-                              </>
-                            )}
-                          </Button>
-                        ) : request.party_code ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEmailCode(request)}
-                          >
-                            <Mail className="w-4 h-4 mr-1" />
-                            Email Code
-                          </Button>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <TabsContent value="requests" className="mt-6 space-y-4">
+            {/* Refresh button */}
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={fetchRequests} disabled={isLoading}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </div>
-          </div>
-        )}
+
+            {/* Requests Table */}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : requests.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No access requests yet
+              </div>
+            ) : (
+              <div className="bg-ott-surface border border-border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-ott-surface-elevated border-b border-border">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Status</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Name</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Email</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Style</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Code</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {requests.map((request) => (
+                        <tr key={request.id} className="hover:bg-ott-surface-elevated/50 transition-colors">
+                          <td className="px-4 py-3">
+                            {getStatusBadge(request.status)}
+                          </td>
+                          <td className="px-4 py-3 font-medium">{request.name}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{request.email}</td>
+                          <td className="px-4 py-3 text-sm">
+                            {request.play_style}
+                            {request.group_size && ` (${request.group_size})`}
+                          </td>
+                          <td className="px-4 py-3">
+                            {request.party_code ? (
+                              <code className="text-ott-accent font-mono text-sm bg-ott-accent/10 px-2 py-1 rounded">
+                                {request.party_code}
+                              </code>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {request.status === "pending" ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleApprove(request)}
+                                    disabled={approvingId === request.id || rejectingId === request.id}
+                                    className="bg-success hover:bg-success/90"
+                                  >
+                                    {approvingId === request.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Check className="w-4 h-4 mr-1" />
+                                        Approve
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleReject(request)}
+                                    disabled={approvingId === request.id || rejectingId === request.id}
+                                  >
+                                    {rejectingId === request.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <X className="w-4 h-4 mr-1" />
+                                        Reject
+                                      </>
+                                    )}
+                                  </Button>
+                                </>
+                              ) : request.status === "approved" && request.party_code ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEmailCode(request)}
+                                >
+                                  <Mail className="w-4 h-4 mr-1" />
+                                  Email Code
+                                </Button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="parties" className="mt-6">
+            <ActivePartiesTab />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
