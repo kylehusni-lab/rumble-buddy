@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Trophy, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check, X, Users, Plus, Pencil } from "lucide-react";
+import { Trophy, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check, X, Users, Plus, Pencil, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { SoloScoringModal } from "@/components/solo/SoloScoringModal";
@@ -183,14 +183,18 @@ export default function SoloDashboard() {
                 <div className="text-3xl font-black text-primary tabular-nums">
                   {score} pts
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {player.display_name}
-                </div>
               </div>
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
                 <Trophy className="w-7 h-7 text-primary" />
               </div>
             </div>
+            
+            {/* Compact Pick Progress */}
+            <CompactPickProgress 
+              picks={picks}
+              tabCompletion={tabCompletion}
+              onTabClick={setActiveTab}
+            />
           </motion.div>
         </div>
 
@@ -309,7 +313,106 @@ export default function SoloDashboard() {
   );
 }
 
-// Matches Tab Component
+// Compact Pick Progress Component
+const CompactPickProgress = memo(function CompactPickProgress({
+  picks,
+  tabCompletion,
+  onTabClick,
+}: {
+  picks: Record<string, string>;
+  tabCompletion: Record<string, { complete: number; total: number }>;
+  onTabClick: (tab: TabType) => void;
+}) {
+  const groups = [
+    { 
+      id: "matches" as TabType, 
+      label: "Matches",
+      pickKeys: ["undercard_1", "undercard_3", "mens_rumble_winner", "womens_rumble_winner"],
+    },
+    { 
+      id: "mens" as TabType, 
+      label: "Men's",
+      pickKeys: [...RUMBLE_PROPS.map(p => `mens_${p.id}`), ...Array.from({length: 4}, (_, i) => `mens_final_four_${i+1}`)],
+    },
+    { 
+      id: "womens" as TabType, 
+      label: "Women's",
+      pickKeys: [...RUMBLE_PROPS.map(p => `womens_${p.id}`), ...Array.from({length: 4}, (_, i) => `womens_final_four_${i+1}`)],
+    },
+  ];
+
+  return (
+    <div className="flex gap-2 mt-3">
+      {groups.map((group) => {
+        const completedPicks = group.pickKeys
+          .filter(key => picks[key])
+          .slice(0, 3);
+        const { complete, total } = tabCompletion[group.id];
+        const isComplete = complete === total;
+
+        return (
+          <button
+            key={group.id}
+            onClick={() => onTabClick(group.id)}
+            className={cn(
+              "flex-1 rounded-lg border p-2 transition-all active:scale-[0.98]",
+              isComplete 
+                ? "border-success/50 bg-success/5" 
+                : "border-border bg-muted/30 hover:border-primary/50"
+            )}
+          >
+            {/* Photo Thumbnails Row */}
+            <div className="flex items-center gap-1 mb-1 min-h-[28px]">
+              {completedPicks.length > 0 ? (
+                <>
+                  {completedPicks.map((key) => (
+                    <img
+                      key={key}
+                      src={getWrestlerImageUrl(getEntrantDisplayName(picks[key]))}
+                      alt=""
+                      className="w-7 h-7 rounded-full border border-primary/50 object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(picks[key]));
+                      }}
+                    />
+                  ))}
+                  {complete > completedPicks.length && (
+                    <span className="text-[10px] text-muted-foreground ml-0.5">
+                      +{complete - completedPicks.length}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <div className="w-7 h-7 rounded-full border border-dashed border-muted-foreground/30 flex items-center justify-center">
+                  <Plus className="w-3 h-3 text-muted-foreground/50" />
+                </div>
+              )}
+            </div>
+            
+            {/* Label and Count */}
+            <div className="flex items-center justify-between">
+              <span className={cn(
+                "text-[10px] font-semibold uppercase",
+                isComplete ? "text-success" : "text-muted-foreground"
+              )}>
+                {group.label}
+              </span>
+              <span className={cn(
+                "text-[10px] font-bold flex items-center gap-0.5",
+                isComplete ? "text-success" : "text-muted-foreground"
+              )}>
+                {isComplete && <Check className="w-3 h-3" />}
+                {complete}/{total}
+              </span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+});
+
+// Matches Tab Component with Wrestler Photos
 const MatchesTab = memo(function MatchesTab({ 
   picks, 
   results,
@@ -323,109 +426,123 @@ const MatchesTab = memo(function MatchesTab({
 }) {
   const matchCards = CARD_CONFIG.filter(c => c.type === "match");
 
+  const MatchRow = ({ id, label, pick, result, points }: {
+    id: string;
+    label: string;
+    pick: string | undefined;
+    result: string | undefined;
+    points: number;
+  }) => {
+    const isCorrect = pick && result && pick === result;
+    const isWrong = pick && result && pick !== result;
+
+    return (
+      <button
+        onClick={() => canEdit && !result && onEditPick?.(id, pick || "")}
+        disabled={!canEdit || !!result}
+        className={cn(
+          "w-full min-h-[64px] p-3 rounded-xl border flex items-center gap-4",
+          "transition-all active:scale-[0.98]",
+          isCorrect ? "bg-success/10 border-success" :
+          isWrong ? "bg-destructive/10 border-destructive" :
+          "bg-card border-border",
+          canEdit && !result && "hover:border-primary/50"
+        )}
+      >
+        {/* Wrestler Avatar */}
+        <div className="relative flex-shrink-0">
+          {pick ? (
+            <>
+              <img
+                src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
+                alt={getEntrantDisplayName(pick)}
+                className={cn(
+                  "w-14 h-14 rounded-full object-cover border-2",
+                  isCorrect ? "border-success" :
+                  isWrong ? "border-destructive" : 
+                  "border-primary"
+                )}
+                onError={(e) => {
+                  e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(pick));
+                }}
+              />
+              {isCorrect && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+                  <Check className="w-3 h-3 text-success-foreground" />
+                </div>
+              )}
+              {isWrong && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
+                  <X className="w-3 h-3 text-destructive-foreground" />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
+              <Plus className="w-5 h-5 text-muted-foreground/50" />
+            </div>
+          )}
+        </div>
+        
+        {/* Title and name stacked */}
+        <div className="flex-1 min-w-0 text-left">
+          <div className="text-xs text-muted-foreground uppercase tracking-wide">
+            {label}
+          </div>
+          <div className={cn(
+            "font-semibold text-foreground truncate",
+            isWrong && "line-through text-destructive/80"
+          )}>
+            {pick ? getEntrantDisplayName(pick) : "Tap to select"}
+          </div>
+          {result && !isCorrect && (
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Winner: {result}
+            </div>
+          )}
+        </div>
+        
+        {/* Right side - points/edit */}
+        <div className="flex-shrink-0 flex items-center gap-2">
+          {isCorrect && (
+            <span className="text-xs font-bold text-success bg-success/20 px-2 py-1 rounded">
+              +{points}
+            </span>
+          )}
+          {canEdit && !result && (
+            <ChevronRight size={18} className="text-muted-foreground" />
+          )}
+        </div>
+      </button>
+    );
+  };
+
   return (
     <div className="space-y-3">
       <h3 className="text-lg font-bold text-foreground mb-4">Undercard Matches</h3>
-      {matchCards.map((card) => {
-        const pick = picks[card.id];
-        const result = results[card.id];
-        const isCorrect = pick && result && pick === result;
-        const isWrong = pick && result && pick !== result;
-
-        return (
-          <div
-            key={card.id}
-            className={cn(
-              "p-4 rounded-xl border",
-              isCorrect
-                ? "bg-success/10 border-success"
-                : isWrong
-                ? "bg-destructive/10 border-destructive"
-                : "bg-card border-border"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-muted-foreground mb-1">{card.title}</div>
-                <div className="font-semibold text-foreground">
-                  Your Pick: {pick || "—"}
-                  {isCorrect && <span className="ml-2 text-success">+25</span>}
-                  {isWrong && <span className="ml-2 text-destructive"></span>}
-                </div>
-                {result && !isCorrect && (
-                  <div className="text-sm text-muted-foreground mt-1">
-                    Winner: {result}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {isCorrect && <Check className="w-5 h-5 text-success" />}
-                {isWrong && <X className="w-5 h-5 text-destructive" />}
-                {canEdit && !result && (
-                  <button
-                    onClick={() => onEditPick?.(card.id, pick || "")}
-                    className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors"
-                  >
-                    <Pencil size={14} className="text-muted-foreground" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {matchCards.map((card) => (
+        <MatchRow
+          key={card.id}
+          id={card.id}
+          label={card.title}
+          pick={picks[card.id]}
+          result={results[card.id]}
+          points={SCORING.UNDERCARD_WINNER}
+        />
+      ))}
 
       {/* Rumble Winners */}
       <h3 className="text-lg font-bold text-foreground mt-6 mb-4">Rumble Winners</h3>
-      {["mens_rumble_winner", "womens_rumble_winner"].map((id) => {
-        const pick = picks[id];
-        const result = results[id];
-        const isCorrect = pick && result && pick === result;
-        const isWrong = pick && result && pick !== result;
-        const label = id.includes("mens") ? "Men's Rumble Winner" : "Women's Rumble Winner";
-
-        return (
-          <div
-            key={id}
-            className={cn(
-              "p-4 rounded-xl border",
-              isCorrect
-                ? "bg-success/10 border-success"
-                : isWrong
-                ? "bg-destructive/10 border-destructive"
-                : "bg-card border-border"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-muted-foreground mb-1">{label}</div>
-                <div className="font-semibold text-foreground">
-                  Your Pick: {pick || "—"}
-                  {isCorrect && <span className="ml-2 text-success">+50</span>}
-                  {isWrong && <span className="ml-2 text-destructive"></span>}
-                </div>
-                {result && !isCorrect && (
-                  <div className="text-sm text-muted-foreground mt-1">
-                    Winner: {result}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {isCorrect && <Check className="w-5 h-5 text-success" />}
-                {isWrong && <X className="w-5 h-5 text-destructive" />}
-                {canEdit && !result && (
-                  <button
-                    onClick={() => onEditPick?.(id, pick || "")}
-                    className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors"
-                  >
-                    <Pencil size={14} className="text-muted-foreground" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {["mens_rumble_winner", "womens_rumble_winner"].map((id) => (
+        <MatchRow
+          key={id}
+          id={id}
+          label={id.includes("mens") ? "Men's Rumble Winner" : "Women's Rumble Winner"}
+          pick={picks[id]}
+          result={results[id]}
+          points={SCORING.RUMBLE_WINNER_PICK}
+        />
+      ))}
     </div>
   );
 });
@@ -514,7 +631,7 @@ const RumbleTab = memo(function RumbleTab({
                       )}
                     </>
                   ) : (
-                    <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center animate-pulse">
                       <Plus className="w-5 h-5 text-muted-foreground/50" />
                     </div>
                   )}
@@ -525,20 +642,23 @@ const RumbleTab = memo(function RumbleTab({
                   <div className="text-xs text-muted-foreground uppercase tracking-wide">
                     {prop.title}
                   </div>
-                  <div className="font-semibold text-foreground truncate">
-                    {pick ? getEntrantDisplayName(pick) : `+${points} pts`}
+                  <div className={cn(
+                    "font-semibold truncate",
+                    pick ? "text-foreground" : "text-muted-foreground"
+                  )}>
+                    {pick ? getEntrantDisplayName(pick) : "Tap to select"}
                   </div>
                 </div>
                 
                 {/* Edit icon or points badge */}
-                <div className="flex-shrink-0">
-                  {canEdit && !result && (
-                    <Pencil size={16} className="text-muted-foreground" />
-                  )}
+                <div className="flex-shrink-0 flex items-center gap-1">
                   {isCorrect && (
                     <span className="text-xs font-bold text-success bg-success/20 px-2 py-1 rounded">
                       +{points}
                     </span>
+                  )}
+                  {canEdit && !result && (
+                    <ChevronRight size={18} className="text-muted-foreground" />
                   )}
                 </div>
               </button>
