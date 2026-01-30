@@ -1,59 +1,28 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Clock, Edit } from "lucide-react";
+import { Clock, Edit, Tv } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlayerSession } from "@/lib/session";
 import { NumberRevealAnimation } from "@/components/NumberRevealAnimation";
 import { CelebrationOverlay, CelebrationType } from "@/components/CelebrationOverlay";
-import { BottomNavBar, TabId, TabBadge } from "@/components/dashboard/BottomNavBar";
 import { NumbersSection } from "@/components/dashboard/NumbersSection";
-import { MatchesSection } from "@/components/dashboard/MatchesSection";
-import { RumblePropsSection } from "@/components/dashboard/RumblePropsSection";
 import { SinglePickEditModal } from "@/components/dashboard/SinglePickEditModal";
+import { UnifiedDashboardHeader } from "@/components/dashboard/UnifiedDashboardHeader";
+import { UnifiedTabNavigation, UnifiedTabId } from "@/components/dashboard/UnifiedTabNavigation";
+import { UnifiedMatchesTab } from "@/components/dashboard/UnifiedMatchesTab";
+import { UnifiedRumblePropsTab } from "@/components/dashboard/UnifiedRumblePropsTab";
+import { UnifiedChaosTab } from "@/components/dashboard/UnifiedChaosTab";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
-// Match ID groupings for each tab (chaos props now included in mens/womens)
-const TAB_MATCH_IDS: Record<Exclude<TabId, "numbers">, string[]> = {
-  matches: ['undercard_1', 'undercard_3', 'mens_rumble_winner', 'womens_rumble_winner'],
-  mens: [
-    'mens_first_elimination', 'mens_most_eliminations', 'mens_longest_time', 'mens_entrant_1', 'mens_entrant_30', 
-    'mens_final_four_1', 'mens_final_four_2', 'mens_final_four_3', 'mens_final_four_4', 'mens_no_show',
-    'mens_chaos_prop_1', 'mens_chaos_prop_2', 'mens_chaos_prop_3', 'mens_chaos_prop_4', 'mens_chaos_prop_5', 'mens_chaos_prop_6'
-  ],
-  womens: [
-    'womens_first_elimination', 'womens_most_eliminations', 'womens_longest_time', 'womens_entrant_1', 'womens_entrant_30', 
-    'womens_final_four_1', 'womens_final_four_2', 'womens_final_four_3', 'womens_final_four_4', 'womens_no_show',
-    'womens_chaos_prop_1', 'womens_chaos_prop_2', 'womens_chaos_prop_3', 'womens_chaos_prop_4', 'womens_chaos_prop_5', 'womens_chaos_prop_6'
-  ],
-};
-
-function calculateBadges(picks: Pick[], results: MatchResult[]): Partial<Record<TabId, TabBadge>> {
-  const badges: Partial<Record<TabId, TabBadge>> = {};
-  
-  for (const [tabId, matchIds] of Object.entries(TAB_MATCH_IDS)) {
-    let correct = 0;
-    let pending = 0;
-    
-    for (const matchId of matchIds) {
-      const pick = picks.find(p => p.match_id === matchId);
-      const result = results.find(r => r.match_id === matchId);
-      
-      if (!pick) continue;
-      if (!result) {
-        pending++;
-      } else if (pick.prediction === result.result) {
-        correct++;
-      }
-    }
-    
-    badges[tabId as TabId] = { correct, pending };
-  }
-  
-  return badges;
-}
+import { 
+  CARD_CONFIG, 
+  CHAOS_PROPS, 
+  RUMBLE_PROPS, 
+  FINAL_FOUR_SLOTS,
+} from "@/lib/constants";
 
 interface Pick {
   match_id: string;
@@ -92,7 +61,7 @@ export default function PlayerDashboard() {
   const session = getPlayerSession();
   const { mensEntrants, womensEntrants } = usePlatformConfig();
 
-  const [activeTab, setActiveTab] = useState<TabId>("matches");
+  const [activeTab, setActiveTab] = useState<UnifiedTabId>("matches");
   const [partyStatus, setPartyStatus] = useState<string>("pre_event");
   const [playerPoints, setPlayerPoints] = useState(0);
   const [playerRank, setPlayerRank] = useState<number | null>(null);
@@ -115,6 +84,66 @@ export default function PlayerDashboard() {
   // Track shown celebrations to avoid duplicates
   const shownCelebrations = useRef<Set<string>>(new Set());
 
+  // Convert picks array to record format for unified components
+  const picksRecord = useMemo(() => {
+    const record: Record<string, string> = {};
+    picks.forEach(p => {
+      record[p.match_id] = p.prediction;
+    });
+    return record;
+  }, [picks]);
+
+  // Convert results array to record format for unified components
+  const resultsRecord = useMemo(() => {
+    const record: Record<string, string> = {};
+    results.forEach(r => {
+      record[r.match_id] = r.result;
+    });
+    return record;
+  }, [results]);
+
+  // Calculate tab completion stats
+  const tabCompletion = useMemo(() => {
+    const matchCards = CARD_CONFIG.filter(c => c.type === "match");
+    const matchesComplete = matchCards.filter(c => picksRecord[c.id]).length;
+    const winnersComplete = (picksRecord["mens_rumble_winner"] ? 1 : 0) + 
+                            (picksRecord["womens_rumble_winner"] ? 1 : 0);
+    
+    // Men's: 5 props + 4 final four
+    let mensComplete = 0;
+    RUMBLE_PROPS.forEach(prop => {
+      if (picksRecord[`mens_${prop.id}`]) mensComplete++;
+    });
+    for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+      if (picksRecord[`mens_final_four_${i}`]) mensComplete++;
+    }
+    
+    // Women's: same structure
+    let womensComplete = 0;
+    RUMBLE_PROPS.forEach(prop => {
+      if (picksRecord[`womens_${prop.id}`]) womensComplete++;
+    });
+    for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+      if (picksRecord[`womens_final_four_${i}`]) womensComplete++;
+    }
+    
+    // Chaos: dynamic props count x 2 genders
+    let chaosComplete = 0;
+    const chaosTotal = CHAOS_PROPS.length * 2;
+    ["mens", "womens"].forEach(gender => {
+      CHAOS_PROPS.forEach((_, i) => {
+        if (picksRecord[`${gender}_chaos_prop_${i + 1}`]) chaosComplete++;
+      });
+    });
+    
+    return {
+      matches: { complete: matchesComplete + winnersComplete, total: 4 },
+      mens: { complete: mensComplete, total: RUMBLE_PROPS.length + FINAL_FOUR_SLOTS },
+      womens: { complete: womensComplete, total: RUMBLE_PROPS.length + FINAL_FOUR_SLOTS },
+      chaos: { complete: chaosComplete, total: chaosTotal },
+    };
+  }, [picksRecord]);
+
   // Switch to numbers tab when event goes live
   useEffect(() => {
     if (partyStatus === "live" && numbers.length > 0) {
@@ -124,7 +153,7 @@ export default function PlayerDashboard() {
 
   useEffect(() => {
     if (!code || !session?.playerId) {
-      navigate("/");
+      navigate("/my-parties");
       return;
     }
 
@@ -447,19 +476,18 @@ export default function PlayerDashboard() {
     }
   };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "numbers":
-        return <NumbersSection mensNumbers={mensNumbers} womensNumbers={womensNumbers} />;
-      case "matches":
-        return <MatchesSection picks={picks} results={results} onEditPick={handleEditPick} canEdit={canEditPicks} />;
-      case "mens":
-        return <RumblePropsSection picks={picks} results={results} gender="mens" onEditPick={handleEditPick} canEdit={canEditPicks} />;
-      case "womens":
-        return <RumblePropsSection picks={picks} results={results} gender="womens" onEditPick={handleEditPick} canEdit={canEditPicks} />;
-      default:
-        return null;
-    }
+  const handleBack = () => {
+    navigate("/my-parties");
+  };
+
+  const handleOpenTv = () => {
+    window.open(`/tv/${code}`, "_blank");
+  };
+
+  // Calculate numbers completion for tab badge
+  const numbersCompletion = {
+    complete: mensNumbers.length + womensNumbers.length,
+    total: 6, // typical number assignment
   };
 
   return (
@@ -485,44 +513,30 @@ export default function PlayerDashboard() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-screen pb-24">
-        {/* Header with persistent points - Enhanced with gradient and rank badges */}
-        <div className="sticky top-0 z-20 header-gradient backdrop-blur border-b border-border/50 ring-rope-texture">
-          <div className="flex items-center justify-between p-4 max-w-lg mx-auto">
-            <button
-              onClick={() => navigate("/")}
-              className="text-muted-foreground hover:text-foreground transition-colors p-2 -m-1 rounded-lg hover:bg-muted/50"
-            >
-              <ArrowLeft size={22} />
-            </button>
-            <div className="text-center flex-1 min-w-0 px-3">
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">Group {code}</div>
-              <div className="font-bold truncate text-[15px]">{session?.displayName}</div>
-            </div>
-            <div className="text-right">
-              <motion.div 
-                key={playerPoints}
-                initial={{ scale: 1.2 }}
-                animate={{ scale: 1 }}
-                className="text-2xl font-black text-gradient-gold"
-              >
-                {playerPoints}
-              </motion.div>
-              <div className={cn(
-                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5",
-                playerRank === 1 && "rank-badge-1 text-primary-foreground",
-                playerRank === 2 && "rank-badge-2 text-primary-foreground",
-                playerRank === 3 && "rank-badge-3 text-white",
-                playerRank && playerRank > 3 && "bg-muted text-muted-foreground"
-              )}>
-                #{playerRank} of {totalPlayers}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-background text-foreground flex flex-col overflow-hidden">
+        {/* Unified Header */}
+        <UnifiedDashboardHeader
+          mode="party"
+          displayName={session?.displayName || "Player"}
+          score={playerPoints}
+          rank={playerRank}
+          totalPlayers={totalPlayers}
+          partyCode={code}
+          onBack={handleBack}
+          onOpenTv={handleOpenTv}
+        />
 
-        {/* Main Content Area */}
-        <div className="max-w-lg mx-auto p-4">
+        {/* Tab Navigation */}
+        <UnifiedTabNavigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabCompletion={tabCompletion}
+          showNumbers={showNumbers}
+          numbersCompletion={numbersCompletion}
+        />
+
+        {/* Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 pb-32">
           {/* Status Banner (pre-event only) */}
           {partyStatus === "pre_event" && (
             <motion.div
@@ -550,18 +564,68 @@ export default function PlayerDashboard() {
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.15 }}
             >
-              {renderTabContent()}
+              {activeTab === "numbers" && (
+                <NumbersSection mensNumbers={mensNumbers} womensNumbers={womensNumbers} />
+              )}
+              {activeTab === "matches" && (
+                <UnifiedMatchesTab 
+                  picks={picksRecord} 
+                  results={resultsRecord} 
+                  onEditPick={handleEditPick}
+                  canEdit={canEditPicks}
+                />
+              )}
+              {activeTab === "mens" && (
+                <UnifiedRumblePropsTab 
+                  gender="mens" 
+                  picks={picksRecord} 
+                  results={resultsRecord} 
+                  onEditPick={handleEditPick}
+                  canEdit={canEditPicks}
+                />
+              )}
+              {activeTab === "womens" && (
+                <UnifiedRumblePropsTab 
+                  gender="womens" 
+                  picks={picksRecord} 
+                  results={resultsRecord} 
+                  onEditPick={handleEditPick}
+                  canEdit={canEditPicks}
+                />
+              )}
+              {activeTab === "chaos" && (
+                <UnifiedChaosTab 
+                  picks={picksRecord} 
+                  results={resultsRecord} 
+                  onEditPick={handleEditPick}
+                  canEdit={canEditPicks}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
 
-        {/* Bottom Navigation */}
-        <BottomNavBar 
-          activeTab={activeTab} 
-          onTabChange={setActiveTab}
-          showNumbers={showNumbers}
-          badges={calculateBadges(picks, results)}
-        />
+        {/* Fixed Bottom Actions */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
+          <div className="max-w-md mx-auto flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={handleOpenTv}
+            >
+              <Tv className="w-4 h-4 mr-2" />
+              TV Mode
+            </Button>
+            {canEditPicks && (
+              <Link to={`/player/picks/${code}`} className="flex-1">
+                <Button variant="hero" className="w-full">
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Picks
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Single Pick Edit Modal */}

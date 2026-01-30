@@ -131,7 +131,11 @@ export default function SoloDashboard() {
   const handleLogout = async () => {
     logout();
     await signOut();
-    navigate("/");
+    navigate("/my-parties");
+  };
+
+  const handleBack = () => {
+    navigate("/my-parties");
   };
 
   const handleOpenTv = () => {
@@ -158,6 +162,7 @@ export default function SoloDashboard() {
         isSynced={true}
         onLogout={handleLogout}
         onOpenTv={handleOpenTv}
+        onBack={handleBack}
       />
 
       {/* Tab Navigation */}

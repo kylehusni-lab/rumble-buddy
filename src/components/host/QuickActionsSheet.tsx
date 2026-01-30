@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Tv, ClipboardList, Hash, LogOut, Trophy } from "lucide-react";
+import { Tv, ClipboardList, Hash, LogOut, Trophy, LayoutDashboard } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -62,6 +62,11 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
     onOpenChange(false);
   };
 
+  const handleGoToHub = () => {
+    onOpenChange(false);
+    navigate("/my-parties");
+  };
+
   const handleSignOut = () => {
     localStorage.removeItem(`party_${code}_pin`);
     clearPlayerSession();
@@ -70,6 +75,12 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
   };
 
   const actions = [
+    {
+      icon: LayoutDashboard,
+      title: "My Dashboard",
+      subtitle: "Back to all parties",
+      onClick: handleGoToHub,
+    },
     {
       icon: Trophy,
       title: "My Picks & Stats",
