@@ -128,6 +128,11 @@ function formatPropName(propId: string): string {
 /**
  * Count total completed picks across all cards
  */
+import { CHAOS_PROPS, RUMBLE_PROPS, FINAL_FOUR_SLOTS } from './constants';
+
+/**
+ * Count total completed picks across all cards
+ */
 export function countCompletedPicks(picks: Record<string, any>, cardConfig: readonly any[]): { completed: number; total: number } {
   let completed = 0;
   let total = 0;
@@ -137,19 +142,19 @@ export function countCompletedPicks(picks: Record<string, any>, cardConfig: read
       total++;
       if (picks[card.id]) completed++;
     } else if (card.type === 'chaos-props') {
-      // 6 chaos props per gender
-      total += 6;
-      for (let i = 1; i <= 6; i++) {
+      // Use actual CHAOS_PROPS length (dynamic)
+      const chaosCount = CHAOS_PROPS.length;
+      total += chaosCount;
+      for (let i = 1; i <= chaosCount; i++) {
         if (picks[`${card.gender}_chaos_prop_${i}`]) completed++;
       }
     } else if (card.type === 'rumble-props') {
-      // 5 wrestler props + 4 final four = 9
-      total += 9;
-      const wrestlerPropIds = ['first_elimination', 'most_eliminations', 'longest_time', 'entrant_1', 'entrant_30'];
-      wrestlerPropIds.forEach((propId) => {
-        if (picks[`${card.gender}_${propId}`]) completed++;
+      // Use actual RUMBLE_PROPS length + FINAL_FOUR_SLOTS
+      total += RUMBLE_PROPS.length + FINAL_FOUR_SLOTS;
+      RUMBLE_PROPS.forEach((prop) => {
+        if (picks[`${card.gender}_${prop.id}`]) completed++;
       });
-      for (let i = 1; i <= 4; i++) {
+      for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
         if (picks[`${card.gender}_final_four_${i}`]) completed++;
       }
     }

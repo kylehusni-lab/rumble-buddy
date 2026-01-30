@@ -70,8 +70,9 @@ export default function SoloDashboard() {
       if (picks[`womens_final_four_${i}`]) womensComplete++;
     }
     
-    // Chaos: 6 props x 2 genders
+    // Chaos: dynamic props count x 2 genders
     let chaosComplete = 0;
+    const chaosTotal = CHAOS_PROPS.length * 2;
     ["mens", "womens"].forEach(gender => {
       CHAOS_PROPS.forEach((_, i) => {
         if (picks[`${gender}_chaos_prop_${i + 1}`]) chaosComplete++;
@@ -79,10 +80,10 @@ export default function SoloDashboard() {
     });
     
     return {
-      matches: { complete: matchesComplete + winnersComplete, total: 5 },
-      mens: { complete: mensComplete, total: 9 },
-      womens: { complete: womensComplete, total: 9 },
-      chaos: { complete: chaosComplete, total: 12 },
+      matches: { complete: matchesComplete + winnersComplete, total: 4 }, // 2 undercard + 2 rumble winners
+      mens: { complete: mensComplete, total: RUMBLE_PROPS.length + FINAL_FOUR_SLOTS },
+      womens: { complete: womensComplete, total: RUMBLE_PROPS.length + FINAL_FOUR_SLOTS },
+      chaos: { complete: chaosComplete, total: chaosTotal },
     };
   }, [picks]);
 

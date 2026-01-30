@@ -108,7 +108,7 @@ export default function SoloPicks() {
           const matchId = `${gender}_chaos_prop_${index + 1}`;
           return picks[matchId] !== null && picks[matchId] !== undefined;
         }).length;
-        return propCount === 6;
+        return propCount === CHAOS_PROPS.length;
       }
       if (card.type === "rumble-props") {
         const gender = card.gender;
