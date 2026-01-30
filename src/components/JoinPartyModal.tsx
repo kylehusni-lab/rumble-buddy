@@ -11,7 +11,7 @@ interface JoinPartyModalProps {
 }
 
 export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
-  const [code, setCode] = useState(["", "", "", ""]);
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -19,21 +19,24 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
 
   useEffect(() => {
     if (isOpen) {
-      setCode(["", "", "", ""]);
+      setCode(["", "", "", "", "", ""]);
       setError("");
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     }
   }, [isOpen]);
 
   const handleInputChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
+    // Allow alphanumeric characters only
+    if (!/^[A-Za-z0-9]*$/.test(value)) return;
     
     const newCode = [...code];
-    newCode[index] = value.slice(-1);
+    // Uppercase and take only the last character
+    newCode[index] = value.slice(-1).toUpperCase();
     setCode(newCode);
     setError("");
 
-    if (value && index < 3) {
+    // Auto-focus next input (6 boxes, so index < 5)
+    if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -49,19 +52,24 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    // Filter to alphanumeric only and take first 6 characters
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/[^A-Za-z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 6);
     const newCode = pasted.split("");
-    while (newCode.length < 4) newCode.push("");
+    while (newCode.length < 6) newCode.push("");
     setCode(newCode);
-    if (newCode[3]) {
-      inputRefs.current[3]?.focus();
+    if (newCode[5]) {
+      inputRefs.current[5]?.focus();
     }
   };
 
   const handleJoin = async () => {
     const partyCode = code.join("");
-    if (partyCode.length !== 4) {
-      setError("Please enter a 4-digit code");
+    if (partyCode.length !== 6) {
+      setError("Please enter a 6-character code");
       return;
     }
 
@@ -114,9 +122,9 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed inset-x-0 top-0 z-50 flex items-start justify-center pt-16 px-4 pb-8 overflow-y-auto max-h-screen"
           >
-            <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl">
+            <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-2xl w-full max-w-sm">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Enter Group Code</h2>
+                <h2 className="text-xl sm:text-2xl font-bold">Enter Group Code</h2>
                 <button
                   onClick={onClose}
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -125,18 +133,18 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
                 </button>
               </div>
 
-              <div className="flex justify-center gap-3 mb-6" onPaste={handlePaste}>
-                {code.map((digit, index) => (
+              <div className="flex justify-center gap-1.5 sm:gap-2 mb-6" onPaste={handlePaste}>
+                {code.map((char, index) => (
                   <input
                     key={index}
                     ref={(el) => (inputRefs.current[index] = el)}
                     type="text"
-                    inputMode="numeric"
+                    inputMode="text"
                     maxLength={1}
-                    value={digit}
+                    value={char}
                     onChange={(e) => handleInputChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
-                    className="w-16 h-20 text-center text-3xl font-bold bg-muted border-2 border-border rounded-xl focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    className="w-11 h-14 sm:w-12 sm:h-16 text-center text-xl sm:text-2xl font-bold bg-muted border-2 border-border rounded-lg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all uppercase"
                   />
                 ))}
               </div>
@@ -145,7 +153,7 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
                 <motion.p
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-destructive text-center mb-4"
+                  className="text-destructive text-center mb-4 text-sm"
                 >
                   {error}
                 </motion.p>
@@ -166,7 +174,7 @@ export function JoinPartyModal({ isOpen, onClose }: JoinPartyModalProps) {
                   className="flex-1"
                   disabled={isLoading || code.some(d => !d)}
                 >
-                  {isLoading ? "Joining..." : "Join →"}
+                  {isLoading ? "Joining..." : "Join"}
                 </Button>
               </div>
             </div>
