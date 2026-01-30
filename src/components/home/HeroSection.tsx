@@ -62,15 +62,34 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
   return (
     <section className="relative min-h-[calc(100vh-64px)] flex items-center pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-        <div className="grid lg:grid-cols-[1fr_380px] gap-12 lg:gap-20 items-center">
-          {/* Content Left */}
+        <div className="grid lg:grid-cols-[1fr_380px] gap-8 lg:gap-20 items-center">
+          {/* Content */}
           <motion.div 
-            className="space-y-8 order-2 lg:order-1"
+            className="space-y-6 lg:space-y-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            {/* Event Banner - stacks on mobile */}
+            {/* Logo + Title together on mobile, title only on desktop */}
+            <div className="flex flex-col items-center lg:items-start gap-4">
+              {/* Ring icon - visible on mobile, hidden on desktop (shown in right column) */}
+              <motion.div 
+                className="lg:hidden relative"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                <div className="absolute inset-0 bg-gold/10 rounded-full blur-3xl scale-150" />
+                <RingIcon size={140} className="relative z-10 sm:w-[180px] sm:h-[180px]" />
+              </motion.div>
+              
+              {/* Title */}
+              <div className="text-center lg:text-left">
+                <TypographyLockup size="lg" showTagline={true} layout="stacked" />
+              </div>
+            </div>
+
+            {/* Event Banner with Countdown */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 bg-ott-surface-elevated border border-border rounded-lg px-4 py-3">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-ott-accent">
@@ -80,30 +99,25 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
               </div>
               {timeRemaining && (
                 <div className="flex items-center gap-1 sm:gap-2 sm:ml-2 sm:pl-3 sm:border-l border-border">
-                  <CountdownUnit value={timeRemaining.days} label="d" />
+                  <CountdownUnit value={timeRemaining.days} label="days" />
                   <span className="text-muted-foreground text-sm">:</span>
-                  <CountdownUnit value={timeRemaining.hours} label="h" />
+                  <CountdownUnit value={timeRemaining.hours} label="hrs" />
                   <span className="text-muted-foreground text-sm">:</span>
-                  <CountdownUnit value={timeRemaining.minutes} label="m" />
+                  <CountdownUnit value={timeRemaining.minutes} label="min" />
                   <span className="text-muted-foreground text-sm">:</span>
-                  <CountdownUnit value={timeRemaining.seconds} label="s" />
+                  <CountdownUnit value={timeRemaining.seconds} label="sec" />
                 </div>
               )}
             </div>
 
-            {/* Title */}
-            <div className="space-y-2">
-              <TypographyLockup size="lg" showTagline={true} layout="stacked" />
-            </div>
-
             {/* Tagline */}
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-md">
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-md text-center lg:text-left">
               Your tag team partner for watch party night. Make your picks, track entries, 
               and compete with friends in real-time.
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row">
+            <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:justify-center lg:justify-start">
               {isLive ? (
                 <Button 
                   onClick={() => navigate("/join")}
@@ -137,24 +151,23 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
             {/* Demo Link */}
             <button 
               onClick={() => navigate("/demo")}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 mx-auto lg:mx-0"
             >
               Try the demo
               <ArrowRight className="w-3 h-3" />
             </button>
           </motion.div>
 
-          {/* Logo Right */}
+          {/* Logo Right - desktop only */}
           <motion.div 
-            className="flex justify-center order-1 lg:order-2"
+            className="hidden lg:flex justify-center"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <div className="relative">
-              {/* Glow effect */}
               <div className="absolute inset-0 bg-gold/10 rounded-full blur-3xl scale-150" />
-              <RingIcon size={180} className="relative z-10 sm:w-[240px] sm:h-[240px] lg:w-[300px] lg:h-[300px]" />
+              <RingIcon size={300} className="relative z-10" />
             </div>
           </motion.div>
         </div>
