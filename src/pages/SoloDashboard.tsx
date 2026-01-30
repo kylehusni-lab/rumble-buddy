@@ -139,7 +139,7 @@ export default function SoloDashboard() {
   };
 
   const handleOpenTv = () => {
-    navigate("/solo/tv");
+    window.open("/solo/tv", "_blank");
   };
 
   if (authLoading || soloLoading || configLoading) {
