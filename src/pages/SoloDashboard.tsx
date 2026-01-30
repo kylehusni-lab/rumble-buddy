@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Trophy, Edit3, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check, X } from "lucide-react";
+import { Trophy, Edit3, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check, X, Users, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { SoloScoringModal } from "@/components/solo/SoloScoringModal";
@@ -17,8 +17,11 @@ import {
   CARD_CONFIG, 
   CHAOS_PROPS, 
   RUMBLE_PROPS, 
-  FINAL_FOUR_SLOTS 
+  FINAL_FOUR_SLOTS,
+  SCORING,
 } from "@/lib/constants";
+import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import { getEntrantDisplayName } from "@/lib/entrant-utils";
 
 type TabType = "matches" | "mens" | "womens" | "chaos";
 
@@ -388,25 +391,70 @@ const RumbleTab = memo(function RumbleTab({
         );
       })}
 
-      {/* Final Four */}
-      <h4 className="text-md font-bold text-foreground mt-6 mb-3">Final Four</h4>
-      <div className="grid grid-cols-2 gap-2">
-        {Array.from({ length: FINAL_FOUR_SLOTS }).map((_, i) => {
-          const matchId = `${gender}_final_four_${i + 1}`;
-          const pick = picks[matchId];
+      {/* Final Four - styled to match pick flow card */}
+      <div className="mt-6 p-4 rounded-xl border border-primary/50 bg-primary/5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            <span className="font-bold text-foreground">Final Four</span>
+          </div>
+          <span className="text-xs text-primary">+{SCORING.FINAL_FOUR_PICK} pts each</span>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {Array.from({ length: FINAL_FOUR_SLOTS }).map((_, i) => {
+            const matchId = `${gender}_final_four_${i + 1}`;
+            const pick = picks[matchId];
+            const result = results[matchId];
+            
+            // Check if this pick is correct (any of the Final Four results)
+            const finalFourResults = Array.from({ length: 4 }).map((_, j) => 
+              results[`${gender}_final_four_${j + 1}`]
+            ).filter(Boolean);
+            const isCorrect = pick && finalFourResults.includes(pick);
+            const isWrong = pick && finalFourResults.length > 0 && !finalFourResults.includes(pick);
 
-          return (
-            <div
-              key={matchId}
-              className="p-3 rounded-lg bg-card border border-border"
-            >
-              <div className="text-xs text-muted-foreground">#{i + 1}</div>
-              <div className="font-medium text-sm text-foreground truncate">
-                {pick || "—"}
+            return pick ? (
+              <div key={matchId} className="relative">
+                <img
+                  src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
+                  alt={getEntrantDisplayName(pick)}
+                  className={cn(
+                    "w-12 h-12 rounded-full object-cover border-2",
+                    isCorrect 
+                      ? "border-success" 
+                      : isWrong 
+                        ? "border-destructive" 
+                        : "border-primary"
+                  )}
+                  onError={(e) => {
+                    e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(pick));
+                  }}
+                />
+                {isCorrect && (
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-success flex items-center justify-center">
+                    <Check className="w-3 h-3 text-success-foreground" />
+                  </div>
+                )}
+                {isWrong && (
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-destructive flex items-center justify-center">
+                    <X className="w-3 h-3 text-destructive-foreground" />
+                  </div>
+                )}
               </div>
-            </div>
-          );
-        })}
+            ) : (
+              <div 
+                key={matchId} 
+                className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center"
+              >
+                <Plus className="w-4 h-4 text-muted-foreground/50" />
+              </div>
+            );
+          })}
+          <span className="ml-2 text-xs text-muted-foreground">
+            {Array.from({ length: FINAL_FOUR_SLOTS }).filter((_, i) => picks[`${gender}_final_four_${i + 1}`]).length}/4 picked
+          </span>
+        </div>
       </div>
     </div>
   );
