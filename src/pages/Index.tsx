@@ -183,6 +183,7 @@ export default function Index() {
         host_user_id: userId,
         status: "pre_event",
         host_pin: "0000",
+        is_demo: true,
       });
 
       if (partyError) throw partyError;
