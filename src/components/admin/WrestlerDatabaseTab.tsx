@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { Plus, Upload, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +31,17 @@ function WrestlerDatabaseContent() {
     uploadImage,
     removeImage,
   } = useWrestlerAdmin(true);
+
+  // Local search state for debouncing
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+
+  // Debounce search updates (150ms delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(localSearch);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [localSearch, setSearchQuery]);
 
   // Modal states
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -92,8 +102,8 @@ function WrestlerDatabaseContent() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search wrestlers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
             className="pl-9"
           />
         </div>
@@ -137,7 +147,7 @@ function WrestlerDatabaseContent() {
         ) : (
           <span>
             {wrestlers.length} wrestler{wrestlers.length !== 1 ? 's' : ''}
-            {searchQuery && ' found'}
+            {localSearch && ' found'}
           </span>
         )}
       </div>
@@ -153,23 +163,19 @@ function WrestlerDatabaseContent() {
           ))}
         </div>
       ) : wrestlers.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center py-16"
-        >
-          {searchQuery ? (
+        <div className="text-center py-16">
+          {localSearch ? (
             <>
               <p className="text-muted-foreground mb-4">
-                No wrestlers match "{searchQuery}"
+                No wrestlers match "{localSearch}"
               </p>
-              <Button variant="outline" onClick={() => setSearchQuery('')}>
+              <Button variant="outline" onClick={() => setLocalSearch('')}>
                 Clear Search
               </Button>
             </>
           ) : (
             <>
-              <div className="text-4xl mb-4">📋</div>
+              <div className="text-4xl mb-4">...</div>
               <p className="text-muted-foreground mb-4">No wrestlers in database</p>
               <p className="text-sm text-muted-foreground mb-6">
                 Add your first wrestler to get started
@@ -180,13 +186,9 @@ function WrestlerDatabaseContent() {
               </Button>
             </>
           )}
-        </motion.div>
+        </div>
       ) : (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-        >
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {wrestlers.map((wrestler) => (
             <WrestlerCard
               key={wrestler.id}
@@ -195,7 +197,7 @@ function WrestlerDatabaseContent() {
               onDelete={handleDelete}
             />
           ))}
-        </motion.div>
+        </div>
       )}
 
       {/* Modals */}
