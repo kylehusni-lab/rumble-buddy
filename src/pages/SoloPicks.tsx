@@ -20,6 +20,7 @@ import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { countCompletedPicks } from "@/lib/pick-validation";
 import { getSoloPicks, saveSoloPicks } from "@/lib/solo-storage";
 import { useSoloCloud } from "@/hooks/useSoloCloud";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -34,7 +35,8 @@ import {
 
 export default function SoloPicks() {
   const navigate = useNavigate();
-  const { isLoading, isAuthenticated, player, savePicksToCloud } = useSoloCloud();
+  const { user, isLoading: authLoading } = useAuth();
+  const { isLoading: soloLoading, isAuthenticated, player, savePicksToCloud } = useSoloCloud();
   const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
   
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -91,10 +93,16 @@ export default function SoloPicks() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!authLoading && !user) {
+      navigate("/sign-in");
+      return;
+    }
+    
+    if (!soloLoading && user && !isAuthenticated) {
+      // User is logged in but no solo player record - redirect to setup
       navigate("/solo/setup");
     }
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [authLoading, soloLoading, user, isAuthenticated, navigate]);
 
   const currentCard = CARD_CONFIG[currentCardIndex];
   const isLastCard = currentCardIndex === TOTAL_CARDS - 1;
@@ -260,7 +268,7 @@ export default function SoloPicks() {
     return values;
   };
 
-  if (isLoading || configLoading || !isAuthenticated) {
+  if (authLoading || soloLoading || configLoading || !user || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

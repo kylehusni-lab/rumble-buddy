@@ -606,6 +606,15 @@ export type Database = {
         }[]
       }
       admin_remove_player: { Args: { p_player_id: string }; Returns: boolean }
+      get_or_create_solo_player: {
+        Args: { p_display_name?: string }
+        Returns: {
+          created_at: string
+          display_name: string
+          id: string
+          is_new: boolean
+        }[]
+      }
       get_tv_snapshot: { Args: { p_party_code: string }; Returns: Json }
       has_role: {
         Args: {
