@@ -13,13 +13,13 @@ export const UNDERCARD_MATCHES = [
 ] as const;
 
 export const CHAOS_PROPS = [
-  { id: 'prop_1', title: 'Kofi/Logan Save', question: 'Will someone use a prop to stay in?', shortName: 'Kofi/Logan Save' },
-  { id: 'prop_2', title: 'Bushwhacker Exit', question: 'Will anyone be eliminated in under 10 seconds?', shortName: 'Bushwhacker Exit' },
-  { id: 'prop_3', title: 'Friendly Fire', question: 'Will tag team partners eliminate each other?', shortName: 'Friendly Fire' },
-  { id: 'prop_4', title: 'First Blood', question: 'Will we see blood before entrant #15?', shortName: 'First Blood' },
-  { id: 'prop_5', title: 'Mystery Entrant', question: 'Will there be an unannounced debut/return?', shortName: 'Mystery Entrant' },
-  { id: 'prop_6', title: 'The Weapon', question: 'Will someone use a chair/kendo stick/weapon?', shortName: 'The Weapon' },
-  { id: 'prop_7', title: 'No-Show', question: 'Will anyone not make it to the ring?', shortName: 'No-Show' },
+  { id: 'prop_1', title: 'The Floor is Lava', question: 'A wrestler uses a stunt (chair, handstand, etc.) to keep their feet from touching.', shortName: 'Floor is Lava' },
+  { id: 'prop_2', title: 'The Revolving Door', question: 'A wrestler is thrown out in under 10 seconds of entering.', shortName: 'Revolving Door' },
+  { id: 'prop_3', title: 'Betrayal!', question: 'Tag team partners or allies eliminate each other.', shortName: 'Betrayal!' },
+  { id: 'prop_4', title: 'Over/Under: Surprises', question: 'Will there be more than 2.5 unannounced/legend entrants?', shortName: 'O/U Surprises' },
+  { id: 'prop_5', title: 'The Giant Slayer', question: 'It takes 3+ wrestlers working together to eliminate one person.', shortName: 'Giant Slayer' },
+  { id: 'prop_6', title: 'Brought a Toy', question: 'A chair, kendo stick, or other weapon is brought into the ring.', shortName: 'Brought a Toy' },
+  { id: 'prop_7', title: 'Left on Read', question: 'Music hits but no one appears, or attacked before reaching the ring.', shortName: 'Left on Read' },
 ] as const;
 
 export const MATCH_IDS = {
@@ -34,6 +34,7 @@ export const MATCH_IDS = {
   MENS_PROP_4: 'mens_chaos_prop_4',
   MENS_PROP_5: 'mens_chaos_prop_5',
   MENS_PROP_6: 'mens_chaos_prop_6',
+  MENS_PROP_7: 'mens_chaos_prop_7',
   // Women's Chaos Props
   WOMENS_PROP_1: 'womens_chaos_prop_1',
   WOMENS_PROP_2: 'womens_chaos_prop_2',
@@ -41,6 +42,7 @@ export const MATCH_IDS = {
   WOMENS_PROP_4: 'womens_chaos_prop_4',
   WOMENS_PROP_5: 'womens_chaos_prop_5',
   WOMENS_PROP_6: 'womens_chaos_prop_6',
+  WOMENS_PROP_7: 'womens_chaos_prop_7',
   // Men's Rumble Props
   MENS_FIRST_ELIMINATION: 'mens_first_elimination',
   MENS_MOST_ELIMINATIONS: 'mens_most_eliminations',

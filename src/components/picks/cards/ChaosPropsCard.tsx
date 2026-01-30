@@ -36,25 +36,27 @@ export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProp
 
       {/* Props List (Scrollable) */}
       <div className="flex-1 min-h-0 -mx-2 px-2 overflow-y-auto">
-        <div className="space-y-4 pb-4">
+        <div className="space-y-3 pb-4">
           {CHAOS_PROPS.map((prop) => {
             const matchId = `${gender}_chaos_${prop.id}`;
             const value = values[matchId];
             
             return (
-              <div key={prop.id} className="space-y-2">
-                <div>
-                  <div className="font-bold text-sm text-foreground">{prop.title}</div>
-                  <div className="text-xs text-muted-foreground">{prop.question}</div>
+              <div key={prop.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                {/* Prop Info - Left side */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm text-foreground leading-tight">{prop.title}</div>
+                  <div className="text-xs text-muted-foreground leading-tight line-clamp-2">{prop.question}</div>
                 </div>
 
-                <div className="flex gap-2">
+                {/* YES/NO Buttons - Right side, compact */}
+                <div className="flex gap-1.5 flex-shrink-0">
                   <motion.button
                     onClick={() => handlePropChange(prop.id, "YES")}
                     disabled={disabled}
                     className={cn(
-                      "flex-1 py-3 px-4 rounded-lg border-2 font-semibold transition-all text-sm",
-                      "flex items-center justify-center gap-2",
+                      "py-2 px-3 rounded-lg border-2 font-semibold transition-all text-xs",
+                      "flex items-center justify-center gap-1",
                       value === "YES"
                         ? "border-primary bg-primary/20 text-primary"
                         : "border-border text-muted-foreground hover:border-muted-foreground",
@@ -70,8 +72,8 @@ export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProp
                     onClick={() => handlePropChange(prop.id, "NO")}
                     disabled={disabled}
                     className={cn(
-                      "flex-1 py-3 px-4 rounded-lg border-2 font-semibold transition-all text-sm",
-                      "flex items-center justify-center gap-2",
+                      "py-2 px-3 rounded-lg border-2 font-semibold transition-all text-xs",
+                      "flex items-center justify-center gap-1",
                       value === "NO"
                         ? "border-primary bg-primary/20 text-primary"
                         : "border-border text-muted-foreground hover:border-muted-foreground",
@@ -83,9 +85,9 @@ export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProp
                     NO
                   </motion.button>
                 </div>
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
