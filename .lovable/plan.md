@@ -1,232 +1,323 @@
 
 
-# Combined Plan: Demo Mode Fixes + Solo Mode Rumble Engine
+# Enhanced Plan: Solo Mode Inline Editing + Mobile UI Optimization
 
 ## Overview
 
-This plan combines two sets of changes:
-1. **Demo Mode Fixes**: Winner state UI, No-Show prop relocation, Final Four scoring race condition
-2. **Solo Mode Enhancement**: Add full rumble tracking engine to Solo scoring (same as Party mode)
+This plan adds two improvements to Solo Mode:
+1. **Single Pick Editing**: Add inline pencil icons to edit individual picks without navigating to the full picks flow (like Group mode)
+2. **Mobile UI Optimization**: Redesign the Rumble Props view for mobile with larger avatars and list-style layout
 
 ---
 
-## Part 1: Winner State UI
+## Part 1: Add Single Pick Edit to Solo Dashboard
 
-### Problem
-When the last wrestler remains, the timer continues running and the "Eliminate" button is still visible.
+### Approach
+Reuse the existing `SinglePickEditModal` component and add edit icons to Solo Dashboard tabs.
 
-### Solution
+### File: `src/pages/SoloDashboard.tsx`
 
-**File: `src/components/host/ActiveWrestlerCard.tsx`**
-
-Add `isWinner?: boolean` prop:
-- When true, freeze timer display at final duration
-- Replace "Eliminate" button with trophy icon and "WINNER" label
-- Add golden styling/glow effect
-
+**Step 1: Add imports and state**
 ```typescript
-interface ActiveWrestlerCardProps {
-  // ... existing props
-  isWinner?: boolean;
-}
+import { SinglePickEditModal } from "@/components/dashboard/SinglePickEditModal";
+import { Pencil } from "lucide-react";
 
-// In render:
-{isWinner ? (
-  <div className="flex items-center gap-2 text-primary">
-    <Trophy size={16} />
-    <span className="font-bold">WINNER</span>
-  </div>
-) : (
-  <Button variant="destructive" onClick={onEliminate} ... />
-)}
+// Add edit modal state
+const [editModalOpen, setEditModalOpen] = useState(false);
+const [editingMatchId, setEditingMatchId] = useState("");
+const [editingCurrentPick, setEditingCurrentPick] = useState("");
 ```
 
-**File: `src/pages/HostControl.tsx`**
-
-Pass winner status to ActiveWrestlerCard:
+**Step 2: Add handler functions**
 ```typescript
-const mensWinner = getMatchResult("mens_rumble_winner");
-const womensWinner = getMatchResult("womens_rumble_winner");
+const handleEditPick = (matchId: string, currentPick: string) => {
+  setEditingMatchId(matchId);
+  setEditingCurrentPick(currentPick);
+  setEditModalOpen(true);
+};
 
-// In active wrestler rendering:
-<ActiveWrestlerCard
-  isWinner={mensWinner === wrestler.wrestler_name}
-  ...
+const handleSavePick = async (matchId: string, newValue: string) => {
+  const newPicks = { ...picks, [matchId]: newValue };
+  saveSoloPicks(newPicks);
+  setPicks(newPicks);
+  savePicksToCloud(newPicks);
+  toast.success("Pick updated!");
+};
+
+// Determine if editing is allowed (before scoring starts)
+const hasResults = Object.keys(results).length > 0;
+const canEditPicks = !hasResults;
+```
+
+**Step 3: Pass handlers to tabs**
+```typescript
+{activeTab === "matches" && (
+  <MatchesTab 
+    picks={picks} 
+    results={results} 
+    onEditPick={handleEditPick}
+    canEdit={canEditPicks}
+  />
+)}
+{activeTab === "mens" && (
+  <RumbleTab 
+    gender="mens" 
+    picks={picks} 
+    results={results} 
+    onEditPick={handleEditPick}
+    canEdit={canEditPicks}
+  />
+)}
+// ... same for womens and chaos tabs
+```
+
+**Step 4: Render modal**
+```typescript
+<SinglePickEditModal
+  isOpen={editModalOpen}
+  onClose={() => setEditModalOpen(false)}
+  matchId={editingMatchId}
+  currentPick={editingCurrentPick}
+  onSave={handleSavePick}
+  mensEntrants={mensEntrants}
+  womensEntrants={womensEntrants}
 />
 ```
 
-**File: `src/components/tv/TvNumberCell.tsx`**
-
-Add winner flair to grid cell:
-- Add `isWinner?: boolean` prop
-- Show crown icon overlay when true
-- Add golden glow animation
-
 ---
 
-## Part 2: Move No-Show to Chaos Props
+## Part 2: Mobile UI Optimization for Rumble Props
 
-### Problem
-"No-Show" is currently in Rumble Props but it's a YES/NO question like other Chaos Props.
+### The Changes
 
-### Solution
+| Aspect | Before | After (Mobile) |
+|--------|--------|----------------|
+| Layout | 2-column grid | Single-column vertical stack |
+| Avatar Size | 40px (w-10 h-10) | 56px (w-14 h-14) |
+| Row Style | Card grid | List items with left avatar |
+| Row Height | ~60px | 64px+ for better tap targets |
+| Tap Area | Small card | Full row is tappable |
 
-**File: `src/lib/constants.ts`**
+### File: `src/pages/SoloDashboard.tsx` - RumbleTab Component
 
-Add No-Show as prop_7 in CHAOS_PROPS:
+**Use `useIsMobile()` hook for responsive layout:**
 ```typescript
-export const CHAOS_PROPS = [
-  { id: 'prop_1', title: 'Kofi/Logan Save', ... },
-  { id: 'prop_2', title: 'Bushwhacker Exit', ... },
-  { id: 'prop_3', title: 'Friendly Fire', ... },
-  { id: 'prop_4', title: 'First Blood', ... },
-  { id: 'prop_5', title: 'Mystery Entrant', ... },
-  { id: 'prop_6', title: 'The Weapon', ... },
-  { id: 'prop_7', title: 'No-Show', question: 'Will anyone not make it to the ring?', shortName: 'No-Show' },
-] as const;
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const RumbleTab = memo(function RumbleTab({ 
+  gender, picks, results, onEditPick, canEdit 
+}) {
+  const isMobile = useIsMobile();
+  // ...
 ```
 
-Remove `no_show` from RUMBLE_PROPS (if present) and remove MENS_NO_SHOW/WOMENS_NO_SHOW from MATCH_IDS.
-
-**File: `src/pages/HostControl.tsx`**
-
-Remove No-Show RumblePropScoringCard from Rumble Props sections. The Chaos Props section already uses `CHAOS_PROPS.map()` so it will automatically include the new prop.
-
----
-
-## Part 3: Fix Final Four Scoring Race Condition
-
-### Problem
-Final Four scoring shows checkmarks and "+40 pts" but leaderboard stays at 0 points.
-
-### Root Cause
-`handleConfirmFinalFourScoring()` uses cached player points from local state. When multiple players have correct picks, each update overwrites the previous one instead of accumulating.
-
-### Solution
-
-**File: `src/pages/HostControl.tsx`**
-
-In `handleConfirmFinalFourScoring()`, fetch fresh player data for each update:
-
+**Mobile Layout (single column list items):**
 ```typescript
-// Before (buggy - uses cached points):
-const player = getPlayer(playerId);
-await supabase.from("players").update({ points: player.points + bonus });
-
-// After (correct - fetches fresh data):
-const { data: freshPlayer } = await supabase
-  .from("players")
-  .select("points")
-  .eq("id", playerId)
-  .single();
-
-if (freshPlayer) {
-  await supabase.from("players").update({ 
-    points: freshPlayer.points + bonus 
-  }).eq("id", playerId);
-}
-```
-
-This pattern already exists in `handleConfirmWinner()` and should be applied consistently.
-
----
-
-## Part 4: Unified Solo/Party Rumble Engine
-
-### Problem
-Solo Mode uses simple dropdowns for scoring. User wants the full rumble tracking experience (entry search, active cards, timers, eliminations) like Party mode.
-
-### Solution
-
-Add conditional props to existing components to hide player/owner references when in Solo mode:
-
-**File: `src/components/host/RumbleEntryControl.tsx`**
-
-Add `showOwner?: boolean` prop (default: true):
-```typescript
-interface RumbleEntryControlProps {
-  // ... existing props
-  showOwner?: boolean;
-}
-
-// In render, conditionally show owner:
-{showOwner !== false && (
-  <div className="text-sm">
-    Owner: <span className="font-semibold">{ownerName || "Vacant"}</span>
+{isMobile ? (
+  // MOBILE: Single-column stack with large avatars
+  <div className="space-y-2">
+    {RUMBLE_PROPS.map((prop) => {
+      // ... prop data setup
+      return (
+        <button
+          key={matchId}
+          onClick={() => canEdit && !result && onEditPick?.(matchId, pick || "")}
+          className={cn(
+            "w-full min-h-[64px] p-3 rounded-xl border flex items-center gap-4",
+            "transition-all active:scale-[0.98]",
+            isCorrect ? "bg-success/10 border-success" :
+            isWrong ? "bg-destructive/10 border-destructive" :
+            "bg-card border-border hover:border-primary/50"
+          )}
+        >
+          {/* Large avatar on left */}
+          <div className="relative flex-shrink-0">
+            {pick ? (
+              <img
+                src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
+                className={cn(
+                  "w-14 h-14 rounded-full object-cover border-2",
+                  isCorrect ? "border-success" :
+                  isWrong ? "border-destructive" : 
+                  "border-primary"
+                )}
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                <Plus className="w-5 h-5 text-muted-foreground/50" />
+              </div>
+            )}
+            {/* Correctness badge overlay */}
+            {isCorrect && <CheckBadge />}
+            {isWrong && <XBadge />}
+          </div>
+          
+          {/* Title and name stacked on right */}
+          <div className="flex-1 min-w-0 text-left">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">
+              {prop.title}
+            </div>
+            <div className="font-semibold text-foreground truncate">
+              {pick ? getEntrantDisplayName(pick) : `+${points} pts`}
+            </div>
+          </div>
+          
+          {/* Edit icon or result indicator */}
+          <div className="flex-shrink-0">
+            {canEdit && !result && (
+              <Pencil size={16} className="text-muted-foreground" />
+            )}
+            {isCorrect && <PointsBadge points={points} />}
+          </div>
+        </button>
+      );
+    })}
+  </div>
+) : (
+  // DESKTOP: Keep existing 2-column grid
+  <div className="grid grid-cols-2 gap-2">
+    {/* ... existing grid code ... */}
   </div>
 )}
 ```
 
-**File: `src/components/host/ActiveWrestlerCard.tsx`**
+**Visual Design Specs:**
 
-Add `showOwner?: boolean` prop (default: true):
+```text
++--------------------------------------------------+
+| [56px Avatar]  #1 ENTRANT                    [P] |
+|                Roman Reigns                      |
++--------------------------------------------------+
+| [56px Avatar]  IRON MAN                      [P] |
+|                Cody Rhodes                       |
++--------------------------------------------------+
+| [Empty Circle] MOST ELIMINATIONS             [P] |
+|                +15 pts                           |
++--------------------------------------------------+
+
+[P] = Pencil icon (only on mobile, only when editable)
+Avatar = 56px circular with 2px colored border
+Row height = 64px minimum for tap targets
+```
+
+---
+
+## Part 3: Final Four Mobile Enhancement
+
+**Current**: 4 small photos in a row (64px each)
+**Updated**: Increase to 72px on mobile for better visibility
+
 ```typescript
-interface ActiveWrestlerCardProps {
-  // ... existing props
-  showOwner?: boolean;
-}
-
-// In render, conditionally show owner:
-<div className="text-sm text-muted-foreground">
-  {showOwner !== false && <>{ownerName || "Vacant"} - </>}
-  {formatDuration(duration)}
+// Final Four grid - slightly larger photos on mobile
+<div className={cn(
+  "grid gap-3 justify-items-center",
+  isMobile ? "grid-cols-4" : "grid-cols-4"
+)}>
+  {Array.from({ length: FINAL_FOUR_SLOTS }).map((_, i) => {
+    // ...
+    return (
+      <div key={matchId} className="flex flex-col items-center">
+        <button
+          onClick={() => canEdit && !isResulted && onEditPick?.(matchId, pick || "")}
+          className="relative"
+        >
+          {pick ? (
+            <img
+              className={cn(
+                isMobile ? "w-[72px] h-[72px]" : "w-16 h-16",
+                "rounded-full object-cover border-2",
+                isCorrect ? "border-success" : isWrong ? "border-destructive" : "border-primary"
+              )}
+            />
+          ) : (
+            <div className={cn(
+              isMobile ? "w-[72px] h-[72px]" : "w-16 h-16",
+              "rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center"
+            )}>
+              <Plus className="w-6 h-6 text-muted-foreground/50" />
+            </div>
+          )}
+        </button>
+      </div>
+    );
+  })}
 </div>
 ```
 
-**File: `src/components/solo/SoloScoringModal.tsx`**
+---
 
-Replace simple dropdown selects with full rumble tracking:
+## Part 4: Update MatchesTab and ChaosTab with Edit Icons
 
-1. Add local state for rumble numbers:
+### MatchesTab Changes
+
+Add pencil icons to each match/winner row:
+
 ```typescript
-const [mensNumbers, setMensNumbers] = useState<SoloRumbleNumber[]>([]);
-const [womensNumbers, setWomensNumbers] = useState<SoloRumbleNumber[]>([]);
+const MatchesTab = memo(function MatchesTab({ 
+  picks, results, onEditPick, canEdit 
+}) {
+  // ...
+  return (
+    <div className="space-y-3">
+      {matchCards.map((card) => {
+        const pick = picks[card.id];
+        const result = results[card.id];
+        // ...
+        return (
+          <div className="p-4 rounded-xl border ...">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-muted-foreground">{card.title}</div>
+                <div className="font-semibold">Your Pick: {pick || "—"}</div>
+              </div>
+              {canEdit && !result && (
+                <button onClick={() => onEditPick?.(card.id, pick || "")}>
+                  <Pencil size={16} className="text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+});
 ```
 
-2. Integrate existing components with `showOwner={false}`:
+### ChaosTab Changes
+
+Add pencil icons to each table row:
+
 ```typescript
-<RumbleEntryControl
-  showOwner={false}
-  nextNumber={nextEntrantNumber}
-  ownerName={null}
-  entrants={availableEntrants}
-  onConfirmEntry={handleSoloEntry}
-  ...
-/>
-
-<ActiveWrestlerCard
-  showOwner={false}
-  number={wrestler.number}
-  wrestlerName={wrestler.wrestler_name}
-  ownerName={null}
-  duration={calculateDuration(wrestler)}
-  onEliminate={() => handleSoloEliminate(wrestler)}
-  ...
-/>
-```
-
-3. Auto-derive props when rumble completes (no point awards, just save results):
-- First Elimination, Most Eliminations, Iron Man
-- Final Four wrestlers
-- Winner
-
-**File: `src/lib/solo-storage.ts`**
-
-Add rumble number storage functions:
-```typescript
-const SOLO_MENS_NUMBERS_KEY = 'rumble_solo_mens_numbers';
-const SOLO_WOMENS_NUMBERS_KEY = 'rumble_solo_womens_numbers';
-
-export interface SoloRumbleNumber {
-  number: number;
-  wrestler_name: string | null;
-  entry_timestamp: string | null;
-  elimination_timestamp: string | null;
-  eliminated_by_number: number | null;
-}
-
-export function saveSoloRumbleNumbers(gender: 'mens' | 'womens', numbers: SoloRumbleNumber[]): void;
-export function getSoloRumbleNumbers(gender: 'mens' | 'womens'): SoloRumbleNumber[];
+const ChaosTab = memo(function ChaosTab({
+  picks, results, onEditPick, canEdit
+}) {
+  // ...
+  const renderCell = (matchId: string) => {
+    const pick = picks[matchId];
+    const result = results[matchId];
+    const isCorrect = getPickResult(matchId);
+    
+    return (
+      <button
+        onClick={() => canEdit && !result && onEditPick?.(matchId, pick || "")}
+        className={cn(
+          "w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded min-h-[44px]",
+          canEdit && !result && "hover:bg-muted/50 transition-colors",
+          isCorrect === true ? "bg-success/10" :
+          isCorrect === false ? "bg-destructive/10" : ""
+        )}
+      >
+        <span className="font-bold">{pick || "—"}</span>
+        {isCorrect === true && <Check size={14} className="text-success" />}
+        {isCorrect === false && <X size={14} className="text-destructive" />}
+        {canEdit && !result && pick && (
+          <Pencil size={12} className="text-muted-foreground ml-1" />
+        )}
+      </button>
+    );
+  };
+});
 ```
 
 ---
@@ -235,31 +326,43 @@ export function getSoloRumbleNumbers(gender: 'mens' | 'womens'): SoloRumbleNumbe
 
 | File | Changes |
 |------|---------|
-| `src/lib/constants.ts` | Add No-Show as prop_7 to CHAOS_PROPS |
-| `src/pages/HostControl.tsx` | Fix Final Four scoring race condition; Pass winner state to components; Remove No-Show from Rumble Props |
-| `src/components/host/ActiveWrestlerCard.tsx` | Add `isWinner` and `showOwner` props |
-| `src/components/host/RumbleEntryControl.tsx` | Add `showOwner` prop |
-| `src/components/tv/TvNumberCell.tsx` | Add `isWinner` prop with crown/glow styling |
-| `src/components/solo/SoloScoringModal.tsx` | Integrate full rumble tracking engine |
-| `src/lib/solo-storage.ts` | Add rumble numbers storage functions |
+| `src/pages/SoloDashboard.tsx` | Add SinglePickEditModal import, state, handlers; Update all 4 tabs with edit props; Add mobile-responsive list layout to RumbleTab; Increase Final Four photos on mobile |
+
+---
+
+## Visual Comparison
+
+**Desktop (unchanged)**:
+```text
++-------------+  +-------------+
+| #1 Entrant  |  | Iron Man    |
+| [40px] Name |  | [40px] Name |
++-------------+  +-------------+
+```
+
+**Mobile (new list layout)**:
+```text
++--------------------------------------------------+
+| [56px]  #1 ENTRANT             [Pencil]          |
+|         Roman Reigns                              |
++--------------------------------------------------+
+| [56px]  IRON MAN               [Pencil]          |
+|         Cody Rhodes                               |
++--------------------------------------------------+
+```
 
 ---
 
 ## Testing Checklist
 
-### Demo Mode Fixes
-1. Create demo party, simulate rumble to Final Four
-2. Verify No-Show appears in Chaos Props (not Rumble Props)
-3. Score Final Four - verify ALL correct picks get points (check leaderboard updates)
-4. Eliminate to winner - verify timer stops and Eliminate button becomes trophy
-5. Verify winner grid cell shows crown/flair (no large banner)
-
-### Solo Mode Engine
-1. Open Solo scoring modal, go to Men's tab
-2. Verify "Owner" is NOT shown on entry control or active cards
-3. Enter wrestlers using search, verify timer starts
-4. Eliminate wrestlers, select eliminators
-5. Complete to Final Four - verify auto-saved
-6. Declare winner - verify all derived props auto-populate
-7. Save and verify score calculates correctly
+1. Open Solo Dashboard on mobile viewport
+2. Verify Rumble Props display as single-column list with 56px avatars
+3. Verify each row is at least 64px tall and feels "chunky" to tap
+4. Tap a prop row - verify WrestlerPickerModal opens
+5. Select a wrestler - verify pick saves and displays
+6. Go to Matches tab - verify pencil icons appear on unscored picks
+7. Go to Chaos tab - verify pencil icons appear in YES/NO cells
+8. Resize to desktop - verify 2-column grid layout returns
+9. Score some results via "Score Results" modal
+10. Return to dashboard - verify pencil icons disappear on scored items
 
