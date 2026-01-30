@@ -26,14 +26,14 @@ export const HOST_SETUP_TOUR_STEPS: TourStep[] = [
     id: "guests-list",
     target: "[data-tour='guests-list']",
     title: "Guest Status",
-    content: "Track each guest's progress. Green means they've completed all picks. You can expand this to see everyone's status.",
+    content: "Track each guest's progress. Green means picks are complete.",
     placement: "top",
   },
   {
     id: "tv-mode",
     target: "[data-tour='tv-mode']",
     title: "TV Display",
-    content: "Cast this to your TV during the event. It shows the leaderboard, everyone's picks, and updates live as matches are scored.",
+    content: "Cast this to your TV to show the live leaderboard and picks.",
     placement: "top",
   },
   {
