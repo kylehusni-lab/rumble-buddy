@@ -174,7 +174,8 @@ export default function SoloDashboard() {
       />
 
       {/* Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 pb-32">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="max-w-2xl mx-auto p-4 pb-32">
         {activeTab === "matches" && (
           <UnifiedMatchesTab 
             picks={picks} 
@@ -209,6 +210,7 @@ export default function SoloDashboard() {
             canEdit={canEditPicks}
           />
         )}
+        </div>
       </div>
 
       {/* Fixed Bottom Actions */}

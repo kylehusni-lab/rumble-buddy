@@ -536,7 +536,8 @@ export default function PlayerDashboard() {
         />
 
         {/* Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 pb-32">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="max-w-2xl mx-auto p-4 pb-32">
           {/* Status Banner (pre-event only) */}
           {partyStatus === "pre_event" && (
             <motion.div
@@ -598,6 +599,7 @@ export default function PlayerDashboard() {
               )}
             </motion.div>
           </AnimatePresence>
+          </div>
         </div>
 
         {/* Fixed Bottom Actions */}

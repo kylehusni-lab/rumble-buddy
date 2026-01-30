@@ -36,7 +36,8 @@ export const UnifiedTabNavigation = memo(function UnifiedTabNavigation({
     : BASE_TABS;
 
   return (
-    <div className="flex border-b border-border">
+    <div className="border-b border-border">
+      <div className="max-w-2xl mx-auto flex">
       {tabs.map((tab) => {
         const completion = tab.id === "numbers" 
           ? numbersCompletion 
@@ -78,6 +79,7 @@ export const UnifiedTabNavigation = memo(function UnifiedTabNavigation({
           </button>
         );
       })}
+      </div>
     </div>
   );
 });
