@@ -267,6 +267,12 @@
   .prop-toggle-container {
     @apply flex items-center justify-between gap-3;
   }
+
+  /* Image rendering for crisp quality */
+  .image-crisp {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
 }
 
 @layer utilities {
