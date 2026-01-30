@@ -50,7 +50,7 @@ export default function DemoMode() {
       
       if (!user) {
         // For demo mode, we'll create a temporary demo account
-        const demoEmail = `demo-${Date.now()}@rumble-buddy.demo`;
+        const demoEmail = `demo-${Date.now()}@therumbleapp.demo`;
         const demoPassword = `demo-${Date.now()}-${Math.random().toString(36)}`;
         
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({

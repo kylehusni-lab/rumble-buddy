@@ -5,7 +5,7 @@ function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") || "";
   
   const allowedPatterns = [
-    /^https:\/\/rumble-buddy\.lovable\.app$/,
+    /^https:\/\/therumbleapp\.com$/,
     /^https:\/\/.*\.lovable\.app$/,
     /^https:\/\/.*\.lovableproject\.com$/,
     /^http:\/\/localhost(:\d+)?$/,
