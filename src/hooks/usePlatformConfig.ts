@@ -60,13 +60,9 @@ export function usePlatformConfig() {
         mensData.push({ name: "Surprise/Other Entrant", imageUrl: null, isConfirmed: true });
         womensData.push({ name: "Surprise/Other Entrant", imageUrl: null, isConfirmed: true });
 
-        // Build legacy string arrays (with * prefix for unconfirmed)
-        const mensEntrants = mensData.map(e => 
-          e.isConfirmed ? e.name : `*${e.name}`
-        );
-        const womensEntrants = womensData.map(e => 
-          e.isConfirmed ? e.name : `*${e.name}`
-        );
+        // Build string arrays (no prefix - use data objects for confirmation status)
+        const mensEntrants = mensData.map(e => e.name);
+        const womensEntrants = womensData.map(e => e.name);
 
         setConfig({
           mensEntrants,

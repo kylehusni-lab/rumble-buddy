@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, Mail, Check, X, Clock, LogOut, RefreshCw, Users, UserCheck, XCircle } from "lucide-react";
+import { Loader2, Mail, Check, X, Clock, LogOut, RefreshCw, Users, UserCheck, XCircle, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OttLogoMark } from "@/components/OttLogo";
 import { ActivePartiesTab } from "@/components/admin/ActivePartiesTab";
+import { WrestlerDatabaseTab } from "@/components/admin/WrestlerDatabaseTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -277,9 +278,13 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="requests">Access Requests</TabsTrigger>
-            <TabsTrigger value="parties">Active Parties</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 max-w-lg">
+            <TabsTrigger value="requests">Requests</TabsTrigger>
+            <TabsTrigger value="parties">Parties</TabsTrigger>
+            <TabsTrigger value="wrestlers" className="flex items-center gap-1">
+              <Database className="w-3 h-3" />
+              Wrestlers
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="mt-6 space-y-4">
@@ -393,6 +398,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="parties" className="mt-6">
             <ActivePartiesTab />
+          </TabsContent>
+
+          <TabsContent value="wrestlers" className="mt-6">
+            <WrestlerDatabaseTab />
           </TabsContent>
         </Tabs>
       </main>

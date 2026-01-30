@@ -4,10 +4,15 @@ import { Crown, Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
-import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
+import { isUnconfirmedByData, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
 import { Input } from "@/components/ui/input";
 import { PickCardHeader } from "./PickCardHeader";
 import confetti from "canvas-confetti";
+
+interface EntrantData {
+  name: string;
+  isConfirmed: boolean;
+}
 
 interface RumbleWinnerCardProps {
   title: string;
@@ -16,6 +21,7 @@ interface RumbleWinnerCardProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   customEntrants?: string[];
+  entrantsData?: EntrantData[];
 }
 
 export const RumbleWinnerCard = memo(function RumbleWinnerCard({ 
@@ -24,7 +30,8 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
   value, 
   onChange, 
   disabled,
-  customEntrants 
+  customEntrants,
+  entrantsData = []
 }: RumbleWinnerCardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const lastConfettiValue = useRef<string | null>(null);
@@ -89,6 +96,11 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
             enterKeyHint="search"
           />
         </div>
+        {entrantsData.some(e => !e.isConfirmed) && (
+          <p className="text-[10px] text-muted-foreground mt-2 text-center">
+            <span className="italic">Italic names</span> = unconfirmed participants
+          </p>
+        )}
       </div>
 
       {/* Wrestler Grid (Scrollable) - with bottom padding for sticky footer */}
@@ -97,6 +109,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
           {filteredEntrants.map((wrestler) => {
             const isSelected = value === wrestler;
             const isDimmed = value && !isSelected;
+            const isUnconfirmed = isUnconfirmedByData(wrestler, entrantsData);
             
             return (
               <motion.button
@@ -115,9 +128,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
                     "relative w-full aspect-square max-w-[65px] sm:max-w-[70px] md:max-w-[80px] rounded-full overflow-hidden border-[3px] transition-all duration-300",
                     isSelected
                       ? "gold-selection-glow scale-105"
-                      : isUnconfirmedEntrant(wrestler)
-                        ? "border-dashed border-muted-foreground/50"
-                        : "border-transparent"
+                      : "border-transparent"
                   )}
                 >
                   <img
@@ -147,7 +158,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
                   className={cn(
                     "mt-1 text-[9px] sm:text-[10px] md:text-xs text-center leading-tight line-clamp-2 w-full max-w-[65px] sm:max-w-[70px] md:max-w-[80px] transition-colors duration-300",
                     isSelected ? "text-primary font-semibold" : "text-foreground",
-                    isUnconfirmedEntrant(wrestler) && "italic opacity-80"
+                    isUnconfirmed && "italic opacity-80"
                   )}
                 >
                   {getEntrantDisplayName(wrestler)}

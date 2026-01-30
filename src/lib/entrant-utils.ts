@@ -1,7 +1,25 @@
 // Utilities for handling entrant names with unconfirmed status
 
+interface EntrantData {
+  name: string;
+  isConfirmed: boolean;
+}
+
 /**
- * Check if an entrant is marked as unconfirmed (prefixed with *)
+ * Check if an entrant is unconfirmed using the entrant data array
+ * This is the preferred method - use data-driven lookup
+ */
+export function isUnconfirmedByData(
+  name: string,
+  entrantsData: EntrantData[]
+): boolean {
+  const entrant = entrantsData.find(e => e.name === name);
+  return entrant ? !entrant.isConfirmed : false;
+}
+
+/**
+ * @deprecated Use isUnconfirmedByData instead
+ * Legacy check for asterisk prefix (kept for backward compatibility)
  */
 export function isUnconfirmedEntrant(name: string): boolean {
   return name.startsWith('*');

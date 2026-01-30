@@ -24,7 +24,6 @@ const HostControl = lazy(() => import("./pages/HostControl"));
 const TvDisplay = lazy(() => import("./pages/TvDisplay"));
 const ViewAllPicks = lazy(() => import("./pages/ViewAllPicks"));
 const PlatformAdminVerify = lazy(() => import("./pages/PlatformAdminVerify"));
-const WrestlerAdmin = lazy(() => import("./pages/WrestlerAdmin"));
 const Legal = lazy(() => import("./pages/Legal"));
 const SoloSetup = lazy(() => import("./pages/SoloSetup"));
 const SoloPicks = lazy(() => import("./pages/SoloPicks"));
@@ -71,7 +70,6 @@ const App = () => (
             <Route path="/tv/:code" element={<TvDisplay />} />
             
             <Route path="/platform-admin/verify" element={<PlatformAdminVerify />} />
-            <Route path="/admin/wrestlers" element={<WrestlerAdmin />} />
             <Route path="/legal" element={<Legal />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/sign-in" element={<SignIn />} />
