@@ -1,17 +1,11 @@
-import { useState, useMemo, Fragment } from "react";
-import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useState, useMemo } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UNDERCARD_MATCHES, RUMBLE_PROPS, CHAOS_PROPS, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { WrestlerPickerModal } from "@/components/WrestlerPickerModal";
 import { getBlockedWrestlers } from "@/lib/pick-validation";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import { Check } from "lucide-react";
 
 interface SinglePickEditModalProps {
   isOpen: boolean;
@@ -65,7 +59,6 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
   // Rumble props (wrestler select)
   const rumblePropMatch = RUMBLE_PROPS.find(p => matchId.includes(p.id));
   if (rumblePropMatch) {
-    // Check for womens BEFORE mens to avoid substring collision
     const gender = matchId.includes("womens") ? "womens" : "mens";
     const entrants = gender === "mens" 
       ? (mensEntrants || DEFAULT_MENS_ENTRANTS)
@@ -81,7 +74,6 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
 
   // Final four picks
   if (matchId.includes("final_four")) {
-    // Check for womens BEFORE mens to avoid substring collision
     const gender = matchId.includes("womens") ? "womens" : "mens";
     const slotNum = matchId.split("_").pop();
     const entrants = gender === "mens" 
@@ -97,6 +89,123 @@ function getPickConfig(matchId: string, mensEntrants?: string[], womensEntrants?
   }
 
   return null;
+}
+
+// Diagonal Face-Off component for binary match picks
+function DiagonalFaceOff({
+  options,
+  currentPick,
+  onSelect,
+  title,
+}: {
+  options: readonly string[];
+  currentPick: string;
+  onSelect: (option: string) => void;
+  title: string;
+}) {
+  const [wrestler1, wrestler2] = options;
+
+  return (
+    <div className="relative w-full h-[420px] bg-card rounded-2xl overflow-hidden">
+      {/* Match Title Header */}
+      <div className="absolute top-0 left-0 right-0 z-30 text-center py-4 px-4 bg-gradient-to-b from-background/90 to-transparent">
+        <h3 className="text-lg font-black uppercase tracking-wider text-foreground">
+          {title}
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1">Tap a wrestler to select</p>
+      </div>
+
+      {/* Top-Left Zone - Wrestler 1 */}
+      <button
+        onClick={() => onSelect(wrestler1)}
+        className={cn(
+          "absolute inset-0 diagonal-zone-top faceoff-zone-1 transition-all duration-300",
+          "flex flex-col items-center justify-center pt-16 pb-20",
+          currentPick === wrestler1 && "faceoff-selected"
+        )}
+      >
+        <div className="relative">
+          <img
+            src={getWrestlerImageUrl(wrestler1)}
+            alt={wrestler1}
+            className={cn(
+              "w-28 h-28 rounded-full object-cover border-4 transition-all",
+              currentPick === wrestler1 
+                ? "border-primary shadow-lg scale-110" 
+                : "border-border/50"
+            )}
+            onError={(e) => {
+              e.currentTarget.src = getPlaceholderImageUrl(wrestler1);
+            }}
+          />
+          {currentPick === wrestler1 && (
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+              <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
+            </div>
+          )}
+        </div>
+        <span className={cn(
+          "mt-3 font-black text-xl uppercase tracking-wide",
+          currentPick === wrestler1 ? "text-primary" : "text-foreground"
+        )}>
+          {wrestler1}
+        </span>
+        <span className="role-badge-champion text-xs font-bold px-3 py-1 rounded-full mt-2">
+          PICK
+        </span>
+      </button>
+
+      {/* Bottom-Right Zone - Wrestler 2 */}
+      <button
+        onClick={() => onSelect(wrestler2)}
+        className={cn(
+          "absolute inset-0 diagonal-zone-bottom faceoff-zone-2 transition-all duration-300",
+          "flex flex-col items-center justify-center pt-20 pb-8",
+          currentPick === wrestler2 && "faceoff-selected"
+        )}
+      >
+        <span className="role-badge-challenger text-xs font-bold px-3 py-1 rounded-full mb-2">
+          PICK
+        </span>
+        <span className={cn(
+          "mb-3 font-black text-xl uppercase tracking-wide",
+          currentPick === wrestler2 ? "text-primary" : "text-foreground"
+        )}>
+          {wrestler2}
+        </span>
+        <div className="relative">
+          <img
+            src={getWrestlerImageUrl(wrestler2)}
+            alt={wrestler2}
+            className={cn(
+              "w-28 h-28 rounded-full object-cover border-4 transition-all",
+              currentPick === wrestler2 
+                ? "border-primary shadow-lg scale-110" 
+                : "border-border/50"
+            )}
+            onError={(e) => {
+              e.currentTarget.src = getPlaceholderImageUrl(wrestler2);
+            }}
+          />
+          {currentPick === wrestler2 && (
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+              <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
+            </div>
+          )}
+        </div>
+      </button>
+
+      {/* Diagonal Glow Line */}
+      <div className="absolute inset-0 diagonal-glow-line pointer-events-none z-10" />
+
+      {/* VS Badge at Center */}
+      <div className="absolute top-1/2 left-1/2 z-20 vs-badge-glow">
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center border-4 border-background">
+          <span className="text-xl font-black text-primary-foreground">VS</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function SinglePickEditModal({
@@ -116,14 +225,8 @@ export function SinglePickEditModal({
   // Calculate blocked wrestlers based on existing picks and validation rules
   const blockedWrestlers = useMemo(() => {
     if (!allPicks || config?.type !== "wrestler") return new Set<string>();
-    
-    // Extract gender and propId from matchId
-    // Check for womens BEFORE mens to avoid substring collision
     const gender = matchId.includes("womens") ? "womens" : "mens";
-    
-    // Extract the propId by removing the gender prefix
     let propId = matchId.replace(`${gender}_`, "");
-    
     return getBlockedWrestlers(gender as "mens" | "womens", propId, allPicks);
   }, [matchId, allPicks, config]);
 
@@ -135,14 +238,7 @@ export function SinglePickEditModal({
 
   if (!config) return null;
 
-  const handleSave = () => {
-    if (selectedValue && selectedValue !== currentPick) {
-      onSave(matchId, selectedValue);
-    }
-    onClose();
-  };
-
-  // Binary options (match winner with 2 options) - Visual Face-Off style
+  // Binary options (match winner with 2 options) - WWE Diagonal Face-Off style
   if (config.type === "binary") {
     const handleSelect = (option: string) => {
       onSave(matchId, option);
@@ -151,57 +247,13 @@ export function SinglePickEditModal({
 
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center">{config.title}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 py-4 relative">
-            {config.options.map((option, index) => (
-              <Fragment key={option}>
-                <button
-                  onClick={() => handleSelect(option)}
-                  className={cn(
-                    "w-full p-3 rounded-xl border-2 flex items-center gap-4 transition-all",
-                    currentPick === option
-                      ? "border-primary bg-primary/10"
-                      : "border-border bg-card hover:border-primary/50"
-                  )}
-                >
-                  <div className={cn(
-                    "relative w-[72px] h-[72px] rounded-full overflow-hidden border-2 flex-shrink-0",
-                    currentPick === option ? "border-primary" : "border-border"
-                  )}>
-                    <img
-                      src={getWrestlerImageUrl(option)}
-                      alt={option}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = getPlaceholderImageUrl(option);
-                      }}
-                    />
-                  </div>
-                  <span className={cn(
-                    "text-lg font-bold flex-1 text-left",
-                    currentPick === option ? "text-primary" : "text-foreground"
-                  )}>
-                    {option}
-                  </span>
-                  {currentPick === option && (
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                      <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
-                    </div>
-                  )}
-                </button>
-                {index === 0 && (
-                  <div className="flex justify-center py-1">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 border-2 border-primary/50 flex items-center justify-center">
-                      <span className="text-sm font-black text-primary">VS</span>
-                    </div>
-                  </div>
-                )}
-              </Fragment>
-            ))}
-          </div>
+        <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden">
+          <DiagonalFaceOff
+            options={config.options}
+            currentPick={currentPick}
+            onSelect={handleSelect}
+            title={config.title}
+          />
         </DialogContent>
       </Dialog>
     );

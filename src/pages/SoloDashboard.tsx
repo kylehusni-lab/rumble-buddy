@@ -175,7 +175,7 @@ export default function SoloDashboard() {
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="max-w-2xl mx-auto p-4 pb-32">
+        <div className="max-w-2xl mx-auto p-4 pb-32 md:bg-card/30 md:rounded-2xl md:border md:border-border/50 md:my-4 md:shadow-lg">
         {activeTab === "matches" && (
           <UnifiedMatchesTab 
             picks={picks} 
