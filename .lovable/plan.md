@@ -1,113 +1,134 @@
 
-# Simplified Pick Editing + Mobile UI Consistency
 
-## Overview
+# Solo Dashboard UI Enhancements
 
-This plan streamlines the Solo Dashboard by:
-1. **Removing the "Edit Picks" button** - users tap directly on pick tiles to edit
-2. **Adding a mini pick progress indicator** on the dashboard (borrowed from the picks flow)
-3. **Applying the same mobile list layout** to Group Mode's `RumblePropsSection`
+## Issues Identified
 
----
+Based on the screenshots:
 
-## Current State Analysis
-
-| Component | Solo Dashboard | Player Dashboard (Group) |
-|-----------|----------------|--------------------------|
-| Edit mechanism | Pencil icons + "Edit Picks" button | Pencil icons only |
-| Rumble Props layout | Mobile list (56px avatars) | Text-only list rows |
-| Progress indicator | Tab completion badges | Tab completion badges |
-| Bottom actions | "Edit Picks" + "Score Results" | None (just view) |
-
-**Screenshots show**: The Solo Dashboard has both inline pencil icons AND a redundant "Edit Picks" button at the bottom. The user wants to simplify by making the tiles themselves tappable.
+| Issue | Current State | Desired State |
+|-------|--------------|---------------|
+| **Matches Tab** | Text-only ("Your Pick: Drew McIntyre") | Show wrestler headshot photos alongside text |
+| **Rumble Props** | Empty circles with "+" look static | Clear tappable appearance with hover states and "Tap to select" hint |
+| **Progress Indicator** | Only tab badges (3/4, 9/9) | Compact visual progress strip with wrestler photo thumbnails |
 
 ---
 
 ## Solution
 
-### Part 1: Remove "Edit Picks" Button + Make Tiles Fully Tappable
+### Part 1: Add Wrestler Photos to Matches Tab
 
-**File: `src/pages/SoloDashboard.tsx`**
+Update the `MatchesTab` component to display wrestler headshots for picks.
 
-**Step 1: Remove the "Edit Picks" button from the bottom actions**
-
-The bottom action bar will only contain "Score Results":
-
-```typescript
-// Before: Two buttons
-<div className="flex gap-3 max-w-md mx-auto">
-  <Button onClick={() => navigate("/solo/picks")}>Edit Picks</Button>
-  <Button onClick={() => setIsScoringOpen(true)}>Score Results</Button>
-</div>
-
-// After: Single centered button
-<div className="max-w-md mx-auto">
-  <Button onClick={() => setIsScoringOpen(true)} className="w-full">
-    <Calculator className="w-4 h-4 mr-2" />
-    Score Results
-  </Button>
-</div>
+**Undercard Matches:**
+```text
++------------------------------------------------+
+| Drew McIntyre vs Sami Zayn                     |
+|                                                |
+| [56px Photo]  Drew McIntyre      [Check] +25   |
+|               Your Pick                        |
++------------------------------------------------+
 ```
 
-**Step 2: Make entire pick tiles tappable (not just pencil icon)**
-
-Update the `RumbleTab` mobile list layout so the whole row is the edit trigger:
-
-```typescript
-// Current: Only triggers on pencil icon
-<button
-  onClick={() => canEdit && !result && onEditPick?.(matchId, pick || "")}
-  disabled={!canEdit || !!result}
-  className="w-full min-h-[64px] ..."
->
-  {/* ... content ... */}
-  {canEdit && !result && <Pencil size={16} />}
-</button>
+**Rumble Winners:**
+```text
++------------------------------------------------+
+| Men's Rumble Winner                            |
+|                                                |
+| [56px Photo]  Brock Lesnar       [Check] +50   |
+|               Your Pick                        |
++------------------------------------------------+
 ```
 
-This pattern is already implemented! The button already wraps the entire row and the pencil icon is just a visual indicator. The code is correct - the full row IS tappable.
+**Changes to `MatchesTab`:**
+- Add wrestler image display (56px circular) for both undercard and rumble winner picks
+- Show dashed circle with "+" when no pick is made
+- Add image error handling with placeholder fallback
 
 ---
 
-### Part 2: Add Pick Progress Indicator to Solo Dashboard
+### Part 2: Improve Rumble Props Tappability
 
-Borrow the compact grouped progress display from `ProgressBar.tsx` and add it to the Solo Dashboard header. This shows at-a-glance completion without needing to go to the picks flow.
+Make empty prop rows clearly interactive on mobile:
 
-**Visual Design:**
-
+**Before (empty):**
 ```text
-+------------------------------------------------+
-|  Undercard 2/2    |  Men's 2/3  |  Women's 0/3 |
-|    [*] [*]        |   6  7  8   |    6  7  8   |
-+------------------------------------------------+
+| [+]  #1 ENTRANT                    |
+|      +15 pts                       |
 ```
 
-Each dot is tappable to directly edit that pick category.
+**After (empty - more inviting):**
+```text
+| [+]  #1 ENTRANT                [>] |
+|      Tap to select                 |
++------------------------------------+
+```
 
-**File: `src/pages/SoloDashboard.tsx`**
+**Changes:**
+- Add subtle pulsing/breathing animation to empty circles to indicate they're tappable
+- Change "+15 pts" to "Tap to select" when no pick exists
+- Add a chevron-right icon on the right side to indicate tappability
+- Add more prominent hover/active states (border-primary/50 on hover, scale-[0.98] on press)
 
-Add a compact progress section below the score card:
+---
+
+### Part 3: Compact Pick Progress Indicator
+
+Add a visual progress strip below the score card showing wrestler photo thumbnails for completed picks.
+
+**Design:**
+```text
++--------------------------------------------------------------------+
+|  Hey John!                                               [Trophy]  |
+|  125 pts                                                           |
++--------------------------------------------------------------------+
+|  Matches [Avatar][Avatar] 2/4  |  Men's [...] 9/9  |  Women's 0/9  |
++--------------------------------------------------------------------+
+```
+
+Each category shows:
+- Small (28px) circular photo thumbnails of completed picks
+- Remaining count badge
+- Tappable to navigate to that tab
+
+**New Component: `CompactPickProgress`**
 
 ```typescript
-const PickProgressCompact = memo(function PickProgressCompact({
+const CompactPickProgress = memo(function CompactPickProgress({
+  picks,
   tabCompletion,
   onTabClick,
 }: {
+  picks: Record<string, string>;
   tabCompletion: Record<string, { complete: number; total: number }>;
   onTabClick: (tab: TabType) => void;
 }) {
   const groups = [
-    { id: "matches" as const, name: "Undercard", icon: Swords },
-    { id: "mens" as const, name: "Men's", icon: Hash },
-    { id: "womens" as const, name: "Women's", icon: Hash },
+    { 
+      id: "matches" as const, 
+      label: "Matches",
+      pickKeys: ["undercard_1", "undercard_3", "mens_rumble_winner", "womens_rumble_winner"],
+    },
+    { 
+      id: "mens" as const, 
+      label: "Men's",
+      pickKeys: [...RUMBLE_PROPS.map(p => `mens_${p.id}`), ...Array.from({length: 4}, (_, i) => `mens_final_four_${i+1}`)],
+    },
+    { 
+      id: "womens" as const, 
+      label: "Women's",
+      pickKeys: [...RUMBLE_PROPS.map(p => `womens_${p.id}`), ...Array.from({length: 4}, (_, i) => `womens_final_four_${i+1}`)],
+    },
   ];
 
   return (
     <div className="flex gap-2 mt-3">
       {groups.map((group) => {
+        const completedPicks = group.pickKeys
+          .filter(key => picks[key])
+          .slice(0, 3); // Show max 3 thumbnails
         const { complete, total } = tabCompletion[group.id];
         const isComplete = complete === total;
-        const Icon = group.icon;
 
         return (
           <button
@@ -120,18 +141,32 @@ const PickProgressCompact = memo(function PickProgressCompact({
                 : "border-border bg-muted/30 hover:border-primary/50"
             )}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className={cn(
-                "text-[10px] font-semibold uppercase",
-                isComplete ? "text-success" : "text-muted-foreground"
-              )}>
-                {group.name}
+            {/* Photo Thumbnails Row */}
+            <div className="flex items-center gap-1 mb-1">
+              {completedPicks.map((key, i) => (
+                <img
+                  key={key}
+                  src={getWrestlerImageUrl(getEntrantDisplayName(picks[key]))}
+                  className="w-7 h-7 rounded-full border border-primary/50 object-cover"
+                />
+              ))}
+              {completedPicks.length < complete && (
+                <span className="text-[10px] text-muted-foreground">
+                  +{complete - completedPicks.length}
+                </span>
+              )}
+            </div>
+            
+            {/* Label and Count */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                {group.label}
               </span>
               <span className={cn(
                 "text-[10px] font-bold",
                 isComplete ? "text-success" : "text-muted-foreground"
               )}>
-                {isComplete ? <Check className="w-3 h-3 inline" /> : null}
+                {isComplete && <Check className="w-3 h-3 inline mr-0.5" />}
                 {complete}/{total}
               </span>
             </div>
@@ -145,180 +180,51 @@ const PickProgressCompact = memo(function PickProgressCompact({
 
 ---
 
-### Part 3: Apply Mobile List Layout to Group Mode Player Dashboard
-
-**File: `src/components/dashboard/RumblePropsSection.tsx`**
-
-Update the component to use the same mobile list layout as Solo Dashboard's `RumbleTab`:
-
-```typescript
-import { useIsMobile } from "@/hooks/use-mobile";
-import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
-import { getEntrantDisplayName } from "@/lib/entrant-utils";
-import { Plus } from "lucide-react";
-
-// In the component:
-const isMobile = useIsMobile();
-
-// Replace the current text-only PickRow with:
-{isMobile ? (
-  // Mobile: Single-column list with large avatars (same as Solo)
-  <div className="space-y-2 p-3">
-    {mainProps.map((prop) => {
-      const matchId = `${prefix}_${prop.id}`;
-      const pick = picks.find(p => p.match_id === matchId);
-      const isCorrect = getPickResult(matchId);
-      const isWrong = isCorrect === false;
-      const points = getPropScore(prop.id);
-
-      return (
-        <button
-          key={matchId}
-          onClick={() => canEdit && isCorrect === null && onEditPick?.(matchId, pick?.prediction || "")}
-          disabled={!canEdit || isCorrect !== null}
-          className={cn(
-            "w-full min-h-[64px] p-3 rounded-xl border flex items-center gap-4",
-            "transition-all active:scale-[0.98]",
-            isCorrect === true ? "bg-success/10 border-success" :
-            isWrong ? "bg-destructive/10 border-destructive" :
-            "bg-card border-border hover:border-primary/50"
-          )}
-        >
-          {/* Large avatar on left */}
-          <div className="relative flex-shrink-0">
-            {pick?.prediction ? (
-              <img
-                src={getWrestlerImageUrl(getEntrantDisplayName(pick.prediction))}
-                alt={pick.prediction}
-                className={cn(
-                  "w-14 h-14 rounded-full object-cover border-2",
-                  isCorrect === true ? "border-success" :
-                  isWrong ? "border-destructive" : 
-                  "border-primary"
-                )}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = getPlaceholderImageUrl(pick.prediction);
-                }}
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                <Plus className="w-5 h-5 text-muted-foreground/50" />
-              </div>
-            )}
-            {/* Correctness overlay */}
-            {isCorrect === true && (
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-success flex items-center justify-center">
-                <Check className="w-3 h-3 text-white" strokeWidth={3} />
-              </div>
-            )}
-            {isWrong && (
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
-                <X className="w-3 h-3 text-white" strokeWidth={3} />
-              </div>
-            )}
-          </div>
-          
-          {/* Title and name stacked on right */}
-          <div className="flex-1 min-w-0 text-left">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide">
-              {prop.title}
-            </div>
-            <div className={cn(
-              "font-semibold text-foreground truncate",
-              isWrong && "line-through text-destructive/80"
-            )}>
-              {pick?.prediction ? getEntrantDisplayName(pick.prediction) : `+${points} pts`}
-            </div>
-          </div>
-          
-          {/* Edit icon or points badge */}
-          <div className="flex-shrink-0">
-            {canEdit && isCorrect === null && (
-              <Pencil size={16} className="text-muted-foreground" />
-            )}
-            {isCorrect === true && (
-              <span className="point-badge px-2.5 py-1 rounded-full text-white text-sm font-bold">
-                +{points}
-              </span>
-            )}
-          </div>
-        </button>
-      );
-    })}
-  </div>
-) : (
-  // Desktop: Keep existing PickRow layout
-  <div className="divide-y divide-border/50">
-    {mainProps.map((prop) => (
-      <PickRow key={...} ... />
-    ))}
-  </div>
-)}
-```
-
-Apply the same pattern to the **Final Four section** in `RumblePropsSection`:
-- Show 72px circular photos in a centered 4-column grid on mobile
-- Make each photo tappable to edit
-
----
-
 ## Files Summary
 
 | File | Changes |
 |------|---------|
-| `src/pages/SoloDashboard.tsx` | Remove "Edit Picks" button, keep only "Score Results"; Add compact `PickProgressCompact` component in header |
-| `src/components/dashboard/RumblePropsSection.tsx` | Add `useIsMobile` hook; Add wrestler image imports; Implement mobile list layout with 56px avatars; Update Final Four to use 72px tappable photos |
+| `src/pages/SoloDashboard.tsx` | Add `CompactPickProgress` component below score card; Update `MatchesTab` to show wrestler photos; Update `RumbleTab` to improve empty state UI with "Tap to select" and chevron icons |
 
 ---
 
 ## Visual Comparison
 
-**Before (Solo Dashboard Bottom):**
+**Before (Matches Tab):**
 ```text
-[ Edit Picks ]  [ Score Results ]
+| Drew McIntyre vs Sami Zayn                |
+| Your Pick: Drew McIntyre  +25       [V]   |
 ```
 
-**After (Solo Dashboard Bottom):**
+**After (Matches Tab):**
 ```text
-       [ Score Results ]
+| Drew McIntyre vs Sami Zayn                     |
+| [56px]  Drew McIntyre              [V] +25     |
+|         Your Pick                              |
 ```
 
-**Before (Group Dashboard Rumble Props - Mobile):**
+**Before (Empty Rumble Prop):**
 ```text
-+--------------------------------+
-| #1 ENTRANT                     |
-| Roman Reigns           [Pencil]|
-+--------------------------------+
-| IRON MAN                       |
-| Cody Rhodes            [Pencil]|
-+--------------------------------+
+| [+]  #1 ENTRANT                           |
+|      +15 pts                              |
 ```
 
-**After (Group Dashboard Rumble Props - Mobile):**
+**After (Empty Rumble Prop):**
 ```text
-+--------------------------------------------------+
-| [56px Avatar]  #1 ENTRANT             [Pencil]   |
-|                Roman Reigns                       |
-+--------------------------------------------------+
-| [56px Avatar]  IRON MAN               [Pencil]   |
-|                Cody Rhodes                        |
-+--------------------------------------------------+
+| [+]  #1 ENTRANT                      [>]  |
+|      Tap to select                        |
 ```
 
 ---
 
 ## Testing Checklist
 
-1. Open Solo Dashboard
-2. Verify "Edit Picks" button is removed, only "Score Results" remains
-3. Go to Men's tab - tap any prop row - verify WrestlerPickerModal opens
-4. Verify the whole row is tappable, not just the pencil icon
-5. Verify pick progress shows in header (Undercard/Men's/Women's completion)
-6. Open Group Mode Player Dashboard
-7. Go to Men's or Women's tab on mobile viewport
-8. Verify Rumble Props now display with 56px circular wrestler photos
-9. Verify each row is tappable to edit (when in pre_event status)
-10. Verify Final Four shows 72px photos in 4-column grid
-11. Resize to desktop - verify original text-based layout returns
+1. Open Solo Dashboard, verify compact progress indicator appears below score card
+2. Check that wrestler photo thumbnails appear in the progress indicator for completed picks
+3. Tap a progress group to navigate to that tab
+4. Go to Matches tab - verify wrestler photos display for undercard and rumble winners
+5. Go to Men's/Women's tab - verify empty props show "Tap to select" text and chevron icon
+6. Tap an empty prop row - verify WrestlerPickerModal opens
+7. Select a wrestler - verify photo appears in the row and progress indicator updates
+8. Verify all interactive elements have clear hover/active states
 
