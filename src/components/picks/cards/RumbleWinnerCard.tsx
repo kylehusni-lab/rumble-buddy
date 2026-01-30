@@ -93,7 +93,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
 
       {/* Wrestler Grid (Scrollable) - with bottom padding for sticky footer */}
       <div className="flex-1 min-h-0 px-4 sm:px-6 overflow-y-auto">
-        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2 py-3 pb-24">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2 py-3 pb-32">
           {filteredEntrants.map((wrestler) => {
             const isSelected = value === wrestler;
             const isDimmed = value && !isSelected;
@@ -163,7 +163,7 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 glass-panel"
+          className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 pb-safe glass-panel"
         >
           <div className="flex items-center gap-3">
             <img

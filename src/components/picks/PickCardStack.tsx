@@ -65,13 +65,13 @@ export function PickCardStack({
   const cardCompletionStatus = useMemo(() => {
     return CARD_CONFIG.map((card) => {
       if (card.type === "chaos-props") {
-        // Check if all 6 props are answered for this gender
+        // Check if all props are answered for this gender
         const gender = card.gender;
         const propCount = CHAOS_PROPS.filter((_, index) => {
           const matchId = `${gender}_chaos_prop_${index + 1}`;
           return picks[matchId] !== null && picks[matchId] !== undefined;
         }).length;
-        return propCount === 6;
+        return propCount === CHAOS_PROPS.length;
       }
       if (card.type === "rumble-props") {
         // Check wrestler props + final four
@@ -112,15 +112,9 @@ export function PickCardStack({
 
   const handlePickUpdate = useCallback((cardId: string, value: any) => {
     if (isLocked) return;
-    
     setPicks(prev => ({ ...prev, [cardId]: value }));
-    
-    // Auto-advance after selection (except for chaos props and rumble props which need multiple selections)
-    const card = CARD_CONFIG.find(c => c.id === cardId);
-    if (card?.type !== "chaos-props" && card?.type !== "rumble-props" && currentCardIndex < TOTAL_CARDS - 1) {
-      setTimeout(() => handleSwipe("right"), 300);
-    }
-  }, [isLocked, currentCardIndex, handleSwipe]);
+    // No auto-advance - let users navigate manually to see their selection
+  }, [isLocked]);
 
   const handleChaosPropsUpdate = useCallback((values: Record<string, "YES" | "NO" | null>) => {
     if (isLocked) return;
