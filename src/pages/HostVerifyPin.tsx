@@ -24,10 +24,29 @@ export default function HostVerifyPin() {
     const storedPin = localStorage.getItem(`party_${code}_pin`);
     if (storedPin) {
       navigate(`/host/setup/${code}`);
+      return;
     }
-    
-    // Focus first input on mount
-    inputRefs.current[0]?.focus();
+
+    // Check if this is a demo party - bypass PIN for demos
+    const checkDemoAndFocus = async () => {
+      const { data: partyInfo } = await supabase
+        .from("parties_public")
+        .select("is_demo")
+        .eq("code", code)
+        .single();
+
+      if (partyInfo?.is_demo) {
+        // Auto-verify for demo parties
+        localStorage.setItem(`party_${code}_pin`, "verified");
+        navigate(`/host/setup/${code}`);
+        return;
+      }
+
+      // Focus first input for regular parties
+      inputRefs.current[0]?.focus();
+    };
+
+    checkDemoAndFocus();
   }, [code, navigate]);
 
   const handleDigitChange = (index: number, value: string) => {
