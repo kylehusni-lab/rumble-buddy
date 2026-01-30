@@ -121,7 +121,7 @@ function DiagonalFaceOff({
         <button
           onClick={() => onSelect(wrestler1)}
           className={cn(
-            "relative w-full py-6 px-4 transition-all duration-300",
+            "relative w-full py-4 px-4 transition-all duration-300",
             "flex items-center gap-4",
             "faceoff-zone-1",
             currentPick === wrestler1 && "ring-2 ring-primary ring-inset bg-primary/10"
@@ -163,12 +163,12 @@ function DiagonalFaceOff({
           </div>
         </button>
 
-        {/* VS Divider */}
-        <div className="relative h-0 flex items-center justify-center z-10">
-          <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-          <div className="vs-badge-glow rounded-full">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center border-4 border-card">
-              <span className="text-lg font-black text-primary-foreground">VS</span>
+        {/* VS Divider - Dedicated row with proper spacing */}
+        <div className="relative py-3 flex items-center justify-center">
+          <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+          <div className="relative z-10 vs-badge-glow rounded-full">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center border-[3px] border-card shadow-lg">
+              <span className="text-sm font-black text-primary-foreground">VS</span>
             </div>
           </div>
         </div>
@@ -177,7 +177,7 @@ function DiagonalFaceOff({
         <button
           onClick={() => onSelect(wrestler2)}
           className={cn(
-            "relative w-full py-6 px-4 transition-all duration-300",
+            "relative w-full py-4 px-4 transition-all duration-300",
             "flex items-center gap-4 flex-row-reverse",
             "faceoff-zone-2",
             currentPick === wrestler2 && "ring-2 ring-primary ring-inset bg-primary/10"
