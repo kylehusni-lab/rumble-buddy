@@ -1,6 +1,8 @@
 // OTT Logo components - stacked bars design
 // Gold vertical bar with white horizontal bars at decreasing opacity
 
+import { cn } from "@/lib/utils";
+
 export function OttLogoMark({ size = 32, className = "" }: { size?: number; className?: string }) {
   return (
     <svg 
@@ -41,6 +43,16 @@ export function OttLogoHero({ size = 300, className = "" }: { size?: number; cla
         fill="none"
       />
     </svg>
+  );
+}
+
+// Small logo with wordmark for headers
+export function OttLogoSmall({ className = "" }: { className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-2", className)}>
+      <OttLogoMark size={24} />
+      <span className="font-bold text-sm tracking-tight text-foreground">OTT</span>
+    </div>
   );
 }
 

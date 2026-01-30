@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Trophy, Calculator, Hash, Swords, Zap, LogOut, Loader2, Cloud, Check, X, Users, Plus, Pencil, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/Logo";
+import { OttLogoSmall } from "@/components/OttLogo";
 import { SoloScoringModal } from "@/components/solo/SoloScoringModal";
 import { SinglePickEditModal } from "@/components/dashboard/SinglePickEditModal";
 import { useSoloCloud } from "@/hooks/useSoloCloud";
@@ -152,7 +152,7 @@ export default function SoloDashboard() {
       <div className="sticky top-0 z-20 bg-gradient-to-b from-background via-background to-background/95 backdrop-blur-sm">
         <div className="p-4 pb-2">
           <div className="flex items-center justify-between mb-3">
-            <Logo size="sm" />
+            <OttLogoSmall />
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Cloud className="w-3 h-3 text-success" />

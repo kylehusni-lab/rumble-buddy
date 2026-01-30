@@ -20,7 +20,7 @@ interface TimeRemaining {
 function CountdownUnit({ value, label }: { value: number; label: string }) {
   return (
     <div className="text-center">
-      <div className="text-2xl sm:text-3xl font-black tabular-nums text-ott-accent">
+      <div className="text-lg sm:text-2xl lg:text-3xl font-black tabular-nums text-ott-accent">
         {String(value).padStart(2, '0')}
       </div>
       <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
@@ -69,20 +69,22 @@ export function HeroSection({ onRequestAccess }: HeroSectionProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            {/* Event Banner */}
-            <div className="inline-flex items-center gap-3 bg-ott-surface-elevated border border-border rounded-lg px-4 py-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-ott-accent">
-                Next Event
-              </span>
-              <span className="font-semibold">Royal Rumble</span>
+            {/* Event Banner - stacks on mobile */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 bg-ott-surface-elevated border border-border rounded-lg px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-ott-accent">
+                  Next Event
+                </span>
+                <span className="font-semibold">Royal Rumble</span>
+              </div>
               {timeRemaining && (
-                <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
+                <div className="flex items-center gap-1 sm:gap-2 sm:ml-2 sm:pl-3 sm:border-l border-border">
                   <CountdownUnit value={timeRemaining.days} label="d" />
-                  <span className="text-muted-foreground">:</span>
+                  <span className="text-muted-foreground text-sm">:</span>
                   <CountdownUnit value={timeRemaining.hours} label="h" />
-                  <span className="text-muted-foreground">:</span>
+                  <span className="text-muted-foreground text-sm">:</span>
                   <CountdownUnit value={timeRemaining.minutes} label="m" />
-                  <span className="text-muted-foreground">:</span>
+                  <span className="text-muted-foreground text-sm">:</span>
                   <CountdownUnit value={timeRemaining.seconds} label="s" />
                 </div>
               )}
@@ -100,12 +102,12 @@ export function HeroSection({ onRequestAccess }: HeroSectionProps) {
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row">
               {isLive ? (
                 <Button 
                   onClick={() => navigate("/join")}
                   size="lg"
-                  className="bg-ott-accent text-background hover:bg-ott-accent/90 font-bold animate-pulse"
+                  className="w-full sm:w-auto bg-ott-accent text-background hover:bg-ott-accent/90 font-bold animate-pulse"
                 >
                   Join Live Party
                   <ArrowRight className="ml-2 w-5 h-5" />
@@ -115,7 +117,7 @@ export function HeroSection({ onRequestAccess }: HeroSectionProps) {
                   <Button 
                     onClick={onRequestAccess}
                     size="lg"
-                    className="bg-ott-accent text-background hover:bg-ott-accent/90 font-bold"
+                    className="w-full sm:w-auto bg-ott-accent text-background hover:bg-ott-accent/90 font-bold"
                   >
                     Request Access
                   </Button>
@@ -123,7 +125,7 @@ export function HeroSection({ onRequestAccess }: HeroSectionProps) {
                     onClick={() => navigate("/join")}
                     size="lg"
                     variant="outline"
-                    className="border-border"
+                    className="w-full sm:w-auto border-border"
                   >
                     Join with Code
                   </Button>

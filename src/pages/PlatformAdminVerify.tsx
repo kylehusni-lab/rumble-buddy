@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Shield, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Logo } from "@/components/Logo";
+import { OttLogoMark } from "@/components/OttLogo";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -55,7 +55,7 @@ export default function PlatformAdminVerify() {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
 
       <div className="relative z-10 w-full max-w-md space-y-8">
-        <Logo size="md" />
+        <OttLogoMark size={64} className="mx-auto" />
 
         <motion.div
           className="bg-card border border-border rounded-2xl p-6 shadow-card"

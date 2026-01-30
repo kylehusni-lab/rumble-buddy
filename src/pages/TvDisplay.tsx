@@ -8,7 +8,7 @@ import { TvUnifiedHeader, RumbleSubView } from "@/components/tv/TvUnifiedHeader"
 import { TvActivityTicker, ActivityEvent } from "@/components/tv/TvActivityTicker";
 import { TvScorePopup } from "@/components/tv/TvScorePopup";
 import { TvTabId } from "@/components/tv/TvTabBar";
-import { Logo } from "@/components/Logo";
+import { OttLogoHero } from "@/components/OttLogo";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
 import { useAutoHideHeader } from "@/hooks/useAutoHideHeader";
@@ -530,7 +530,7 @@ export default function TvDisplay() {
           {partyStatus === "pre_event" ? (
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
-                <Logo size="lg" className="mx-auto mb-4" />
+                <OttLogoHero size={180} className="mx-auto mb-4" />
                 <h2 className="text-3xl font-bold mb-2">Waiting for Event to Start</h2>
                 <p className="text-muted-foreground">{players.length} players ready</p>
               </div>

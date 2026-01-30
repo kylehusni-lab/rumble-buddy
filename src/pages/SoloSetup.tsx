@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Logo } from "@/components/Logo";
+import { OttLogoMark } from "@/components/OttLogo";
 import { useSoloCloud } from "@/hooks/useSoloCloud";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -109,7 +109,7 @@ export default function SoloSetup() {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
 
       <div className="relative z-10 w-full max-w-md space-y-8">
-        <Logo size="md" />
+        <OttLogoMark size={64} className="mx-auto" />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
