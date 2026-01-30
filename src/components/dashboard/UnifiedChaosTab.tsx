@@ -1,7 +1,13 @@
-import { memo } from "react";
-import { Check, X, Pencil } from "lucide-react";
+import { memo, useState } from "react";
+import { Check, X, Pencil, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CHAOS_PROPS, SCORING } from "@/lib/constants";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Pick {
   match_id: string;
@@ -45,6 +51,7 @@ export const UnifiedChaosTab = memo(function UnifiedChaosTab({
 }: UnifiedChaosTabProps) {
   const normalizedPicks = normalizePicks(picks);
   const normalizedResults = normalizeResults(results);
+  const [expandedProp, setExpandedProp] = useState<string | null>(null);
 
   const getPickResult = (matchId: string): boolean | null => {
     const pick = normalizedPicks[matchId];
@@ -87,45 +94,86 @@ export const UnifiedChaosTab = memo(function UnifiedChaosTab({
     );
   };
 
+  const toggleExpand = (propId: string) => {
+    setExpandedProp(expandedProp === propId ? null : propId);
+  };
+
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <table className="w-full">
-        <thead>
-          <tr className="bg-muted/50 border-b border-border">
-            <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Chaos Prop
-            </th>
-            <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Men's
-            </th>
-            <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Women's
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {CHAOS_PROPS.map((prop, index) => {
-            const mensMatchId = `mens_chaos_prop_${index + 1}`;
-            const womensMatchId = `womens_chaos_prop_${index + 1}`;
-            
-            return (
-              <tr key={prop.id} className="border-b border-border/50 last:border-0">
-                <td className="px-3 py-2.5">
-                  <div className="text-sm font-medium text-foreground">
-                    {prop.shortName}
-                  </div>
-                </td>
-                <td className="px-2 py-2">
-                  {renderCell(mensMatchId)}
-                </td>
-                <td className="px-2 py-2">
-                  {renderCell(womensMatchId)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <TooltipProvider>
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-muted/50 border-b border-border">
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Chaos Prop
+              </th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide w-20 md:w-24">
+                Men's
+              </th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide w-20 md:w-24">
+                Women's
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {CHAOS_PROPS.map((prop, index) => {
+              const mensMatchId = `mens_chaos_prop_${index + 1}`;
+              const womensMatchId = `womens_chaos_prop_${index + 1}`;
+              const isExpanded = expandedProp === prop.id;
+              
+              return (
+                <tr key={prop.id} className="border-b border-border/50 last:border-0">
+                  <td className="px-3 py-2.5">
+                    {/* Desktop: Show title + subtitle */}
+                    <div className="hidden md:block">
+                      <div className="text-sm font-medium text-foreground">
+                        {prop.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground leading-tight mt-0.5">
+                        {prop.question}
+                      </div>
+                    </div>
+                    
+                    {/* Mobile: Show title with info icon tooltip */}
+                    <div className="md:hidden">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium text-foreground">
+                          {prop.shortName}
+                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button 
+                              onClick={() => toggleExpand(prop.id)}
+                              className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                            >
+                              <Info size={14} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[250px]">
+                            <p className="text-xs">{prop.question}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      {/* Expanded explanation on mobile tap */}
+                      {isExpanded && (
+                        <div className="text-xs text-muted-foreground mt-1 leading-tight">
+                          {prop.question}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-2 py-2">
+                    {renderCell(mensMatchId)}
+                  </td>
+                  <td className="px-2 py-2">
+                    {renderCell(womensMatchId)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </TooltipProvider>
   );
 });
