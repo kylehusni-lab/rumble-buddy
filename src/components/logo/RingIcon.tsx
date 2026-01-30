@@ -13,7 +13,7 @@ export function RingIcon({ size = 320, className }: RingIconProps) {
       height={size}
       className={cn("", className)}
       role="img"
-      aria-label="Rumble Buddy - Wrestling ring logo"
+      aria-label="Over The Top - Wrestling ring logo"
     >
       {/* Platform base - isometric gold */}
       <path
