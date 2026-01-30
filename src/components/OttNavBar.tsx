@@ -5,9 +5,10 @@ import { Button } from "./ui/button";
 interface OttNavBarProps {
   onStoryClick?: () => void;
   onFeaturesClick?: () => void;
+  onTvModeClick?: () => void;
 }
 
-export function OttNavBar({ onStoryClick, onFeaturesClick }: OttNavBarProps) {
+export function OttNavBar({ onStoryClick, onFeaturesClick, onTvModeClick }: OttNavBarProps) {
   const navigate = useNavigate();
 
   return (
@@ -32,6 +33,18 @@ export function OttNavBar({ onStoryClick, onFeaturesClick }: OttNavBarProps) {
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Features
+          </button>
+          <button 
+            onClick={onTvModeClick}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            TV Mode
+          </button>
+          <button 
+            onClick={() => navigate("/demo")}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Demo
           </button>
         </div>
 

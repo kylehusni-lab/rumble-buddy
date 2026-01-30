@@ -11,6 +11,7 @@ export default function HomePage() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const storyRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
+  const tvModeRef = useRef<HTMLDivElement>(null);
 
   const scrollToStory = () => {
     storyRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -20,12 +21,23 @@ export default function HomePage() {
     featuresRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const scrollToTvMode = () => {
+    tvModeRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <OttNavBar onStoryClick={scrollToStory} onFeaturesClick={scrollToFeatures} />
+      <OttNavBar 
+        onStoryClick={scrollToStory} 
+        onFeaturesClick={scrollToFeatures}
+        onTvModeClick={scrollToTvMode}
+      />
       
       <main>
-        <HeroSection onRequestAccess={() => setIsRequestModalOpen(true)} />
+        <HeroSection 
+          onRequestAccess={() => setIsRequestModalOpen(true)} 
+          onLearnMore={scrollToStory}
+        />
         
         <div ref={storyRef}>
           <StorySection id="story" />
@@ -35,7 +47,9 @@ export default function HomePage() {
           <FeaturesSection id="features" />
         </div>
         
-        <TvModeGallery id="tv-mode" />
+        <div ref={tvModeRef}>
+          <TvModeGallery id="tv-mode" />
+        </div>
         
         <FooterSection />
       </main>
