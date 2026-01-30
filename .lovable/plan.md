@@ -1,133 +1,117 @@
 
-## Touch-ups and Match Picker Enhancement
 
-### 1. Fix Commented Code in Men's/Women's Tab
+## Fix: WWE Face-Off Match Picker Layout
 
-The line `// MOBILE: Single-column list with large avatars` on line 65 of `UnifiedRumblePropsTab.tsx` is visible as text because it's not wrapped properly - it's a JavaScript comment inside JSX that renders as visible text.
+### Current Issues
 
-**File**: `src/components/dashboard/UnifiedRumblePropsTab.tsx`
-- Remove the stray comment on line 65
-
----
-
-### 2. Premium Desktop Container
-
-Add a subtle card background with horizontal padding around the centered content for a more polished desktop feel.
-
-**Files to modify**:
-- `src/pages/SoloDashboard.tsx`
-- `src/pages/PlayerDashboard.tsx`
-
-**Changes**:
-```typescript
-// Current
-<div className="max-w-2xl mx-auto p-4 pb-32">
-
-// Updated - Add card-like wrapper on larger screens
-<div className="max-w-2xl mx-auto p-4 pb-32 md:bg-card/30 md:rounded-2xl md:border md:border-border/50 md:my-4 md:mx-auto md:shadow-lg">
-```
-
-This applies a subtle card background, border, and shadow on desktop screens only (md: breakpoint), while mobile remains clean and edge-to-edge.
+Looking at the screenshot:
+1. **VS badge overlaps Drew McIntyre's zone** - The `h-0` container causes the VS badge to float on top of the first wrestler
+2. **No clear separation** - The divider doesn't create a visual break between the two zones
+3. **Unbalanced feel** - Top wrestler bleeds into the VS area
 
 ---
 
-### 3. WWE-Style Diagonal Face-Off Match Picker
+### Solution: Proper Divider Row
 
-Completely redesign the undercard match picker modal with a premium diagonal split layout.
+Replace the `h-0` floating approach with a dedicated divider row that has its own height and properly separates the two zones.
 
 **File**: `src/components/dashboard/SinglePickEditModal.tsx`
 
-**New Design Features**:
+---
 
-| Element | Description |
-|---------|-------------|
-| **Diagonal Split** | Two triangular territories separated by a diagonal line |
-| **Wrestler Zones** | Left-top triangle vs Right-bottom triangle |
-| **VS Badge** | Centered at the diagonal collision point with glow effect |
-| **Action Poses** | Larger wrestler photos angled toward center |
-| **Match Title Header** | Prominent display at top with match type styling |
-| **Selection Feedback** | Gold glow border on selected wrestler's territory |
+### Proposed Layout Structure
 
-┌──────────────────────────────────┐
-│   UNDISPUTED WWE CHAMPIONSHIP    │
-│              🏆                   │
-├──────────────────────────────────┤
-│                                  │
-│  DREW          ╱                 │
-│  McINTYRE    ╱                   │
-│  [photo]   ╱                     │
-│  CHAMPION ╱      VS              │
-│          ╱                       │
-│        ╱         [photo]         │
-│      ╱           SAMI            │
-│    ╱             ZAYN            │
-│                  CHALLENGER      │
-│                                  │
-├──────────────────────────────────┤
-│  [ TAP TO SELECT YOUR PICK ]     │
-└──────────────────────────────────┘
-+-----------------------------+
+```text
++--------------------------------+
+|    MATCH TITLE HEADER          |
+|    "Tap a wrestler to select"  |
++--------------------------------+
+|                                |
+|  [Photo]  DREW MCINTYRE        |
+|           Tap to select        |
+|                                |
++--------------------------------+
+|    ~~~~~ [ VS ] ~~~~~          |  <-- Dedicated row with padding
++--------------------------------+
+|                                |
+|        SAMI ZAYN     [Photo]   |
+|        Tap to select           |
+|                                |
++--------------------------------+
 ```
 
-**Implementation approach**:
-- Use CSS `clip-path` to create triangular zones
-- Apply diagonal gradient backgrounds (Gold/Amber for top, Green for bottom)
-- Center the VS badge at the intersection using absolute positioning
-- Add subtle animated glow on the diagonal split line
-- Selected wrestler zone gets gold border/highlight
-- Fullscreen modal for immersive feel
+---
 
-**CSS Classes to Add** (in `src/index.css`):
-```css
-/* Diagonal Face-Off Modal */
-.diagonal-zone-top {
-  clip-path: polygon(0 0, 100% 0, 100% 35%, 0 65%);
-}
+### Key Changes
 
-.diagonal-zone-bottom {
-  clip-path: polygon(0 65%, 100% 35%, 100% 100%, 0 100%);
-}
+**1. Replace the floating `h-0` divider with a proper section:**
 
-.diagonal-glow-line {
-  /* Subtle glow effect along the split */
-  background: linear-gradient(to right, transparent, hsl(var(--primary)/0.5), transparent);
-  filter: blur(8px);
-}
+```typescript
+// CURRENT (broken)
+<div className="relative h-0 flex items-center justify-center z-10">
+  ...
+</div>
+
+// FIXED - Give the VS divider its own row with padding
+<div className="relative py-2 flex items-center justify-center z-10">
+  <div className="absolute inset-x-4 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent top-1/2" />
+  <div className="vs-badge-glow rounded-full relative z-20">
+    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 ...">
+      <span>VS</span>
+    </div>
+  </div>
+</div>
 ```
+
+**2. Adjust wrestler zone padding:**
+- Reduce vertical padding from `py-6` to `py-4` to keep modal compact
+- Add slight bottom/top padding overlap with the VS area
+
+**3. Shrink the VS badge slightly:**
+- Reduce from `w-14 h-14` to `w-12 h-12` for better proportion
+- Keep the glow effect but make it less dominant
+
+---
+
+### Visual Comparison
+
+| Before | After |
+|--------|-------|
+| VS floats over Drew's zone | VS sits in dedicated row |
+| `h-0` creates overlap | `py-2` creates separation |
+| Zones feel merged | Clear separation between zones |
 
 ---
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/dashboard/UnifiedRumblePropsTab.tsx` | Remove stray comment on line 65 |
-| `src/pages/SoloDashboard.tsx` | Add premium card wrapper styling for desktop |
-| `src/pages/PlayerDashboard.tsx` | Add premium card wrapper styling for desktop |
-| `src/components/dashboard/SinglePickEditModal.tsx` | Redesign binary type modal with diagonal WWE-style layout |
-| `src/index.css` | Add diagonal face-off CSS classes |
+| File | Change |
+|------|--------|
+| `src/components/dashboard/SinglePickEditModal.tsx` | Fix VS divider positioning from `h-0` to `py-2`, adjust sizing |
 
 ---
 
 ### Technical Details
 
-**Diagonal Clip-Path Math**:
-The diagonal creates two triangular zones. With a container height of ~400px:
-- Top zone: `polygon(0 0, 100% 0, 100% 40%, 0 60%)`
-- Bottom zone: `polygon(0 60%, 100% 40%, 100% 100%, 0 100%)`
+The fix changes line 167-174:
 
-The percentages create a ~20% overlap zone in the center where the diagonal line sits.
-
-**VS Badge Positioning**:
 ```typescript
-<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-  {/* VS Badge with glow */}
+// Current broken approach
+<div className="relative h-0 flex items-center justify-center z-10">
+
+// Fixed approach with dedicated row
+<div className="relative py-3 flex items-center justify-center">
+  {/* Horizontal glow line */}
+  <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+  
+  {/* VS Badge - properly centered in its own row */}
+  <div className="relative z-10 vs-badge-glow rounded-full">
+    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center border-3 border-card shadow-lg">
+      <span className="text-sm font-black text-primary-foreground">VS</span>
+    </div>
+  </div>
 </div>
 ```
 
-**Selection State**:
-When a wrestler is selected:
-- Their zone background intensifies
-- A gold border/glow appears around the zone edge
-- The opponent's zone dims slightly (opacity reduction)
-- The VS badge pulses briefly
+This gives the VS badge its own visual space while the glow line creates continuity between the zones.
+
