@@ -188,3 +188,7 @@ export const CARD_CONFIG = [
 ] as const;
 
 export const TOTAL_CARDS = CARD_CONFIG.length;
+
+// Total individual picks a player needs to make
+// 2 undercard matches + 2 rumble winners + 18 rumble props (9 mens + 9 womens incl. final four) + 14 chaos props (7 mens + 7 womens)
+export const TOTAL_PICKS = 36;
