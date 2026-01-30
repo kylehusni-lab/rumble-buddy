@@ -1,42 +1,41 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Tv, Monitor } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tv } from "lucide-react";
 
 interface TvModeGalleryProps {
   id?: string;
 }
 
-// Placeholder data - will be replaced with actual screenshots
 const gallerySlides = [
   {
     id: "entry-grid",
     title: "Entry Grid",
     description: "Track all 30 entrants with live wrestler images and player assignments",
-    placeholder: "Men's/Women's Entry Grid",
+    image: "/tv-screenshots/mens-entry-grid.png",
+  },
+  {
+    id: "womens-grid",
+    title: "Women's Entry Grid",
+    description: "Same powerful tracking for the Women's Royal Rumble match",
+    image: "/tv-screenshots/womens-entry-grid.png",
   },
   {
     id: "props-grid", 
     title: "Props Tracker",
     description: "See everyone's predictions for #1 Entrant, Iron Man, Final Four, and more",
-    placeholder: "Rumble Props Grid",
+    image: "/tv-screenshots/mens-props-grid.png",
   },
   {
     id: "live-match",
     title: "Live Undercard",
     description: "Display the current match with pick percentages and a color-coded breakdown",
-    placeholder: "Undercard Match Display",
+    image: "/tv-screenshots/live-match.png",
   },
   {
     id: "numbers-reveal",
     title: "Number Reveal",
     description: "The big moment - show everyone their randomly assigned Rumble numbers",
-    placeholder: "Your Numbers Are In!",
-  },
-  {
-    id: "winner-predictions",
-    title: "Winner Predictions",
-    description: "Who does everyone think will win? See all the picks at a glance",
-    placeholder: "Winner Predictions Panel",
+    image: "/tv-screenshots/numbers-reveal.png",
   },
 ];
 
@@ -85,41 +84,35 @@ export function TvModeGallery({ id }: TvModeGalleryProps) {
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="relative aspect-video bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden"
+            className="relative aspect-video bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden shadow-2xl"
           >
-            {/* TV Frame Effect */}
-            <div className="absolute inset-0 bg-gradient-to-b from-zinc-800/20 to-transparent pointer-events-none" />
+            {/* TV Frame Effect - top reflection */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none z-10" />
             
-            {/* Placeholder Content */}
+            {/* Screenshot Display */}
             <AnimatePresence mode="wait">
-              <motion.div
+              <motion.img
                 key={currentSlide.id}
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
+                src={currentSlide.image}
+                alt={currentSlide.title}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.3 }}
-                className="absolute inset-0 flex flex-col items-center justify-center p-8"
-              >
-                <Monitor className="w-16 h-16 text-zinc-700 mb-4" />
-                <span className="text-zinc-500 text-lg font-medium mb-2">
-                  {currentSlide.placeholder}
-                </span>
-                <span className="text-zinc-600 text-sm">
-                  Screenshot coming soon
-                </span>
-              </motion.div>
+                className="absolute inset-0 w-full h-full object-cover object-top"
+              />
             </AnimatePresence>
 
             {/* Slide Indicator Dots */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
               {gallerySlides.map((slide, index) => (
                 <button
                   key={slide.id}
                   onClick={() => setCurrentIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-all ${
+                  className={`h-2 rounded-full transition-all ${
                     index === currentIndex
                       ? "bg-yellow-500 w-6"
-                      : "bg-zinc-600 hover:bg-zinc-500"
+                      : "bg-white/40 hover:bg-white/60 w-2"
                   }`}
                   aria-label={`Go to slide ${index + 1}`}
                 />
@@ -130,14 +123,14 @@ export function TvModeGallery({ id }: TvModeGalleryProps) {
           {/* Navigation Arrows */}
           <button
             onClick={prevSlide}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-800/80 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-foreground hover:bg-zinc-700 transition-colors"
+            className="absolute left-2 lg:-left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-800/90 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-foreground hover:bg-zinc-700 transition-colors z-20"
             aria-label="Previous slide"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-800/80 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-foreground hover:bg-zinc-700 transition-colors"
+            className="absolute right-2 lg:-right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-800/90 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-foreground hover:bg-zinc-700 transition-colors z-20"
             aria-label="Next slide"
           >
             <ChevronRight className="w-5 h-5" />
