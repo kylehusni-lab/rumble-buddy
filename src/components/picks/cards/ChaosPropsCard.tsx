@@ -30,8 +30,8 @@ export const ChaosPropsCard = memo(forwardRef<HTMLDivElement, ChaosPropsCardProp
         icon={Zap}
         label="Chaos Props"
         title={title}
-        pointsText={`+${SCORING.PROP_BET} pts each correct • 60 pts possible`}
-        counter={`${answeredCount}/6`}
+        pointsText={`+${SCORING.PROP_BET} pts each correct • ${CHAOS_PROPS.length * SCORING.PROP_BET} pts possible`}
+        counter={`${answeredCount}/${CHAOS_PROPS.length}`}
       />
 
       {/* Props List (Scrollable) */}
