@@ -8,6 +8,12 @@ interface TvModeGalleryProps {
 
 const gallerySlides = [
   {
+    id: "leaderboard",
+    title: "Live Leaderboard",
+    description: "Real-time score tracking with color-coded player bars and point totals",
+    image: "/tv-screenshots/leaderboard.png",
+  },
+  {
     id: "entry-grid",
     title: "Entry Grid",
     description: "Track all 30 entrants with live wrestler images and player assignments",
