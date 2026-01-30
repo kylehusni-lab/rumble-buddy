@@ -78,7 +78,9 @@ const handler = async (req: Request): Promise<Response> => {
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0a0a0b; color: #ffffff; padding: 40px 20px; margin: 0;">
           <div style="max-width: 400px; margin: 0 auto; text-align: center;">
-            <h1 style="color: #d4af37; font-size: 28px; margin-bottom: 8px;">🏆 Rumble Buddy</h1>
+            <a href="https://therumbleapp.com" style="text-decoration: none;">
+              <h1 style="color: #d4af37; font-size: 28px; margin-bottom: 8px;">The Rumble App</h1>
+            </a>
             <p style="color: #888; font-size: 14px; margin-bottom: 32px;">Royal Rumble 2026</p>
             
             <p style="font-size: 16px; margin-bottom: 24px;">Hey ${displayName}!</p>
@@ -90,7 +92,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <p style="font-size: 12px; color: #666; margin-top: 32px;">
-              Keep this PIN safe! You'll need it to sign in and access your picks.
+              Keep this PIN safe! You'll need it to sign in at <a href="https://therumbleapp.com" style="color: #d4af37;">therumbleapp.com</a>
             </p>
           </div>
         </body>
