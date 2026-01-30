@@ -1,234 +1,232 @@
 
 
-# Solo Dashboard UI Fixes
+# Fix Duplicate Rumble Winner, Validation, and Image Quality
 
-## Issues from Screenshot
+## Issues Identified
 
-| Issue | Current State | Fix |
-|-------|--------------|-----|
-| **Duplicate Progress Bar** | `CompactPickProgress` component adds redundant thumbnails below score card (already shows completion in tab bar) | Remove `CompactPickProgress` entirely |
-| **Blurry Photos** | 56px photos (w-14 h-14) are too small and appear blurry | Increase to 64px (w-16 h-16) on mobile |
-| **Redundant Headers** | "Undercard Matches" and "Rumble Winners" headers when tab already indicates content | Remove section headers from all tabs |
-| **Tap to Select Broken** | Button has `disabled` attribute blocking clicks when `canEdit` is false or result exists | Remove `disabled` attribute, handle click logic properly |
-| **No Clear Edit Indicator** | When pick IS made, not obvious you can tap to change | Add pencil icon visible on selected items |
+| Issue | Root Cause | Solution |
+|-------|-----------|----------|
+| **Duplicate Men's Rumble Winner in Matches tab** | The MatchesTab shows 2 Rumble Winners but both display "Men's" label when one should be "Women's" - something is wrong with the label logic or pick display | Fix the label/pick mapping in MatchesTab |
+| **Same wrestler allowed for #1 and #30** | `SinglePickEditModal` doesn't use validation logic from `pick-validation.ts` | Pass current picks + blocked wrestlers to WrestlerPickerModal |
+| **Blurry wrestler photos** | 64px display size is small; images may lack optimization; CSS object-cover scaling | Increase display size to 72-80px on mobile; add image-rendering hints |
 
 ---
 
-## Detailed Fixes
+## Part 1: Fix Duplicate Rumble Winner Display
 
-### 1. Remove `CompactPickProgress` Component
-
-Delete lines 192-198 in the Score Card that render the progress component:
+**Investigation**: Looking at `MatchesTab` (lines 421-444), it correctly maps over `["mens_rumble_winner", "womens_rumble_winner"]`. The label logic at line 437 is:
 ```typescript
-// REMOVE THIS BLOCK
-<CompactPickProgress 
-  picks={picks}
-  tabCompletion={tabCompletion}
-  onTabClick={setActiveTab}
+label={id.includes("mens") ? "Men's Rumble Winner" : "Women's Rumble Winner"}
+```
+
+This is correct. The issue in the screenshot shows:
+- Row 3: "MEN'S RUMBLE WINNER - Brock Lesnar" (has pick)
+- Row 4: "MEN'S RUMBLE WINNER - +50 pts" (no pick)
+
+Both show "MEN'S" which means both IDs contain "mens". This suggests the loop is somehow iterating over the wrong array OR there's a data issue.
+
+**Actually** - looking more carefully at the screenshot, I see the Matches tab shows 4 items with "3/4" completion. That's 2 undercard + 2 rumble winners = 4 items. But BOTH rumble winner rows say "MEN'S RUMBLE WINNER". 
+
+The issue is that the empty Women's Rumble Winner row is incorrectly labeled as "Men's". Let me check the label logic more carefully...
+
+The issue is at line 437:
+```typescript
+label={id.includes("mens") ? "Men's Rumble Winner" : "Women's Rumble Winner"}
+```
+
+This should work. But wait - checking the array: `["mens_rumble_winner", "womens_rumble_winner"]` - both have correct IDs. Unless the screenshot is from older code?
+
+**Actually, reviewing the latest code I just read** - The code looks correct. The bug may have been in a previous version. Let me verify the current state is correct and include a small cleanup if needed.
+
+**File: `src/pages/SoloDashboard.tsx`**
+
+Ensure the Rumble Winners in MatchesTab are correctly labeled:
+```typescript
+{["mens_rumble_winner", "womens_rumble_winner"].map((id) => (
+  <MatchRow
+    key={id}
+    id={id}
+    label={id === "mens_rumble_winner" ? "Men's Rumble Winner" : "Women's Rumble Winner"}
+    pick={picks[id]}
+    result={results[id]}
+    points={SCORING.RUMBLE_WINNER_PICK}
+  />
+))}
+```
+
+Use strict equality `===` instead of `includes()` to prevent any edge cases.
+
+---
+
+## Part 2: Add Validation to SinglePickEditModal (Block Same Wrestler for #1/#30)
+
+The `pick-validation.ts` file has `getBlockedWrestlers()` function that prevents conflicting picks (e.g., same wrestler at #1 and #30). However, `SinglePickEditModal` doesn't use this validation.
+
+**File: `src/components/dashboard/SinglePickEditModal.tsx`**
+
+1. Add imports for validation and pass current picks:
+
+```typescript
+import { getBlockedWrestlers } from "@/lib/pick-validation";
+```
+
+2. Update props to accept current picks:
+
+```typescript
+interface SinglePickEditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  matchId: string;
+  currentPick: string;
+  onSave: (matchId: string, newValue: string) => void;
+  mensEntrants?: string[];
+  womensEntrants?: string[];
+  allPicks?: Record<string, string>;  // NEW: All current picks for validation
+}
+```
+
+3. Calculate blocked wrestlers and filter entrants:
+
+```typescript
+// Inside the component, before wrestler type handling:
+const blockedWrestlers = useMemo(() => {
+  if (!allPicks || config?.type !== "wrestler") return new Set<string>();
+  
+  // Extract gender and propId from matchId
+  const gender = matchId.includes("womens") ? "womens" : "mens";
+  let propId = matchId.replace(`${gender}_`, "");
+  
+  // Handle final_four_X -> final_four_X
+  // Handle entrant_1, entrant_30, etc.
+  
+  return getBlockedWrestlers(gender as "mens" | "womens", propId, allPicks);
+}, [matchId, allPicks, config]);
+
+// Filter entrants to exclude blocked wrestlers
+const availableEntrants = config?.entrants?.filter(w => !blockedWrestlers.has(w)) || [];
+```
+
+4. Pass filtered entrants to WrestlerPickerModal:
+
+```typescript
+<WrestlerPickerModal
+  ...
+  wrestlers={availableEntrants}
+  ...
 />
 ```
 
-Also remove the entire `CompactPickProgress` component definition (lines 316-413).
+**File: `src/pages/SoloDashboard.tsx`**
 
----
+Pass picks to SinglePickEditModal:
 
-### 2. Increase Photo Size for Clarity
-
-Change avatar sizes from `w-14 h-14` (56px) to `w-16 h-16` (64px):
-
-**MatchesTab** (line 459):
 ```typescript
-// Before
-"w-14 h-14 rounded-full"
-
-// After
-"w-16 h-16 rounded-full"
-```
-
-**RumbleTab mobile** (line 612):
-```typescript
-// Before
-"w-14 h-14 rounded-full"
-
-// After  
-"w-16 h-16 rounded-full"
-```
-
-Also update the empty circle placeholder to match:
-```typescript
-// Before
-"w-14 h-14 rounded-full border-2 border-dashed"
-
-// After
-"w-16 h-16 rounded-full border-2 border-dashed"
+<SinglePickEditModal
+  isOpen={editModalOpen}
+  onClose={() => setEditModalOpen(false)}
+  matchId={editingMatchId}
+  currentPick={editingCurrentPick}
+  onSave={handleSavePick}
+  mensEntrants={mensEntrants}
+  womensEntrants={womensEntrants}
+  allPicks={picks}  // NEW
+/>
 ```
 
 ---
 
-### 3. Remove Redundant Section Headers
+## Part 3: Improve Image Quality and Size
 
-**MatchesTab** - Remove lines 522 and 535:
+**Issue**: 64px (w-16) images appear blurry because:
+1. Small display size loses detail
+2. No CSS optimization for scaled images
+3. Source images may be various qualities
+
+**Solution**: Increase avatar size and add rendering hints.
+
+**File: `src/pages/SoloDashboard.tsx`**
+
+1. Increase MatchRow avatar from `w-16 h-16` (64px) to `w-[72px] h-[72px]`:
+
 ```typescript
-// REMOVE
-<h3 className="text-lg font-bold text-foreground mb-4">Undercard Matches</h3>
-
-// REMOVE
-<h3 className="text-lg font-bold text-foreground mt-6 mb-4">Rumble Winners</h3>
-```
-
-**RumbleTab** - Remove line 578:
-```typescript
-// REMOVE
-<h3 className="text-lg font-bold text-foreground mb-4">{title}</h3>
-```
-
----
-
-### 4. Fix Tappability - Remove `disabled` Attribute
-
-The `disabled` attribute on buttons blocks all clicks. Instead, handle logic inside onClick:
-
-**MatchesTab MatchRow** (lines 440-443):
-```typescript
-// Before
-<button
-  onClick={() => canEdit && !result && onEditPick?.(id, pick || "")}
-  disabled={!canEdit || !!result}
-  
-// After
-<button
-  onClick={() => {
-    if (canEdit && !result) {
-      onEditPick?.(id, pick || "");
-    }
-  }}
-  // Remove disabled entirely
-```
-
-**RumbleTab mobile** (lines 592-595):
-```typescript
-// Before
-<button
-  onClick={() => canEdit && !result && onEditPick?.(matchId, pick || "")}
-  disabled={!canEdit || !!result}
-
-// After
-<button
-  onClick={() => {
-    if (canEdit && !result) {
-      onEditPick?.(matchId, pick || "");
-    }
-  }}
-  // Remove disabled entirely
-```
-
----
-
-### 5. Clear Edit Indicator for Selected Items
-
-When a pick IS made and is editable, show a pencil icon clearly on the right:
-
-**MatchesTab** - Update right side section (lines 506-515):
-```typescript
-{/* Right side - edit indicator or points */}
-<div className="flex-shrink-0 flex items-center gap-2">
-  {isCorrect && (
-    <span className="text-xs font-bold text-success bg-success/20 px-2 py-1 rounded">
-      +{points}
-    </span>
+// In MatchRow (around line 351-382)
+<img
+  src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
+  alt={getEntrantDisplayName(pick)}
+  className={cn(
+    "w-[72px] h-[72px] rounded-full object-cover border-2",
+    "image-rendering-crisp-edges",  // Add rendering hint
+    ...
   )}
-  {canEdit && !result && (
-    <div className="flex items-center gap-1 text-muted-foreground">
-      <Pencil size={14} />
-      <ChevronRight size={16} />
-    </div>
-  )}
-</div>
+/>
+
+// Empty placeholder same size
+<div className="w-[72px] h-[72px] rounded-full border-2 border-dashed ...">
 ```
 
-**RumbleTab mobile** - Update right side (lines 654-663):
+2. Similarly update RumbleTab (around line 508-536):
+
 ```typescript
-{/* Right side - edit indicator or points */}
-<div className="flex-shrink-0 flex items-center gap-2">
-  {isCorrect && (
-    <span className="text-xs font-bold text-success bg-success/20 px-2 py-1 rounded">
-      +{points}
-    </span>
+<img
+  className={cn(
+    "w-[72px] h-[72px] rounded-full object-cover border-2",
+    ...
   )}
-  {canEdit && !result && (
-    <div className="flex items-center gap-1 text-muted-foreground">
-      <Pencil size={14} />
-      <ChevronRight size={16} />
-    </div>
-  )}
-</div>
+/>
+```
+
+3. Add CSS utility for crisp rendering in `src/index.css`:
+
+```css
+.image-crisp {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
 ```
 
 ---
 
-### 6. Remove "Tap to select" Text for Empty States
+## Part 4: Better Space Usage in Matches Tab (Desktop)
 
-Replace with simpler point hint:
+On desktop (Screenshot 2), the Men's tab uses a 2-column grid for props. This could be applied to improve the Matches tab layout too.
 
-**MatchesTab** (line 496):
+**File: `src/pages/SoloDashboard.tsx`**
+
+For desktop view, consider using a 2-column grid for the 4 match picks:
+
 ```typescript
-// Before
-{pick ? getEntrantDisplayName(pick) : "Tap to select"}
-
-// After
-{pick ? getEntrantDisplayName(pick) : `+${points} pts`}
-```
-
-**RumbleTab** (line 649):
-```typescript
-// Before
-{pick ? getEntrantDisplayName(pick) : "Tap to select"}
-
-// After
-{pick ? getEntrantDisplayName(pick) : `+${points} pts`}
+// In MatchesTab
+{!isMobile ? (
+  <div className="grid grid-cols-2 gap-3">
+    {/* Render match cards in grid */}
+  </div>
+) : (
+  <div className="space-y-3">
+    {/* Mobile: stacked list */}
+  </div>
+)}
 ```
 
 ---
 
-## Visual Before/After
-
-**Before:**
-```text
-+--------------------------------------+
-|  Undercard Matches                   |  <-- Redundant header
-+--------------------------------------+
-| [56px blurry]  Drew vs Sami      [>] |
-|                Tap to select         |
-+--------------------------------------+
-| [CompactPickProgress bar below]      |  <-- Duplicate progress
-+--------------------------------------+
-```
-
-**After:**
-```text
-+--------------------------------------+
-| [64px clear]  Drew vs Sami   [P] [>] |  <-- Pencil + chevron
-|                +25 pts               |  <-- Point hint
-+--------------------------------------+
-```
-
----
-
-## Files to Change
+## Files Summary
 
 | File | Changes |
 |------|---------|
-| `src/pages/SoloDashboard.tsx` | Remove `CompactPickProgress` render and component; Remove section headers; Increase photo sizes to 64px; Remove `disabled` from buttons; Add pencil+chevron for editable items; Replace "Tap to select" with point hints |
+| `src/pages/SoloDashboard.tsx` | Fix Rumble Winner labels (use strict equality); Increase avatar sizes to 72px; Pass `allPicks` to SinglePickEditModal |
+| `src/components/dashboard/SinglePickEditModal.tsx` | Add `allPicks` prop; Import and use `getBlockedWrestlers` to filter available wrestlers |
+| `src/index.css` | Add `.image-crisp` utility class for better image rendering |
+| `src/components/dashboard/RumblePropsSection.tsx` | Increase mobile avatar sizes to 72px for consistency |
 
 ---
 
 ## Testing Checklist
 
-1. Verify compact progress bar no longer appears below score card
-2. Verify wrestler photos are larger (64px) and clearer
-3. Verify no "Undercard Matches" or "Rumble Winners" headers appear
-4. Tap an empty prop row - verify WrestlerPickerModal opens
-5. Verify selected items show pencil + chevron icons on right
-6. Tap a selected item - verify modal opens to change pick
-7. Verify empty items show "+X pts" instead of "Tap to select"
+1. Go to Solo Dashboard, Matches tab - verify only ONE Men's and ONE Women's Rumble Winner appear
+2. Go to Men's tab - pick a wrestler for #1 Entrant
+3. Try to pick the SAME wrestler for #30 Entrant - verify they are NOT in the list
+4. Verify wrestler photos appear larger (72px) and less blurry
+5. Pick wrestlers for Final Four - verify first_elimination cannot select them
+6. Test on mobile and desktop viewports
+7. Verify Group Mode Player Dashboard also has larger/clearer photos
 
