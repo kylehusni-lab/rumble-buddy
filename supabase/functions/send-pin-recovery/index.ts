@@ -63,12 +63,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send the PIN via email
     const resend = new Resend(RESEND_API_KEY);
-    const displayName = player.display_name || "Rumble Buddy";
+    const displayName = player.display_name || "User";
 
     const emailResponse = await resend.emails.send({
-      from: "Rumble Buddy <noreply@therumbleapp.com>",
+      from: "Over The Top <noreply@therumbleapp.com>",
       to: [email.toLowerCase().trim()],
-      subject: "Your Rumble Buddy PIN 🎉",
+      subject: "Your Over The Top PIN",
       html: `
         <!DOCTYPE html>
         <html>
