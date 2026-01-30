@@ -187,7 +187,6 @@ export default function Index() {
         host_session_id: sessionId,
         host_user_id: userId,
         status: "pre_event",
-        host_pin: "0000",
         is_demo: true,
       });
 
@@ -204,8 +203,6 @@ export default function Index() {
         email: "kyle.husni@gmail.com",
         isHost: true,
       });
-
-      localStorage.setItem(`party_${demoCode}_pin`, "0000");
 
       toast.success(`Demo group ${demoCode} created with 6 players!`);
       navigate(`/host/setup/${demoCode}`);

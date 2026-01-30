@@ -17,7 +17,7 @@ export default function PlatformAdminVerify() {
     e.preventDefault();
 
     if (pin.length < 4) {
-      toast.error("PIN must be at least 4 characters");
+      toast.error("Passcode required");
       return;
     }
 
@@ -29,7 +29,7 @@ export default function PlatformAdminVerify() {
       });
 
       if (error || !data?.valid) {
-        toast.error("Invalid PIN");
+        toast.error("Invalid passcode");
         setPin("");
         return;
       }
@@ -41,8 +41,8 @@ export default function PlatformAdminVerify() {
       toast.success("Access granted!");
       navigate("/admin/wrestlers");
     } catch (err) {
-      console.error("Error verifying PIN:", err);
-      toast.error("Failed to verify PIN");
+      console.error("Error verifying passcode:", err);
+      toast.error("Failed to verify passcode");
     } finally {
       setIsVerifying(false);
     }
@@ -66,7 +66,7 @@ export default function PlatformAdminVerify() {
             <Shield className="w-8 h-8 text-primary" />
             <div>
               <h1 className="text-xl font-bold text-foreground">Platform Admin</h1>
-              <p className="text-sm text-muted-foreground">Enter admin PIN to continue</p>
+              <p className="text-sm text-muted-foreground">Enter admin passcode to continue</p>
             </div>
           </div>
 
@@ -75,7 +75,7 @@ export default function PlatformAdminVerify() {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 type="password"
-                placeholder="Enter admin PIN"
+                placeholder="Enter admin passcode"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 className="pl-10 text-center text-xl tracking-widest"

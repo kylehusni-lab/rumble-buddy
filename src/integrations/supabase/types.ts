@@ -100,7 +100,6 @@ export type Database = {
           code: string
           created_at: string
           event_started_at: string | null
-          host_pin: string | null
           host_session_id: string
           host_user_id: string | null
           is_demo: boolean | null
@@ -112,7 +111,6 @@ export type Database = {
           code: string
           created_at?: string
           event_started_at?: string | null
-          host_pin?: string | null
           host_session_id: string
           host_user_id?: string | null
           is_demo?: boolean | null
@@ -124,7 +122,6 @@ export type Database = {
           code?: string
           created_at?: string
           event_started_at?: string | null
-          host_pin?: string | null
           host_session_id?: string
           host_user_id?: string | null
           is_demo?: boolean | null
@@ -361,7 +358,7 @@ export type Database = {
           display_name: string
           email: string
           id: string
-          pin: string
+          pin: string | null
           updated_at: string
           user_id: string | null
         }
@@ -370,7 +367,7 @@ export type Database = {
           display_name: string
           email: string
           id?: string
-          pin: string
+          pin?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -379,7 +376,7 @@ export type Database = {
           display_name?: string
           email?: string
           id?: string
-          pin?: string
+          pin?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -632,16 +629,6 @@ export type Database = {
           id: string
         }[]
       }
-      register_solo_player: {
-        Args: { p_display_name: string; p_email: string; p_pin: string }
-        Returns: {
-          created_at: string
-          display_name: string
-          error_message: string
-          id: string
-          success: boolean
-        }[]
-      }
       save_solo_pick: {
         Args: { p_match_id: string; p_player_id: string; p_prediction: string }
         Returns: {
@@ -659,34 +646,13 @@ export type Database = {
         }
         Returns: string
       }
-      set_host_pin: {
-        Args: { p_party_code: string; p_pin: string }
-        Returns: boolean
-      }
-      update_party_status_with_pin: {
+      update_party_status_by_host: {
         Args: {
           p_event_started_at?: string
           p_party_code: string
-          p_pin: string
           p_status: string
         }
         Returns: boolean
-      }
-      verify_host_pin: {
-        Args: { p_party_code: string; p_pin: string }
-        Returns: {
-          has_pin: boolean
-          valid: boolean
-        }[]
-      }
-      verify_solo_login: {
-        Args: { p_email: string; p_pin: string }
-        Returns: {
-          created_at: string
-          display_name: string
-          id: string
-          valid: boolean
-        }[]
       }
     }
     Enums: {

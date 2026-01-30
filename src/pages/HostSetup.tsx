@@ -88,13 +88,8 @@ export default function HostSetup() {
       return;
     }
 
-    // For authenticated users, auto-set verification status
-    // The real security is now auth.uid() matching host_user_id in RLS
-    const storedPin = localStorage.getItem(`party_${code}_pin`);
-    if (!storedPin) {
-      // Auto-verify for authenticated users accessing their party
-      localStorage.setItem(`party_${code}_pin`, "verified");
-    }
+    // Host verification is now handled via auth.uid() matching host_user_id in RLS
+    // No PIN verification needed - authentication is the security layer
 
     const fetchData = async () => {
       try {
@@ -288,12 +283,10 @@ export default function HostSetup() {
       await distributeNumbers("mens");
       await distributeNumbers("womens");
 
-      // Update party status using secure RPC function
-      const storedPin = localStorage.getItem(`party_${code}_pin`);
+      // Update party status using secure RPC function (auth-based, no PIN)
       const { data: success, error } = await supabase
-        .rpc("update_party_status_with_pin", {
+        .rpc("update_party_status_by_host", {
           p_party_code: code,
-          p_pin: storedPin || "",
           p_status: "live",
           p_event_started_at: new Date().toISOString(),
         });

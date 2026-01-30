@@ -104,7 +104,6 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem(`party_${code}_pin`);
     clearPlayerSession();
     toast.success("Signed out successfully");
     navigate("/");
