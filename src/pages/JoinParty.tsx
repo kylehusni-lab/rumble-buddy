@@ -47,8 +47,8 @@ export default function JoinParty() {
         return;
       }
 
-      // Navigate to player join flow
-      navigate(`/player/join?code=${cleanCode}`);
+      // Navigate to player auth flow (real auth, not anonymous)
+      navigate(`/player/auth?code=${cleanCode}`);
     } catch (err) {
       console.error("Join error:", err);
       toast.error("Something went wrong. Please try again.");

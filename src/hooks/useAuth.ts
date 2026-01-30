@@ -1,15 +1,22 @@
 // React hook for Supabase auth state management
-// Provides real-time auth state updates with anonymous auth support
+// Provides real-time auth state updates with email/password auth support
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureAuthenticated, type AuthUser } from "@/lib/auth";
+import { 
+  signUp as authSignUp, 
+  signIn as authSignIn, 
+  type AuthUser, 
+  type SignUpResult, 
+  type SignInResult 
+} from "@/lib/auth";
 
 interface UseAuthReturn {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  ensureAuth: () => Promise<AuthUser | null>;
+  signUp: (email: string, password: string) => Promise<SignUpResult>;
+  signIn: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
 }
 
@@ -24,6 +31,7 @@ export function useAuth(): UseAuthReturn {
         if (session?.user) {
           setUser({
             id: session.user.id,
+            email: session.user.email ?? undefined,
             isAnonymous: session.user.is_anonymous ?? false,
           });
         } else {
@@ -38,6 +46,7 @@ export function useAuth(): UseAuthReturn {
       if (session?.user) {
         setUser({
           id: session.user.id,
+          email: session.user.email ?? undefined,
           isAnonymous: session.user.is_anonymous ?? false,
         });
       }
@@ -49,12 +58,20 @@ export function useAuth(): UseAuthReturn {
     };
   }, []);
 
-  const ensureAuth = useCallback(async (): Promise<AuthUser | null> => {
-    const authUser = await ensureAuthenticated();
-    if (authUser) {
-      setUser(authUser);
+  const signUp = useCallback(async (email: string, password: string): Promise<SignUpResult> => {
+    const result = await authSignUp(email, password);
+    if (result.user) {
+      setUser(result.user);
     }
-    return authUser;
+    return result;
+  }, []);
+
+  const signIn = useCallback(async (email: string, password: string): Promise<SignInResult> => {
+    const result = await authSignIn(email, password);
+    if (result.user) {
+      setUser(result.user);
+    }
+    return result;
   }, []);
 
   const signOut = useCallback(async (): Promise<void> => {
@@ -66,7 +83,8 @@ export function useAuth(): UseAuthReturn {
     user,
     isLoading,
     isAuthenticated: !!user,
-    ensureAuth,
+    signUp,
+    signIn,
     signOut,
   };
 }
