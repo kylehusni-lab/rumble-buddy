@@ -353,13 +353,9 @@ export function SoloScoringModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div 
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
-      <div className="relative w-full max-w-lg h-[85vh] sm:h-[80vh] bg-card rounded-t-2xl sm:rounded-2xl border border-border shadow-xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col">
+      {/* Full screen modal - no blur behind */}
+      <div className="flex-1 w-full max-w-lg mx-auto bg-card flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
           <h2 className="text-xl font-bold text-foreground">Score Results</h2>
@@ -454,6 +450,7 @@ export function SoloScoringModal({
           </Button>
         </div>
       </div>
+    
 
       {/* Elimination Modal */}
       <EliminationModal
