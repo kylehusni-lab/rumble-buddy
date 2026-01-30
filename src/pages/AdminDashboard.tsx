@@ -98,17 +98,13 @@ export default function AdminDashboard() {
     try {
       const code = generatePartyCode();
       
-      // Get current user to set as admin-created host
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      
-      // Create the actual party in the parties table
+      // Create the party with null host_user_id - the actual host will claim it when they join
       const { error: partyError } = await supabase
         .from("parties")
         .insert({
           code: code,
           host_session_id: `admin-approved-${request.id}`,
-          host_user_id: user.id,
+          host_user_id: null, // Leave null for host to claim when they join
           status: "pre_event",
         });
 
@@ -165,11 +161,16 @@ export default function AdminDashboard() {
   };
 
   const handleEmailCode = (request: AccessRequest) => {
+    const isHost = request.play_style === "Group";
+    const joinUrl = isHost
+      ? `https://therumbleapp.com/join?code=${request.party_code}&host=true`
+      : `https://therumbleapp.com/join?code=${request.party_code}`;
+    
     const subject = encodeURIComponent(`Your Royal Rumble Party Code: ${request.party_code}`);
     const body = encodeURIComponent(
       `Hi ${request.name},\n\n` +
       `Here is your access code: ${request.party_code}\n\n` +
-      `Go to https://therumbleapp.com/join to get started.\n\n` +
+      `Click here to get started: ${joinUrl}\n\n` +
       `See you at the Rumble!`
     );
     window.open(`mailto:${request.email}?subject=${subject}&body=${body}`);

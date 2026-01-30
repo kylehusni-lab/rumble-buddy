@@ -185,6 +185,46 @@ export default function PlayerAuth() {
     const sessionId = getSessionId();
 
     try {
+      // If host is joining, try to claim the party first
+      if (isHostJoining) {
+        const claimSuccess = await claimPartyAsHost(userId);
+        if (claimSuccess) {
+          // Create player record after successfully claiming
+          const { data: newPlayer, error } = await supabase
+            .from("players")
+            .insert({
+              party_code: partyCode,
+              email: email.toLowerCase().trim(),
+              display_name: displayName.trim(),
+              session_id: sessionId,
+              user_id: userId,
+            })
+            .select("id")
+            .single();
+
+          if (error && error.code !== "23505") {
+            throw error;
+          }
+
+          const playerId = newPlayer?.id || userId;
+
+          setPlayerSession({
+            sessionId,
+            authUserId: userId,
+            playerId,
+            partyCode,
+            displayName: displayName.trim(),
+            email: email.toLowerCase().trim(),
+            isHost: true,
+          });
+
+          toast.success("You're now the host of this party!");
+          navigate(`/host/setup/${partyCode}`);
+          return;
+        }
+      }
+
+      // Regular player flow
       const { data: newPlayer, error } = await supabase
         .from("players")
         .insert({
@@ -213,19 +253,50 @@ export default function PlayerAuth() {
         partyCode,
         displayName: displayName.trim(),
         email: email.toLowerCase().trim(),
-        isHost: isHostJoining,
+        isHost: false,
       });
 
       toast.success("Account created! Welcome to the party!");
-
-      if (isHostJoining) {
-        navigate(`/host/setup/${partyCode}`);
-      } else {
-        navigate(`/player/picks/${partyCode}`);
-      }
+      navigate(`/player/picks/${partyCode}`);
     } catch (err) {
       console.error("Error creating player:", err);
       toast.error("Failed to join party. Please try again.");
+    }
+  };
+
+  const claimPartyAsHost = async (userId: string): Promise<boolean> => {
+    try {
+      // Check if party has no host (unclaimed)
+      const { data: party } = await supabase
+        .from("parties")
+        .select("host_user_id")
+        .eq("code", partyCode)
+        .single();
+
+      if (!party) return false;
+
+      // If party already has a host, don't claim
+      if (party.host_user_id) {
+        console.log("Party already has a host");
+        return false;
+      }
+
+      // Claim the party as host
+      const { error } = await supabase
+        .from("parties")
+        .update({ host_user_id: userId })
+        .eq("code", partyCode)
+        .is("host_user_id", null);
+
+      if (error) {
+        console.error("Failed to claim party:", error);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Error claiming party:", err);
+      return false;
     }
   };
 
