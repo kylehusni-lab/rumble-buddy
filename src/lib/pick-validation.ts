@@ -74,6 +74,17 @@ export function getBlockedWrestlers(
     if (firstElimPick) {
       blocked.add(firstElimPick);
     }
+    
+    // Block other Final Four selections to prevent duplicates
+    const currentSlot = propId.split('_').pop();
+    for (let i = 1; i <= 4; i++) {
+      if (String(i) !== currentSlot) {
+        const otherPick = currentPicks[`${gender}_final_four_${i}`];
+        if (otherPick) {
+          blocked.add(otherPick);
+        }
+      }
+    }
   }
   
   return blocked;
@@ -107,8 +118,18 @@ export function getBlockedReason(
     }
   }
   
-  if (propId.startsWith('final_four_') && currentPicks[`${gender}_first_elimination`] === wrestler) {
-    return 'Already picked as First Elimination';
+  if (propId.startsWith('final_four_')) {
+    if (currentPicks[`${gender}_first_elimination`] === wrestler) {
+      return 'Already picked as First Elimination';
+    }
+    
+    // Check other Final Four slots for duplicates
+    const currentSlot = propId.split('_').pop();
+    for (let i = 1; i <= 4; i++) {
+      if (String(i) !== currentSlot && currentPicks[`${gender}_final_four_${i}`] === wrestler) {
+        return `Already picked for Final Four slot #${i}`;
+      }
+    }
   }
   
   return null;

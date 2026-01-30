@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Save, Loader2, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { MatchCard } from "@/components/picks/cards/MatchCard";
+import { FaceOffMatchCard } from "@/components/picks/cards/FaceOffMatchCard";
 import { RumbleWinnerCard } from "@/components/picks/cards/RumbleWinnerCard";
 import { ChaosPropsCard } from "@/components/picks/cards/ChaosPropsCard";
 import { RumblePropsCard } from "@/components/picks/cards/RumblePropsCard";
@@ -331,7 +331,7 @@ export default function SoloPicks() {
               className="w-full max-w-md h-full"
             >
               {currentCard.type === "match" && (
-                <MatchCard
+                <FaceOffMatchCard
                   title={currentCard.title}
                   options={currentCard.options as readonly [string, string]}
                   value={picks[currentCard.id] || null}
