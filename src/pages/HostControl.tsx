@@ -247,7 +247,61 @@ export default function HostControl() {
     };
   }, [code, navigate]);
 
-  // Helper to get player name by ID
+  // Auto-detect winner on page load when match is complete but winner not declared
+  useEffect(() => {
+    const checkForUnclaimedWinner = async (type: "mens" | "womens") => {
+      const numbers = type === "mens" ? mensNumbers : womensNumbers;
+      const entered = numbers.filter(n => n.wrestler_name);
+      const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
+      const matchId = type === "mens" ? "mens_rumble_winner" : "womens_rumble_winner";
+      const alreadyDeclared = matchResults.find(r => r.match_id === matchId);
+      
+      // Only trigger if: all 30 entered, exactly 1 active, no winner declared, no modal already showing
+      if (entered.length === 30 && active.length === 1 && !alreadyDeclared && !winnerData) {
+        const winner = active[0];
+        
+        // Calculate Iron Man/Woman (longest duration)
+        const now = new Date();
+        const durationsWithEntries = numbers
+          .filter(n => n.entry_timestamp)
+          .map(n => ({
+            ...n,
+            duration: n.elimination_timestamp
+              ? new Date(n.elimination_timestamp).getTime() - new Date(n.entry_timestamp!).getTime()
+              : now.getTime() - new Date(n.entry_timestamp!).getTime(),
+          }));
+
+        const ironPerson = durationsWithEntries.length > 0
+          ? durationsWithEntries.reduce((max, n) => 
+              n.duration > (max?.duration || 0) ? n : max
+            , null as (RumbleNumber & { duration: number }) | null)
+          : null;
+
+        // Count correct predictions
+        const { count: correctPredictionCount } = await supabase
+          .from("picks")
+          .select("*", { count: "exact", head: true })
+          .eq("match_id", matchId)
+          .eq("prediction", winner.wrestler_name);
+
+        setWinnerData({
+          type,
+          number: winner,
+          ironPerson: ironPerson as RumbleNumber | null,
+          correctPredictionCount: correctPredictionCount || 0,
+        });
+      }
+    };
+
+    // Only check if we have data loaded
+    if (mensNumbers.length > 0 && !isLoading) {
+      checkForUnclaimedWinner("mens");
+    }
+    if (womensNumbers.length > 0 && !isLoading) {
+      checkForUnclaimedWinner("womens");
+    }
+  }, [mensNumbers, womensNumbers, matchResults, winnerData, isLoading]);
+
   const getPlayerName = useCallback((playerId: string | null) => {
     if (!playerId) return null;
     return players.find(p => p.id === playerId)?.display_name || null;
@@ -913,7 +967,7 @@ export default function HostControl() {
   }, [mensNumbers, womensNumbers]);
 
   // Derive Rumble prop values from match data
-  const getDerivedPropValues = (numbers: RumbleNumber[], type: "mens" | "womens") => {
+  const getDerivedPropValues = useCallback((numbers: RumbleNumber[], type: "mens" | "womens", results: MatchResult[]) => {
     // #1 Entrant - whoever is assigned to number 1
     const entrant1 = numbers.find(n => n.number === 1)?.wrestler_name || null;
     
@@ -964,7 +1018,31 @@ export default function HostControl() {
     // Only show Iron Man if we have at least some eliminations (match in progress)
     const ironMan = eliminated.length > 0 ? longestSurvivor?.wrestler_name || null : null;
     
-    // Final Four - last 4 wrestlers remaining (only when exactly 4 are left or match ended)
+    // Final Four - check if already recorded in match_results first
+    const finalFourResult = results.find(r => r.match_id === `${type}_final_four`);
+    if (finalFourResult) {
+      // Parse the stored result (format: "#1,#16,#26,#30")
+      const numberStrings = finalFourResult.result.split(",");
+      const finalFourWrestlers = numberStrings.map(numStr => {
+        const num = parseInt(numStr.replace("#", ""));
+        return numbers.find(n => n.number === num)?.wrestler_name || null;
+      }).filter(Boolean) as string[];
+      
+      return {
+        [`${type}_entrant_1`]: entrant1,
+        [`${type}_entrant_30`]: entrant30,
+        [`${type}_first_elimination`]: firstElimination,
+        [`${type}_most_eliminations`]: mostEliminationsWrestler,
+        [`${type}_longest_time`]: ironMan,
+        [`${type}_final_four`]: finalFourWrestlers.join(", "),
+        [`${type}_final_four_1`]: finalFourWrestlers[0] || null,
+        [`${type}_final_four_2`]: finalFourWrestlers[1] || null,
+        [`${type}_final_four_3`]: finalFourWrestlers[2] || null,
+        [`${type}_final_four_4`]: finalFourWrestlers[3] || null,
+      };
+    }
+    
+    // Fall back to live detection when exactly 4 active
     const active = numbers.filter(n => n.entry_timestamp && !n.elimination_timestamp);
     const finalFourArray = active.length === 4 
       ? active.map(n => n.wrestler_name).filter(Boolean) as string[]
@@ -982,10 +1060,10 @@ export default function HostControl() {
       [`${type}_final_four_3`]: finalFourArray[2] || null,
       [`${type}_final_four_4`]: finalFourArray[3] || null,
     };
-  };
+  }, []);
 
-  const mensDerivedProps = useMemo(() => getDerivedPropValues(mensNumbers, "mens"), [mensNumbers]);
-  const womensDerivedProps = useMemo(() => getDerivedPropValues(womensNumbers, "womens"), [womensNumbers]);
+  const mensDerivedProps = useMemo(() => getDerivedPropValues(mensNumbers, "mens", matchResults), [mensNumbers, matchResults, getDerivedPropValues]);
+  const womensDerivedProps = useMemo(() => getDerivedPropValues(womensNumbers, "womens", matchResults), [womensNumbers, matchResults, getDerivedPropValues]);
 
   // Calculate section stats for collapsible headers
   const getMatchesSectionStats = () => {
