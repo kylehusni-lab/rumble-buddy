@@ -11,6 +11,7 @@ import { QuickActionsSheet } from "@/components/host/QuickActionsSheet";
 import { GuestStatusCard } from "@/components/host/GuestStatusCard";
 import { ConnectionStatus } from "@/components/host/ConnectionStatus";
 import { useAuth } from "@/hooks/useAuth";
+import { TOTAL_PICKS } from "@/lib/constants";
 import {
   Collapsible,
   CollapsibleContent,
@@ -304,7 +305,7 @@ export default function HostSetup() {
     }
   };
 
-  const guestsReady = players.filter(p => (playerPicks[p.id] || 0) >= 7).length;
+  const guestsReady = players.filter(p => (playerPicks[p.id] || 0) >= TOTAL_PICKS).length;
   const totalGuests = players.length;
 
   if (isLoading) {
@@ -360,7 +361,7 @@ export default function HostSetup() {
                 <h3 className="font-bold">My Picks</h3>
                 <p className="text-sm text-muted-foreground">
                   {hostPlayerId 
-                    ? `${hostPicksCount}/20 picks made`
+                    ? `${Math.min(hostPicksCount, TOTAL_PICKS)}/${TOTAL_PICKS} picks made`
                     : "Join as a guest first"}
                 </p>
               </div>
@@ -414,7 +415,7 @@ export default function HostSetup() {
                       key={player.id}
                       displayName={player.display_name}
                       picksCount={playerPicks[player.id] || 0}
-                      picksCompleted={(playerPicks[player.id] || 0) >= 7}
+                      picksCompleted={(playerPicks[player.id] || 0) >= TOTAL_PICKS}
                     />
                   ))
                 )}
