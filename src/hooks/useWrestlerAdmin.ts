@@ -42,24 +42,13 @@ export function useWrestlerAdmin(enabled: boolean = true) {
   const [mensParticipants, setMensParticipants] = useState(0);
   const [womensParticipants, setWomensParticipants] = useState(0);
 
-  const getAdminToken = () => {
-    return localStorage.getItem('platform_admin_session') || '';
-  };
-
   const fetchWrestlers = useCallback(async () => {
     if (!enabled) return;
-    
-    const token = getAdminToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
     
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('manage-wrestlers', {
         body: {
-          token,
           action: 'list',
           data: {
             search: searchQuery || undefined,
@@ -92,7 +81,6 @@ export function useWrestlerAdmin(enabled: boolean = true) {
     try {
       const { data, error } = await supabase.functions.invoke('manage-wrestlers', {
         body: {
-          token: getAdminToken(),
           action: 'create',
           data: wrestlerData,
         },
@@ -116,7 +104,6 @@ export function useWrestlerAdmin(enabled: boolean = true) {
     try {
       const { data, error } = await supabase.functions.invoke('manage-wrestlers', {
         body: {
-          token: getAdminToken(),
           action: 'update',
           data: { id, ...updates },
         },
@@ -140,7 +127,6 @@ export function useWrestlerAdmin(enabled: boolean = true) {
     try {
       const { data, error } = await supabase.functions.invoke('manage-wrestlers', {
         body: {
-          token: getAdminToken(),
           action: 'delete',
           data: { id },
         },
@@ -163,7 +149,6 @@ export function useWrestlerAdmin(enabled: boolean = true) {
     try {
       const { data, error } = await supabase.functions.invoke('manage-wrestlers', {
         body: {
-          token: getAdminToken(),
           action: 'bulk_import',
           data: {
             names,
@@ -201,7 +186,6 @@ export function useWrestlerAdmin(enabled: boolean = true) {
     try {
       const { data, error } = await supabase.functions.invoke('manage-wrestlers', {
         body: {
-          token: getAdminToken(),
           action: 'update_rumble_status',
           data: {
             id,
