@@ -62,8 +62,7 @@ export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
   return (
     <div className="space-y-3">
       {/* Universal list layout - consistent across all viewports */}
-        // MOBILE: Single-column list with large avatars
-        <div className="space-y-2">
+      <div className="space-y-2">
           {RUMBLE_PROPS.map((prop) => {
             const matchId = `${gender}_${prop.id}`;
             const pick = normalizedPicks[matchId];
