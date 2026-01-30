@@ -106,103 +106,118 @@ function DiagonalFaceOff({
   const [wrestler1, wrestler2] = options;
 
   return (
-    <div className="relative w-full h-[420px] bg-card rounded-2xl overflow-hidden">
+    <div className="relative w-full bg-card overflow-hidden">
       {/* Match Title Header */}
-      <div className="absolute top-0 left-0 right-0 z-30 text-center py-4 px-4 bg-gradient-to-b from-background/90 to-transparent">
+      <div className="text-center py-4 px-4 bg-gradient-to-b from-card to-transparent">
         <h3 className="text-lg font-black uppercase tracking-wider text-foreground">
           {title}
         </h3>
         <p className="text-xs text-muted-foreground mt-1">Tap a wrestler to select</p>
       </div>
 
-      {/* Top-Left Zone - Wrestler 1 */}
-      <button
-        onClick={() => onSelect(wrestler1)}
-        className={cn(
-          "absolute inset-0 diagonal-zone-top faceoff-zone-1 transition-all duration-300",
-          "flex flex-col items-center justify-center pt-16 pb-20",
-          currentPick === wrestler1 && "faceoff-selected"
-        )}
-      >
-        <div className="relative">
-          <img
-            src={getWrestlerImageUrl(wrestler1)}
-            alt={wrestler1}
-            className={cn(
-              "w-28 h-28 rounded-full object-cover border-4 transition-all",
-              currentPick === wrestler1 
-                ? "border-primary shadow-lg scale-110" 
-                : "border-border/50"
-            )}
-            onError={(e) => {
-              e.currentTarget.src = getPlaceholderImageUrl(wrestler1);
-            }}
-          />
-          {currentPick === wrestler1 && (
-            <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
-            </div>
+      {/* Face-Off Container - Stacked vertical with diagonal visual */}
+      <div className="relative">
+        {/* Top Wrestler Zone */}
+        <button
+          onClick={() => onSelect(wrestler1)}
+          className={cn(
+            "relative w-full py-6 px-4 transition-all duration-300",
+            "flex items-center gap-4",
+            "faceoff-zone-1",
+            currentPick === wrestler1 && "ring-2 ring-primary ring-inset bg-primary/10"
           )}
-        </div>
-        <span className={cn(
-          "mt-3 font-black text-xl uppercase tracking-wide",
-          currentPick === wrestler1 ? "text-primary" : "text-foreground"
-        )}>
-          {wrestler1}
-        </span>
-        <span className="role-badge-champion text-xs font-bold px-3 py-1 rounded-full mt-2">
-          PICK
-        </span>
-      </button>
-
-      {/* Bottom-Right Zone - Wrestler 2 */}
-      <button
-        onClick={() => onSelect(wrestler2)}
-        className={cn(
-          "absolute inset-0 diagonal-zone-bottom faceoff-zone-2 transition-all duration-300",
-          "flex flex-col items-center justify-center pt-20 pb-8",
-          currentPick === wrestler2 && "faceoff-selected"
-        )}
-      >
-        <span className="role-badge-challenger text-xs font-bold px-3 py-1 rounded-full mb-2">
-          PICK
-        </span>
-        <span className={cn(
-          "mb-3 font-black text-xl uppercase tracking-wide",
-          currentPick === wrestler2 ? "text-primary" : "text-foreground"
-        )}>
-          {wrestler2}
-        </span>
-        <div className="relative">
-          <img
-            src={getWrestlerImageUrl(wrestler2)}
-            alt={wrestler2}
-            className={cn(
-              "w-28 h-28 rounded-full object-cover border-4 transition-all",
-              currentPick === wrestler2 
-                ? "border-primary shadow-lg scale-110" 
-                : "border-border/50"
+        >
+          {/* Wrestler Photo */}
+          <div className="relative flex-shrink-0">
+            <img
+              src={getWrestlerImageUrl(wrestler1)}
+              alt={wrestler1}
+              className={cn(
+                "w-24 h-24 rounded-full object-cover border-4 transition-all",
+                currentPick === wrestler1 
+                  ? "border-primary shadow-lg shadow-primary/30" 
+                  : "border-border/50"
+              )}
+              onError={(e) => {
+                e.currentTarget.src = getPlaceholderImageUrl(wrestler1);
+              }}
+            />
+            {currentPick === wrestler1 && (
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary flex items-center justify-center">
+                <Check className="w-4 h-4 text-primary-foreground" strokeWidth={3} />
+              </div>
             )}
-            onError={(e) => {
-              e.currentTarget.src = getPlaceholderImageUrl(wrestler2);
-            }}
-          />
-          {currentPick === wrestler2 && (
-            <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
+          </div>
+          
+          {/* Wrestler Info */}
+          <div className="flex-1 text-left">
+            <span className={cn(
+              "font-black text-xl uppercase tracking-wide block",
+              currentPick === wrestler1 ? "text-primary" : "text-foreground"
+            )}>
+              {wrestler1}
+            </span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">
+              Tap to select
+            </span>
+          </div>
+        </button>
+
+        {/* VS Divider */}
+        <div className="relative h-0 flex items-center justify-center z-10">
+          <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+          <div className="vs-badge-glow rounded-full">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center border-4 border-card">
+              <span className="text-lg font-black text-primary-foreground">VS</span>
             </div>
+          </div>
+        </div>
+
+        {/* Bottom Wrestler Zone */}
+        <button
+          onClick={() => onSelect(wrestler2)}
+          className={cn(
+            "relative w-full py-6 px-4 transition-all duration-300",
+            "flex items-center gap-4 flex-row-reverse",
+            "faceoff-zone-2",
+            currentPick === wrestler2 && "ring-2 ring-primary ring-inset bg-primary/10"
           )}
-        </div>
-      </button>
-
-      {/* Diagonal Glow Line */}
-      <div className="absolute inset-0 diagonal-glow-line pointer-events-none z-10" />
-
-      {/* VS Badge at Center */}
-      <div className="absolute top-1/2 left-1/2 z-20 vs-badge-glow">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center border-4 border-background">
-          <span className="text-xl font-black text-primary-foreground">VS</span>
-        </div>
+        >
+          {/* Wrestler Photo */}
+          <div className="relative flex-shrink-0">
+            <img
+              src={getWrestlerImageUrl(wrestler2)}
+              alt={wrestler2}
+              className={cn(
+                "w-24 h-24 rounded-full object-cover border-4 transition-all",
+                currentPick === wrestler2 
+                  ? "border-primary shadow-lg shadow-primary/30" 
+                  : "border-border/50"
+              )}
+              onError={(e) => {
+                e.currentTarget.src = getPlaceholderImageUrl(wrestler2);
+              }}
+            />
+            {currentPick === wrestler2 && (
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary flex items-center justify-center">
+                <Check className="w-4 h-4 text-primary-foreground" strokeWidth={3} />
+              </div>
+            )}
+          </div>
+          
+          {/* Wrestler Info */}
+          <div className="flex-1 text-right">
+            <span className={cn(
+              "font-black text-xl uppercase tracking-wide block",
+              currentPick === wrestler2 ? "text-primary" : "text-foreground"
+            )}>
+              {wrestler2}
+            </span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">
+              Tap to select
+            </span>
+          </div>
+        </button>
       </div>
     </div>
   );
