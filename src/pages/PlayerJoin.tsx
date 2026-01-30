@@ -5,7 +5,7 @@ import { ArrowLeft, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Logo } from "@/components/Logo";
+import { OttLogoMark } from "@/components/OttLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
 import { useAuth } from "@/hooks/useAuth";
@@ -165,7 +165,7 @@ export default function PlayerJoin() {
           </div>
         </div>
 
-        <Logo size="md" />
+        <OttLogoMark size={48} className="mx-auto" />
 
         <motion.form
           onSubmit={handleSubmit}

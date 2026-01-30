@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Lock, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Logo } from "@/components/Logo";
+import { OttLogoSmall } from "@/components/OttLogo";
 
 export default function HostVerifyPin() {
   const { code } = useParams<{ code: string }>();
@@ -124,7 +124,7 @@ export default function HostVerifyPin() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-sm text-center"
       >
-        <Logo size="sm" className="mx-auto mb-8" />
+        <OttLogoSmall className="mx-auto mb-8" />
         
         <div className="bg-primary/10 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
           <Lock className="text-primary" size={40} />
