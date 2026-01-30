@@ -43,6 +43,12 @@ const gallerySlides = [
     description: "The big moment - show everyone their randomly assigned Rumble numbers",
     image: "/tv-screenshots/numbers-reveal.png",
   },
+  {
+    id: "make-picks",
+    title: "Make Your Picks",
+    description: "Intuitive pick flow with wrestler search, progress tracking, and instant saves",
+    image: "/tv-screenshots/make-picks.png",
+  },
 ];
 
 export function TvModeGallery({ id }: TvModeGalleryProps) {
