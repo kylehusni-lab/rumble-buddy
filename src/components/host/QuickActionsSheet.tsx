@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Tv, ClipboardList, Hash, LogOut, Trophy, LayoutDashboard } from "lucide-react";
+import { ClipboardList, Hash, LogOut, LayoutDashboard } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -80,18 +80,6 @@ export function QuickActionsSheet({ open, onOpenChange, code }: QuickActionsShee
       title: "My Dashboard",
       subtitle: "Back to all parties",
       onClick: handleGoToHub,
-    },
-    {
-      icon: Trophy,
-      title: "My Picks & Stats",
-      subtitle: "View & edit your predictions",
-      onClick: handleMyDashboard,
-    },
-    {
-      icon: Tv,
-      title: "TV Display",
-      subtitle: "Open in new tab",
-      onClick: handleOpenTv,
     },
     {
       icon: ClipboardList,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, Play, ChevronDown, AlertCircle } from "lucide-react";
+import { Users, Play, ChevronDown, AlertCircle, Trophy, Pencil, Tv } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlayerSession } from "@/lib/session";
@@ -34,6 +34,7 @@ export default function HostSetup() {
   const [party, setParty] = useState<PartyData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerPicks, setPlayerPicks] = useState<Record<string, number>>({});
+  const [hostPicksCount, setHostPicksCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
@@ -107,6 +108,12 @@ export default function HostSetup() {
             picksCountMap[player.id] = count || 0;
           }
           setPlayerPicks(picksCountMap);
+          
+          // Fetch host's picks count
+          const session = getPlayerSession();
+          if (session?.playerId) {
+            setHostPicksCount(picksCountMap[session.playerId] || 0);
+          }
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -290,6 +297,43 @@ export default function HostSetup() {
           </div>
         </motion.div>
 
+        {/* My Picks Status Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-card border border-border rounded-2xl p-5"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Trophy className="text-primary" size={24} />
+              <div>
+                <h3 className="font-bold">My Picks</h3>
+                <p className="text-sm text-muted-foreground">
+                  {getPlayerSession()?.playerId 
+                    ? `${hostPicksCount}/20 picks made`
+                    : "Join as a guest first"}
+                </p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                const session = getPlayerSession();
+                if (session?.playerId) {
+                  navigate(`/player/dashboard/${code}`);
+                } else {
+                  toast.info("Please join the group first");
+                  navigate(`/player/join?code=${code}&host=true`);
+                }
+              }}
+            >
+              <Pencil size={16} className="mr-2" />
+              Edit
+            </Button>
+          </div>
+        </motion.div>
+
         {/* Guests List (Collapsible) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -332,7 +376,7 @@ export default function HostSetup() {
 
       </div>
 
-      {/* Start Button - Sticky Footer */}
+      {/* Footer with TV Mode and Start Event */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-4">
         <div className="max-w-lg mx-auto space-y-2">
           {players.length < 2 && (
@@ -341,16 +385,27 @@ export default function HostSetup() {
               Need at least 2 guests to start
             </div>
           )}
-          <Button
-            variant="gold"
-            size="xl"
-            className="w-full"
-            onClick={handleStartEvent}
-            disabled={isStarting || players.length < 2}
-          >
-            <Play className="mr-2" size={24} />
-            {isStarting ? "Starting..." : "Start Event & Draw Numbers"}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              size="lg"
+              className="flex-1"
+              onClick={() => window.open(`/tv/${code}`, "_blank")}
+            >
+              <Tv className="mr-2" size={20} />
+              TV Mode
+            </Button>
+            <Button
+              variant="gold"
+              size="lg"
+              className="flex-1"
+              onClick={handleStartEvent}
+              disabled={isStarting || players.length < 2}
+            >
+              <Play className="mr-2" size={20} />
+              {isStarting ? "Starting..." : "Start Event"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
