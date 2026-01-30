@@ -76,9 +76,10 @@ export interface WrestlerData {
 const WWE_CDN = 'https://www.wwe.com/f/styles/wwe_1_1_540/public';
 
 // Generate fallback avatar URL for a wrestler
+// Using 256px for Retina displays (3x of ~80px display size)
 export function getPlaceholderImageUrl(name: string): string {
   const encodedName = encodeURIComponent(name);
-  return `https://ui-avatars.com/api/?name=${encodedName}&background=D4AF37&color=0A0A0A&size=100&bold=true`;
+  return `https://ui-avatars.com/api/?name=${encodedName}&background=D4AF37&color=0A0A0A&size=256&bold=true`;
 }
 
 // Default male wrestlers with local images (alphabetized, Surprise at end)
