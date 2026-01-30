@@ -5,10 +5,20 @@ import { SCORING, CARD_CONFIG, CHAOS_PROPS, RUMBLE_PROPS, FINAL_FOUR_SLOTS } fro
 const SOLO_PICKS_KEY = 'rumble_solo_picks';
 const SOLO_RESULTS_KEY = 'rumble_solo_results';
 const SOLO_SESSION_KEY = 'rumble_solo_session';
+const SOLO_MENS_NUMBERS_KEY = 'rumble_solo_mens_numbers';
+const SOLO_WOMENS_NUMBERS_KEY = 'rumble_solo_womens_numbers';
 
 export interface SoloSession {
   displayName: string;
   createdAt: string;
+}
+
+export interface SoloRumbleNumber {
+  number: number;
+  wrestler_name: string | null;
+  entry_timestamp: string | null;
+  elimination_timestamp: string | null;
+  eliminated_by_number: number | null;
 }
 
 // Session management
@@ -33,6 +43,37 @@ export function clearSoloSession(): void {
   localStorage.removeItem(SOLO_SESSION_KEY);
   localStorage.removeItem(SOLO_PICKS_KEY);
   localStorage.removeItem(SOLO_RESULTS_KEY);
+  localStorage.removeItem(SOLO_MENS_NUMBERS_KEY);
+  localStorage.removeItem(SOLO_WOMENS_NUMBERS_KEY);
+}
+
+// Rumble number management
+export function initSoloRumbleNumbers(): SoloRumbleNumber[] {
+  return Array.from({ length: 30 }, (_, i) => ({
+    number: i + 1,
+    wrestler_name: null,
+    entry_timestamp: null,
+    elimination_timestamp: null,
+    eliminated_by_number: null,
+  }));
+}
+
+export function saveSoloRumbleNumbers(gender: 'mens' | 'womens', numbers: SoloRumbleNumber[]): void {
+  if (typeof window === 'undefined') return;
+  const key = gender === 'mens' ? SOLO_MENS_NUMBERS_KEY : SOLO_WOMENS_NUMBERS_KEY;
+  localStorage.setItem(key, JSON.stringify(numbers));
+}
+
+export function getSoloRumbleNumbers(gender: 'mens' | 'womens'): SoloRumbleNumber[] {
+  if (typeof window === 'undefined') return initSoloRumbleNumbers();
+  const key = gender === 'mens' ? SOLO_MENS_NUMBERS_KEY : SOLO_WOMENS_NUMBERS_KEY;
+  const data = localStorage.getItem(key);
+  if (!data) return initSoloRumbleNumbers();
+  try {
+    return JSON.parse(data) as SoloRumbleNumber[];
+  } catch {
+    return initSoloRumbleNumbers();
+  }
 }
 
 // Pick management

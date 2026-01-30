@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { X } from "lucide-react";
+import { X, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -11,6 +11,8 @@ interface ActiveWrestlerCardProps {
   eliminationCount: number;
   onEliminate: () => void;
   disabled?: boolean;
+  isWinner?: boolean;
+  showOwner?: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -28,9 +30,11 @@ export const ActiveWrestlerCard = memo(function ActiveWrestlerCard({
   eliminationCount,
   onEliminate,
   disabled = false,
+  isWinner = false,
+  showOwner = true,
 }: ActiveWrestlerCardProps) {
   return (
-    <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4">
+    <div className={`bg-card border rounded-xl p-4 flex items-center justify-between gap-4 ${isWinner ? 'border-primary bg-primary/10' : 'border-border'}`}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-bold text-primary text-lg">#{number}</span>
@@ -40,27 +44,38 @@ export const ActiveWrestlerCard = memo(function ActiveWrestlerCard({
               {eliminationCount} KO{eliminationCount > 1 ? 's' : ''}
             </Badge>
           )}
+          {isWinner && (
+            <Badge variant="secondary" className="ml-1 bg-primary/20 text-primary border-primary/30">
+              WINNER
+            </Badge>
+          )}
         </div>
         <div className="text-sm text-muted-foreground">
-          {ownerName || "Vacant"} • {formatDuration(duration)}
+          {showOwner && <>{ownerName || "Vacant"} - </>}
+          {formatDuration(duration)}
         </div>
       </div>
 
-      <Button
-        variant="destructive"
-        size="sm"
-        className="min-h-[44px] flex-shrink-0"
-        onClick={onEliminate}
-        disabled={disabled}
-      >
-        <X size={16} className="mr-1" />
-        Eliminate
-      </Button>
+      {isWinner ? (
+        <div className="flex items-center gap-2 text-primary px-3 py-2">
+          <Trophy size={20} className="text-primary" />
+        </div>
+      ) : (
+        <Button
+          variant="destructive"
+          size="sm"
+          className="min-h-[44px] flex-shrink-0"
+          onClick={onEliminate}
+          disabled={disabled}
+        >
+          <X size={16} className="mr-1" />
+          Eliminate
+        </Button>
+      )}
     </div>
   );
 }, (prevProps, nextProps) => {
   // Only re-render when important values change
-  // Duration changes every second, but we format it - so compare formatted output
   const prevFormatted = formatDuration(prevProps.duration);
   const nextFormatted = formatDuration(nextProps.duration);
   
@@ -70,6 +85,8 @@ export const ActiveWrestlerCard = memo(function ActiveWrestlerCard({
     prevProps.ownerName === nextProps.ownerName &&
     prevFormatted === nextFormatted &&
     prevProps.eliminationCount === nextProps.eliminationCount &&
-    prevProps.disabled === nextProps.disabled
+    prevProps.disabled === nextProps.disabled &&
+    prevProps.isWinner === nextProps.isWinner &&
+    prevProps.showOwner === nextProps.showOwner
   );
 });

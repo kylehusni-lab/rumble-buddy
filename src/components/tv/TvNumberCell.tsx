@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl } from "@/lib/wrestler-data";
+import { Crown } from "lucide-react";
 
 interface TvNumberCellProps {
   number: number;
@@ -9,6 +10,7 @@ interface TvNumberCellProps {
   ownerTextColor?: string; // 'black' or 'white'
   status: "pending" | "active" | "eliminated" | "current";
   isAssigned: boolean;
+  isWinner?: boolean;
 }
 
 // Helper to strip asterisk from wrestler name
@@ -25,6 +27,7 @@ export function TvNumberCell({
   ownerTextColor = "black",
   status,
   isAssigned,
+  isWinner = false,
 }: TvNumberCellProps) {
   const cleanName = stripAsterisk(wrestlerName);
   const imageUrl = cleanName ? getWrestlerImageUrl(cleanName) : null;
@@ -91,7 +94,7 @@ export function TvNumberCell({
     );
   }
 
-  // States: Active, Current, or Eliminated (wrestler revealed)
+  // States: Active, Current, Eliminated, or Winner (wrestler revealed)
   const isCurrent = status === "current";
   const isEliminated = status === "eliminated";
 
@@ -99,15 +102,19 @@ export function TvNumberCell({
     <div 
       className={cn(
         "relative aspect-square rounded-xl overflow-hidden transition-all duration-300",
-        isCurrent && "animate-current-entrant-glow"
+        isCurrent && "animate-current-entrant-glow",
+        isWinner && "animate-winner-glow"
       )}
       style={{
-        border: isCurrent 
-          ? "3px solid #f5c518" 
-          : ownerColor 
-            ? `3px solid ${ownerColor}` 
-            : "2px solid rgba(255,255,255,0.1)",
+        border: isWinner
+          ? "3px solid #f5c518"
+          : isCurrent 
+            ? "3px solid #f5c518" 
+            : ownerColor 
+              ? `3px solid ${ownerColor}` 
+              : "2px solid rgba(255,255,255,0.1)",
         opacity: isEliminated ? 0.6 : 1,
+        boxShadow: isWinner ? "0 0 20px rgba(245, 197, 24, 0.6)" : undefined,
       }}
     >
       {/* Entry number badge (top-left) */}
@@ -135,6 +142,18 @@ export function TvNumberCell({
             isEliminated && "grayscale"
           )}
         />
+      )}
+
+      {/* Winner crown overlay */}
+      {isWinner && (
+        <div 
+          className="absolute top-1.5 right-2 z-30"
+        >
+          <Crown 
+            className="w-6 h-6 text-primary animate-pulse" 
+            fill="currentColor"
+          />
+        </div>
       )}
 
       {/* Eliminated X overlay */}

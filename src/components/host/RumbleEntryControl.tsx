@@ -18,6 +18,7 @@ interface RumbleEntryControlProps {
   matchStarted: boolean;
   onStartMatch: () => void;
   onAddSurprise: (name: string) => void;
+  showOwner?: boolean;
 }
 
 export function RumbleEntryControl({
@@ -30,6 +31,7 @@ export function RumbleEntryControl({
   matchStarted,
   onStartMatch,
   onAddSurprise,
+  showOwner = true,
 }: RumbleEntryControlProps) {
   const [selectedWrestler, setSelectedWrestler] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,12 +115,14 @@ export function RumbleEntryControl({
           <span className="text-3xl font-black text-primary">#{nextNumber}</span>
         </div>
 
-        <div className="text-sm">
-          Owner:{" "}
-          <span className="font-semibold">
-            {ownerName || <span className="text-muted-foreground">Vacant</span>}
-          </span>
-        </div>
+        {showOwner && (
+          <div className="text-sm">
+            Owner:{" "}
+            <span className="font-semibold">
+              {ownerName || <span className="text-muted-foreground">Vacant</span>}
+            </span>
+          </div>
+        )}
 
         {/* Match Start UI for #1 and #2 */}
         {showMatchStartUI && (

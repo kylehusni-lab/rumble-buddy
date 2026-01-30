@@ -19,6 +19,7 @@ export const CHAOS_PROPS = [
   { id: 'prop_4', title: 'First Blood', question: 'Will we see blood before entrant #15?', shortName: 'First Blood' },
   { id: 'prop_5', title: 'Mystery Entrant', question: 'Will there be an unannounced debut/return?', shortName: 'Mystery Entrant' },
   { id: 'prop_6', title: 'The Weapon', question: 'Will someone use a chair/kendo stick/weapon?', shortName: 'The Weapon' },
+  { id: 'prop_7', title: 'No-Show', question: 'Will anyone not make it to the ring?', shortName: 'No-Show' },
 ] as const;
 
 export const MATCH_IDS = {
@@ -50,7 +51,6 @@ export const MATCH_IDS = {
   MENS_FINAL_FOUR_4: 'mens_final_four_4',
   MENS_ENTRANT_1: 'mens_entrant_1',
   MENS_ENTRANT_30: 'mens_entrant_30',
-  MENS_NO_SHOW: 'mens_no_show',
   // Women's Rumble Props
   WOMENS_FIRST_ELIMINATION: 'womens_first_elimination',
   WOMENS_MOST_ELIMINATIONS: 'womens_most_eliminations',
@@ -61,7 +61,6 @@ export const MATCH_IDS = {
   WOMENS_FINAL_FOUR_4: 'womens_final_four_4',
   WOMENS_ENTRANT_1: 'womens_entrant_1',
   WOMENS_ENTRANT_30: 'womens_entrant_30',
-  WOMENS_NO_SHOW: 'womens_no_show',
 } as const;
 
 export const DEFAULT_MENS_ENTRANTS = [
