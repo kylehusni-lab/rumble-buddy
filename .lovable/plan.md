@@ -1,130 +1,98 @@
 
-## Desktop Dashboard Responsiveness Improvements
+## Touch-ups and Match Picker Enhancement
 
-Based on the screenshots, the mobile layout is well-optimized with dense, tactile content, while the desktop experience has too much wasted space. This plan addresses those issues.
+### 1. Fix Commented Code in Men's/Women's Tab
 
----
+The line `// MOBILE: Single-column list with large avatars` on line 65 of `UnifiedRumblePropsTab.tsx` is visible as text because it's not wrapped properly - it's a JavaScript comment inside JSX that renders as visible text.
 
-### Current Desktop Problems
-
-| Issue | Description |
-|-------|-------------|
-| No max-width | Content stretches full viewport width on wide screens |
-| Tiny avatars | Props grid uses 40px avatars vs mobile's 72px |
-| Stretched tables | Chaos table has too much horizontal whitespace |
-| Sparse grid | 4-column grid on desktop makes cards feel small and scattered |
+**File**: `src/components/dashboard/UnifiedRumblePropsTab.tsx`
+- Remove the stray comment on line 65
 
 ---
 
-### Solution: Constrained, Two-Column Desktop Layout
+### 2. Premium Desktop Container
 
-Apply a max-width container and use the mobile's list-style layout on ALL screen sizes for a more consistent, premium feel.
+Add a subtle card background with horizontal padding around the centered content for a more polished desktop feel.
 
----
+**Files to modify**:
+- `src/pages/SoloDashboard.tsx`
+- `src/pages/PlayerDashboard.tsx`
 
-### Changes by File
-
-#### 1. SoloDashboard.tsx and PlayerDashboard.tsx
-
-Add a centered max-width container to constrain content:
-
-```typescript
-// Current: no constraint
-<div className="flex-1 min-h-0 overflow-y-auto p-4 pb-32">
-
-// Updated: centered container with max-width
-<div className="flex-1 min-h-0 overflow-y-auto">
-  <div className="max-w-2xl mx-auto p-4 pb-32">
-    {/* Tab content */}
-  </div>
-</div>
-```
-
-This limits content to 672px (max-w-2xl) and centers it on large screens.
-
----
-
-#### 2. UnifiedRumblePropsTab.tsx
-
-Remove the desktop multi-column grid and use the mobile list layout universally. This ensures:
-- Large 72px avatars on all screen sizes
-- Consistent, premium feel
-- No sparse, tiny cards on desktop
-
-```typescript
-// REMOVE this conditional:
-{isMobile ? (
-  // mobile list layout
-) : (
-  // desktop grid - REMOVE THIS
-)}
-
-// KEEP only the mobile list layout for ALL viewports
-```
-
----
-
-#### 3. UnifiedMatchesTab.tsx
-
-Already uses consistent list layout - just ensure it respects the max-width container.
-
----
-
-#### 4. UnifiedChaosTab.tsx
-
-Add max-width to table container and ensure columns don't stretch excessively:
-
+**Changes**:
 ```typescript
 // Current
-<div className="bg-card border border-border rounded-xl overflow-hidden">
+<div className="max-w-2xl mx-auto p-4 pb-32">
 
-// Updated with table layout constraints
-<div className="bg-card border border-border rounded-xl overflow-hidden">
-  <table className="w-full table-fixed">
-    {/* Fixed column widths prevent stretching */}
+// Updated - Add card-like wrapper on larger screens
+<div className="max-w-2xl mx-auto p-4 pb-32 md:bg-card/30 md:rounded-2xl md:border md:border-border/50 md:my-4 md:mx-auto md:shadow-lg">
 ```
+
+This applies a subtle card background, border, and shadow on desktop screens only (md: breakpoint), while mobile remains clean and edge-to-edge.
 
 ---
 
-#### 5. UnifiedDashboardHeader.tsx
+### 3. WWE-Style Diagonal Face-Off Match Picker
 
-Add max-width container to center the header content:
+Completely redesign the undercard match picker modal with a premium diagonal split layout.
 
-```typescript
-// Current
-<div className="p-4 pb-2">
+**File**: `src/components/dashboard/SinglePickEditModal.tsx`
 
-// Updated
-<div className="max-w-2xl mx-auto p-4 pb-2">
+**New Design Features**:
+
+| Element | Description |
+|---------|-------------|
+| **Diagonal Split** | Two triangular territories separated by a diagonal line |
+| **Wrestler Zones** | Left-top triangle vs Right-bottom triangle |
+| **VS Badge** | Centered at the diagonal collision point with glow effect |
+| **Action Poses** | Larger wrestler photos angled toward center |
+| **Match Title Header** | Prominent display at top with match type styling |
+| **Selection Feedback** | Gold glow border on selected wrestler's territory |
+
+┌──────────────────────────────────┐
+│   UNDISPUTED WWE CHAMPIONSHIP    │
+│              🏆                   │
+├──────────────────────────────────┤
+│                                  │
+│  DREW          ╱                 │
+│  McINTYRE    ╱                   │
+│  [photo]   ╱                     │
+│  CHAMPION ╱      VS              │
+│          ╱                       │
+│        ╱         [photo]         │
+│      ╱           SAMI            │
+│    ╱             ZAYN            │
+│                  CHALLENGER      │
+│                                  │
+├──────────────────────────────────┤
+│  [ TAP TO SELECT YOUR PICK ]     │
+└──────────────────────────────────┘
++-----------------------------+
 ```
 
----
+**Implementation approach**:
+- Use CSS `clip-path` to create triangular zones
+- Apply diagonal gradient backgrounds (Gold/Amber for top, Green for bottom)
+- Center the VS badge at the intersection using absolute positioning
+- Add subtle animated glow on the diagonal split line
+- Selected wrestler zone gets gold border/highlight
+- Fullscreen modal for immersive feel
 
-### Visual Summary
+**CSS Classes to Add** (in `src/index.css`):
+```css
+/* Diagonal Face-Off Modal */
+.diagonal-zone-top {
+  clip-path: polygon(0 0, 100% 0, 100% 35%, 0 65%);
+}
 
-```text
-+------------------------------------------+
-|              Browser Window              |
-|  +------------------------------------+  |
-|  |        672px max-width             |  |
-|  |  +------------------------------+  |  |
-|  |  |   Score Card (centered)      |  |  |
-|  |  +------------------------------+  |  |
-|  |  | Tabs: Matches | Men's | ... |   |  |
-|  |  +------------------------------+  |  |
-|  |  |                              |  |  |
-|  |  |  [72px] #1 Entrant           |  |  |
-|  |  |         Bron Breakker        |  |  |
-|  |  |                              |  |  |
-|  |  |  [72px] #30 Entrant          |  |  |
-|  |  |         Cody Rhodes          |  |  |
-|  |  |                              |  |  |
-|  |  |  (Stacked list - same as     |  |  |
-|  |  |   mobile, not sparse grid)   |  |  |
-|  |  |                              |  |  |
-|  |  +------------------------------+  |  |
-|  +------------------------------------+  |
-+------------------------------------------+
+.diagonal-zone-bottom {
+  clip-path: polygon(0 65%, 100% 35%, 100% 100%, 0 100%);
+}
+
+.diagonal-glow-line {
+  /* Subtle glow effect along the split */
+  background: linear-gradient(to right, transparent, hsl(var(--primary)/0.5), transparent);
+  filter: blur(8px);
+}
 ```
 
 ---
@@ -133,19 +101,33 @@ Add max-width container to center the header content:
 
 | File | Changes |
 |------|---------|
-| `src/pages/SoloDashboard.tsx` | Add max-w-2xl container around content |
-| `src/pages/PlayerDashboard.tsx` | Add max-w-2xl container around content |
-| `src/components/dashboard/UnifiedRumblePropsTab.tsx` | Remove desktop grid, use list layout universally |
-| `src/components/dashboard/UnifiedChaosTab.tsx` | Add table-fixed for consistent column widths |
-| `src/components/dashboard/UnifiedDashboardHeader.tsx` | Add max-w-2xl to center header |
-| `src/components/dashboard/UnifiedTabNavigation.tsx` | Add max-w-2xl to center tabs |
+| `src/components/dashboard/UnifiedRumblePropsTab.tsx` | Remove stray comment on line 65 |
+| `src/pages/SoloDashboard.tsx` | Add premium card wrapper styling for desktop |
+| `src/pages/PlayerDashboard.tsx` | Add premium card wrapper styling for desktop |
+| `src/components/dashboard/SinglePickEditModal.tsx` | Redesign binary type modal with diagonal WWE-style layout |
+| `src/index.css` | Add diagonal face-off CSS classes |
 
 ---
 
-### Outcome
+### Technical Details
 
-After these changes:
-- Desktop will have a clean, centered 672px column
-- All props will use large 72px avatars (same as mobile)
-- Chaos table won't stretch excessively
-- Consistent premium feel across all viewport sizes
+**Diagonal Clip-Path Math**:
+The diagonal creates two triangular zones. With a container height of ~400px:
+- Top zone: `polygon(0 0, 100% 0, 100% 40%, 0 60%)`
+- Bottom zone: `polygon(0 60%, 100% 40%, 100% 100%, 0 100%)`
+
+The percentages create a ~20% overlap zone in the center where the diagonal line sits.
+
+**VS Badge Positioning**:
+```typescript
+<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+  {/* VS Badge with glow */}
+</div>
+```
+
+**Selection State**:
+When a wrestler is selected:
+- Their zone background intensifies
+- A gold border/glow appears around the zone edge
+- The opponent's zone dims slightly (opacity reduction)
+- The VS badge pulses briefly
