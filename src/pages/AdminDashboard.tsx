@@ -98,6 +98,27 @@ export default function AdminDashboard() {
     try {
       const code = generatePartyCode();
       
+      // Get current user to set as admin-created host
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      
+      // Create the actual party in the parties table
+      const { error: partyError } = await supabase
+        .from("parties")
+        .insert({
+          code: code,
+          host_session_id: `admin-approved-${request.id}`,
+          host_user_id: user.id,
+          status: "pre_event",
+        });
+
+      if (partyError) {
+        // If party creation fails, try with a new code (might be collision)
+        console.error("Party creation error:", partyError);
+        throw new Error("Failed to create party. Try again.");
+      }
+      
+      // Update the access request with the code
       const { error } = await supabase
         .from("access_requests")
         .update({
@@ -109,11 +130,11 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
-      toast.success(`Approved! Code: ${code}`);
+      toast.success(`Approved! Party ${code} created.`);
       fetchRequests();
     } catch (err) {
       console.error("Approve error:", err);
-      toast.error("Failed to approve request");
+      toast.error(err instanceof Error ? err.message : "Failed to approve request");
     } finally {
       setApprovingId(null);
     }
@@ -148,7 +169,7 @@ export default function AdminDashboard() {
     const body = encodeURIComponent(
       `Hi ${request.name},\n\n` +
       `Here is your access code: ${request.party_code}\n\n` +
-      `Go to https://rumble-buddy.lovable.app/join to get started.\n\n` +
+      `Go to https://therumbleapp.com/join to get started.\n\n` +
       `See you at the Rumble!`
     );
     window.open(`mailto:${request.email}?subject=${subject}&body=${body}`);
