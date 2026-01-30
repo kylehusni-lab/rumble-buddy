@@ -72,6 +72,15 @@
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 15%;
     --sidebar-ring: 43 75% 52%;
+
+    /* OTT Brand Colors */
+    --ott-bg: 0 0% 0%;
+    --ott-surface: 0 0% 4%;
+    --ott-surface-elevated: 0 0% 7%;
+    --ott-border: 0 0% 100% / 0.1;
+    --ott-text: 0 0% 100%;
+    --ott-text-secondary: 0 0% 60%;
+    --ott-accent: 45 91% 53%;
   }
 
   /* Dark mode is the default and only mode for this app */
