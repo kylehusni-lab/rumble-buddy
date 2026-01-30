@@ -1,170 +1,120 @@
 
 
-## Cleanup and Performance Optimization Plan
+# Fix Demo Mode Onboarding Tour Issues
 
-This plan removes obsolete Platform Admin PIN verification code and implements performance optimizations for the Commissioner Dashboard.
+## Problem Analysis
+
+Based on the code review, I identified two issues with the guided tour:
+
+1. **Guest Step Too Long**: The `guests-list` tour step targets the entire `Collapsible` component which includes the header AND the expanded guest cards. This creates a very tall highlight area.
+
+2. **TV Mode Step Too Low**: The `tv-mode` step targets a button inside a fixed footer. The tooltip positioning uses `placement: "top"` but calculates position based on viewport coordinates, causing the tooltip to appear too low or partially off-screen.
 
 ---
 
-### Part A: Remove Obsolete PIN Verification
+## Solution
 
-The `/platform-admin/verify` route and `verify-admin-pin` edge function are no longer needed since wrestler management now uses Supabase Auth + role-based access.
+### 1. Fix Guest List Targeting
 
-#### Files to Delete
+**Current**: Targets the entire collapsible container (`data-tour="guests-list"`)
 
-| File | Reason |
+**Fix**: Move the `data-tour` attribute to just the collapsible trigger (the header row) so only the "Guests (X)" bar is highlighted, not the expanded content.
+
+**File**: `src/pages/HostSetup.tsx`
+- Move `data-tour="guests-list"` from the outer `<motion.div>` to the `CollapsibleTrigger`'s inner div
+
+### 2. Fix TV Mode Button Positioning
+
+The issue is that for elements in a fixed footer, the tooltip appears too close to the bottom edge. Two changes needed:
+
+**A. Shorten the content** (it's currently verbose):
+- Current: "Cast this to your TV during the event. It shows the leaderboard, everyone's picks, and updates live as matches are scored."
+- New: "Cast this to your TV during the event to show the live leaderboard and picks."
+
+**B. Improve tooltip positioning for fixed elements**:
+- Add logic in `TourOverlay.tsx` to detect when the target is near the viewport bottom and ensure the tooltip has adequate space above
+- Increase the gap and ensure minimum distance from viewport bottom
+
+**File**: `src/lib/demo-tour-steps.ts`
+- Update content for cleaner, shorter text
+
+**File**: `src/components/tour/TourOverlay.tsx`
+- Improve "top" placement calculation to ensure tooltip stays visible for elements near the viewport bottom
+
+---
+
+## Implementation Details
+
+### Changes to `src/pages/HostSetup.tsx`
+
+Move the tour target from the wrapper to the trigger:
+
+```tsx
+// Before (line 422-427):
+<motion.div
+  ...
+  data-tour="guests-list"
+>
+  <Collapsible open={guestsOpen} onOpenChange={setGuestsOpen}>
+    <CollapsibleTrigger className="w-full">
+      <div className="bg-card border...">
+
+// After:
+<motion.div ...>
+  <Collapsible open={guestsOpen} onOpenChange={setGuestsOpen}>
+    <CollapsibleTrigger className="w-full">
+      <div className="bg-card border..." data-tour="guests-list">
+```
+
+### Changes to `src/lib/demo-tour-steps.ts`
+
+Shorten verbose content:
+
+```typescript
+// Guest Status step - shorter content
+{
+  id: "guests-list",
+  target: "[data-tour='guests-list']",
+  title: "Guest Status",
+  content: "Track each guest's progress. Green means picks are complete.",
+  placement: "top",
+},
+
+// TV Mode step - shorter content  
+{
+  id: "tv-mode",
+  target: "[data-tour='tv-mode']",
+  title: "TV Display",
+  content: "Cast this to your TV to show the live leaderboard and picks.",
+  placement: "top",
+},
+```
+
+### Changes to `src/components/tour/TourOverlay.tsx`
+
+Improve top placement for fixed footer elements:
+
+```typescript
+case "top":
+  // Ensure tooltip doesn't go above viewport
+  tooltipTop = rect.top + window.scrollY - tooltipHeight - gap;
+  // If element is in bottom portion of screen, ensure adequate space
+  if (rect.top > window.innerHeight - 150) {
+    tooltipTop = Math.max(16, rect.top + window.scrollY - tooltipHeight - gap - 20);
+  }
+  tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+  break;
+```
+
+Also reduce the hardcoded `tooltipHeight` estimate from 160 to a more accurate value or calculate it dynamically after render.
+
+---
+
+## Summary of File Changes
+
+| File | Change |
 |------|--------|
-| `src/pages/PlatformAdminVerify.tsx` | PIN verification page no longer used |
-| `supabase/functions/verify-admin-pin/` | Edge function no longer called |
-
-#### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/App.tsx` | Remove route and lazy import for `PlatformAdminVerify` |
-
----
-
-### Part B: Performance Optimizations
-
-Several optimizations to reduce lag in the Commissioner Dashboard:
-
-#### 1. Memoize WrestlerCard Component
-
-The `WrestlerCard` component re-renders on every list change. Wrapping it in `React.memo` prevents unnecessary re-renders when wrestler data hasn't changed.
-
-```typescript
-export const WrestlerCard = React.memo(function WrestlerCard({ ... }) {
-  // ...existing code
-});
-```
-
-#### 2. Debounce Search Input
-
-Currently, every keystroke triggers a re-filter. Adding a 150ms debounce prevents excessive re-renders during typing.
-
-```typescript
-// In WrestlerDatabaseTab.tsx
-const [searchInput, setSearchInput] = useState('');
-
-useEffect(() => {
-  const timer = setTimeout(() => setSearchQuery(searchInput), 150);
-  return () => clearTimeout(timer);
-}, [searchInput]);
-```
-
-#### 3. Use useMemo for Filtered Wrestlers
-
-Move the filtering logic to `useMemo` in the hook to avoid recalculating on unrelated state changes.
-
-#### 4. Remove Unnecessary motion.div Wrappers
-
-The grid of wrestler cards uses `motion.div` which adds overhead. Replace with a static `div` since the cards don't need entry animations.
-
-#### 5. Add loading="lazy" to Wrestler Images
-
-Defer loading of images that are off-screen, especially helpful when there are many wrestlers.
-
----
-
-### Technical Details
-
-#### App.tsx Changes (Remove PIN Route)
-
-Remove these lines:
-```typescript
-// Line 26: Remove import
-const PlatformAdminVerify = lazy(() => import("./pages/PlatformAdminVerify"));
-
-// Line 72: Remove route
-<Route path="/platform-admin/verify" element={<PlatformAdminVerify />} />
-```
-
-#### WrestlerCard.tsx (Memoization + Lazy Loading)
-
-```typescript
-import { memo } from 'react';
-
-export const WrestlerCard = memo(function WrestlerCard({ ... }: WrestlerCardProps) {
-  // ...existing code
-  
-  // Add loading="lazy" to img
-  <img
-    src={imageUrl}
-    alt={wrestler.name}
-    className="w-full h-full object-cover"
-    loading="lazy"
-  />
-});
-```
-
-#### WrestlerDatabaseTab.tsx (Debounced Search)
-
-```typescript
-const [localSearch, setLocalSearch] = useState('');
-
-// Debounce search updates
-useEffect(() => {
-  const timer = setTimeout(() => {
-    setSearchQuery(localSearch);
-  }, 150);
-  return () => clearTimeout(timer);
-}, [localSearch, setSearchQuery]);
-
-// In the Input component:
-<Input
-  value={localSearch}
-  onChange={(e) => setLocalSearch(e.target.value)}
-  // ...
-/>
-```
-
-Also replace `motion.div` wrapper around the grid with a regular `div`.
-
-#### useWrestlerAdmin.ts (useMemo for Filtering)
-
-```typescript
-import { useMemo } from 'react';
-
-// Replace the direct filter with useMemo
-const filteredWrestlers = useMemo(() => {
-  return wrestlers.filter((wrestler) => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (!wrestler.name.toLowerCase().includes(query)) {
-        return false;
-      }
-    }
-    if (divisionFilter !== 'all' && wrestler.division !== divisionFilter) {
-      return false;
-    }
-    return true;
-  });
-}, [wrestlers, searchQuery, divisionFilter]);
-```
-
----
-
-### File Summary
-
-| File | Action |
-|------|--------|
-| `src/pages/PlatformAdminVerify.tsx` | Delete |
-| `supabase/functions/verify-admin-pin/` | Delete (edge function folder) |
-| `src/App.tsx` | Edit - remove route and import |
-| `src/components/admin/WrestlerCard.tsx` | Edit - add React.memo + lazy loading |
-| `src/components/admin/WrestlerDatabaseTab.tsx` | Edit - debounce search, remove motion.div |
-| `src/hooks/useWrestlerAdmin.ts` | Edit - useMemo for filtering |
-
----
-
-### Expected Performance Improvements
-
-| Optimization | Impact |
-|--------------|--------|
-| React.memo on WrestlerCard | Prevents 50+ card re-renders when parent state changes |
-| Debounced search | Reduces re-renders from ~10/sec while typing to ~1/sec |
-| useMemo filtering | Avoids recalculating filter on unrelated state updates |
-| Lazy image loading | Faster initial render, loads images as user scrolls |
-| Remove motion.div | Eliminates animation overhead on grid container |
+| `src/pages/HostSetup.tsx` | Move `data-tour="guests-list"` to the trigger's inner div |
+| `src/lib/demo-tour-steps.ts` | Shorten content for guest-list and tv-mode steps |
+| `src/components/tour/TourOverlay.tsx` | Improve tooltip positioning for elements near viewport bottom |
 
