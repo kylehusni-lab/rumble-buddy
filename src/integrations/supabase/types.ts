@@ -103,6 +103,7 @@ export type Database = {
           host_pin: string | null
           host_session_id: string
           host_user_id: string | null
+          is_demo: boolean | null
           mens_rumble_entrants: Json
           status: string
           womens_rumble_entrants: Json
@@ -114,6 +115,7 @@ export type Database = {
           host_pin?: string | null
           host_session_id: string
           host_user_id?: string | null
+          is_demo?: boolean | null
           mens_rumble_entrants?: Json
           status?: string
           womens_rumble_entrants?: Json
@@ -125,6 +127,7 @@ export type Database = {
           host_pin?: string | null
           host_session_id?: string
           host_user_id?: string | null
+          is_demo?: boolean | null
           mens_rumble_entrants?: Json
           status?: string
           womens_rumble_entrants?: Json
