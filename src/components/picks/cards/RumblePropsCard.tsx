@@ -4,7 +4,7 @@ import { Target, Users, Search, Check, X, Ban, Plus, Hash, Clock, Zap, Trophy, T
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { RUMBLE_PROPS, FINAL_FOUR_SLOTS, SCORING, DEFAULT_MENS_ENTRANTS, DEFAULT_WOMENS_ENTRANTS } from "@/lib/constants";
-import { isUnconfirmedEntrant, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
+import { isUnconfirmedByData, getEntrantDisplayName, sortEntrants } from "@/lib/entrant-utils";
 import { getBlockedWrestlers, getBlockedReason } from "@/lib/pick-validation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+interface EntrantData {
+  name: string;
+  isConfirmed: boolean;
+}
+
 // Map prop IDs to Lucide icons
 const PROP_ICONS: Record<string, LucideIcon> = {
   entrant_1: Hash,
@@ -38,6 +43,7 @@ interface RumblePropsCardProps {
   onChange: (values: Record<string, string | null>) => void;
   disabled?: boolean;
   customEntrants?: string[];
+  entrantsData?: EntrantData[];
 }
 
 export const RumblePropsCard = memo(function RumblePropsCard({
@@ -47,6 +53,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
   onChange,
   disabled,
   customEntrants,
+  entrantsData = [],
 }: RumblePropsCardProps) {
   const [activePickerId, setActivePickerId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -200,7 +207,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
                       />
                       <span className={cn(
                         "text-xs sm:text-sm font-medium truncate",
-                        isUnconfirmedEntrant(selectedWrestler) && "italic opacity-80"
+                        isUnconfirmedByData(selectedWrestler, entrantsData) && "italic opacity-80"
                       )}>
                         {getEntrantDisplayName(selectedWrestler)}
                       </span>
@@ -347,9 +354,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
                           ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
                           : isBlocked
                             ? "border-destructive/50"
-                            : isUnconfirmedEntrant(wrestler)
-                              ? "border-dashed border-muted-foreground/50"
-                              : "border-transparent"
+                            : "border-transparent"
                       )}
                     >
                       <img
@@ -381,7 +386,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
                         "mt-1 text-[9px] sm:text-[10px] text-center leading-tight line-clamp-2 w-full max-w-[60px] sm:max-w-[70px]",
                         isSelected ? "text-primary font-semibold" : "text-foreground",
                         isBlocked && "text-destructive/70",
-                        isUnconfirmedEntrant(wrestler) && "italic opacity-80"
+                        isUnconfirmedByData(wrestler, entrantsData) && "italic opacity-80"
                       )}
                     >
                       {getEntrantDisplayName(wrestler)}
@@ -502,9 +507,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
                           ? "border-primary shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
                           : isBlockedByFirstElim
                             ? "border-destructive/50"
-                            : isUnconfirmedEntrant(wrestler)
-                              ? "border-dashed border-muted-foreground/50"
-                              : "border-transparent"
+                            : "border-transparent"
                       )}
                     >
                       <img
@@ -535,7 +538,7 @@ export const RumblePropsCard = memo(function RumblePropsCard({
                       className={cn(
                         "mt-1 text-[9px] sm:text-[10px] text-center leading-tight line-clamp-2 w-full max-w-[60px] sm:max-w-[70px]",
                         isSelected ? "text-primary font-semibold" : "text-foreground",
-                        isUnconfirmedEntrant(wrestler) && "italic opacity-80"
+                        isUnconfirmedByData(wrestler, entrantsData) && "italic opacity-80"
                       )}
                     >
                       {getEntrantDisplayName(wrestler)}

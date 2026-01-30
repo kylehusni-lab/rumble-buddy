@@ -4,9 +4,14 @@ import { X, Search, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
-import { sortEntrants, isUnconfirmedEntrant } from "@/lib/entrant-utils";
+import { sortEntrants, isUnconfirmedByData } from "@/lib/entrant-utils";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
+
+interface EntrantData {
+  name: string;
+  isConfirmed: boolean;
+}
 
 interface WrestlerPickerModalProps {
   isOpen: boolean;
@@ -16,6 +21,7 @@ interface WrestlerPickerModalProps {
   wrestlers: string[];
   currentSelection?: string;
   triggerConfetti?: boolean;
+  entrantsData?: EntrantData[];
 }
 
 export function WrestlerPickerModal({
@@ -26,6 +32,7 @@ export function WrestlerPickerModal({
   wrestlers,
   currentSelection,
   triggerConfetti = true,
+  entrantsData = [],
 }: WrestlerPickerModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -111,6 +118,11 @@ export function WrestlerPickerModal({
                 enterKeyHint="search"
               />
             </div>
+            {entrantsData.some(e => !e.isConfirmed) && (
+              <p className="text-[10px] text-muted-foreground mt-2 text-center">
+                <span className="italic">Italic names</span> = unconfirmed participants
+              </p>
+            )}
           </div>
         </div>
 
@@ -123,6 +135,7 @@ export function WrestlerPickerModal({
             <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-2 sm:gap-3">
               {filteredWrestlers.map((wrestler) => {
                 const isSelected = currentSelection === wrestler;
+                const isUnconfirmed = isUnconfirmedByData(wrestler, entrantsData);
                 return (
                   <motion.button
                     key={wrestler}
@@ -138,9 +151,7 @@ export function WrestlerPickerModal({
                         "relative w-full aspect-square max-w-[70px] sm:max-w-[80px] md:max-w-[90px] rounded-full overflow-hidden border-[3px] transition-all duration-200",
                         isSelected
                           ? "border-primary shadow-[0_0_12px_hsla(43,75%,52%,0.5)]"
-                          : isUnconfirmedEntrant(wrestler)
-                            ? "border-dashed border-muted-foreground/50"
-                            : "border-transparent"
+                          : "border-transparent"
                       )}
                     >
                       <img
@@ -171,7 +182,7 @@ export function WrestlerPickerModal({
                       className={cn(
                         "mt-1 text-[9px] sm:text-[10px] md:text-xs text-center leading-tight line-clamp-2 w-full max-w-[70px] sm:max-w-[80px] md:max-w-[90px]",
                         isSelected ? "text-primary font-semibold" : "text-foreground",
-                        isUnconfirmedEntrant(wrestler) && "italic opacity-80"
+                        isUnconfirmed && "italic opacity-80"
                       )}
                     >
                       {wrestler}
