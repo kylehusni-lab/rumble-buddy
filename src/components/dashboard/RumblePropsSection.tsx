@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, ChevronDown, Zap, Target, Users, Pencil } from "lucide-react";
+import { Check, X, ChevronDown, Zap, Target, Users, Pencil, Plus } from "lucide-react";
 import { RUMBLE_PROPS, SCORING, FINAL_FOUR_SLOTS, CHAOS_PROPS } from "@/lib/constants";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import { getEntrantDisplayName } from "@/lib/entrant-utils";
 
 interface Pick {
   match_id: string;
@@ -94,6 +97,7 @@ export function RumblePropsSection({ picks, results, gender, onEditPick, canEdit
   const [propsOpen, setPropsOpen] = useState(true);
   const [finalFourOpen, setFinalFourOpen] = useState(true);
   const [chaosOpen, setChaosOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   const prefix = gender;
   const title = gender === "mens" ? "Men's" : "Women's";
@@ -225,23 +229,114 @@ export function RumblePropsSection({ picks, results, gender, onEditPick, canEdit
             />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="divide-y divide-border/50">
-              {mainProps.map((prop) => {
-                const matchId = `${prefix}_${prop.id}`;
-                const pick = picks.find(p => p.match_id === matchId);
-                return (
-                  <PickRow
-                    key={matchId}
-                    label={prop.title}
-                    prediction={pick?.prediction || ""}
-                    isCorrect={getPickResult(matchId)}
-                    points={getPropScore(prop.id)}
-                    canEdit={canEdit}
-                    onEdit={() => onEditPick?.(matchId, pick?.prediction || "")}
-                  />
-                );
-              })}
-            </div>
+            {isMobile ? (
+              // MOBILE: Single-column list with large avatars
+              <div className="space-y-2 p-3">
+                {mainProps.map((prop) => {
+                  const matchId = `${prefix}_${prop.id}`;
+                  const pick = picks.find(p => p.match_id === matchId);
+                  const isCorrect = getPickResult(matchId);
+                  const isWrong = isCorrect === false;
+                  const points = getPropScore(prop.id);
+
+                  return (
+                    <button
+                      key={matchId}
+                      onClick={() => canEdit && isCorrect === null && onEditPick?.(matchId, pick?.prediction || "")}
+                      disabled={!canEdit || isCorrect !== null}
+                      className={cn(
+                        "w-full min-h-[64px] p-3 rounded-xl border flex items-center gap-4",
+                        "transition-all active:scale-[0.98]",
+                        isCorrect === true ? "bg-success/10 border-success" :
+                        isWrong ? "bg-destructive/10 border-destructive" :
+                        "bg-card border-border",
+                        canEdit && isCorrect === null && "hover:border-primary/50"
+                      )}
+                    >
+                      {/* Large avatar on left */}
+                      <div className="relative flex-shrink-0">
+                        {pick?.prediction ? (
+                          <>
+                            <img
+                              src={getWrestlerImageUrl(getEntrantDisplayName(pick.prediction))}
+                              alt={pick.prediction}
+                              className={cn(
+                                "w-14 h-14 rounded-full object-cover border-2",
+                                isCorrect === true ? "border-success" :
+                                isWrong ? "border-destructive" : 
+                                "border-primary"
+                              )}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = getPlaceholderImageUrl(pick.prediction);
+                              }}
+                            />
+                            {isCorrect === true && (
+                              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+                                <Check className="w-3 h-3 text-success-foreground" strokeWidth={3} />
+                              </div>
+                            )}
+                            {isWrong && (
+                              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
+                                <X className="w-3 h-3 text-destructive-foreground" strokeWidth={3} />
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                            <Plus className="w-5 h-5 text-muted-foreground/50" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Title and name stacked on right */}
+                      <div className="flex-1 min-w-0 text-left">
+                        <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                          {prop.title}
+                        </div>
+                        <div className={cn(
+                          "font-semibold text-foreground truncate",
+                          isWrong && "line-through text-destructive/80"
+                        )}>
+                          {pick?.prediction ? getEntrantDisplayName(pick.prediction) : `+${points} pts`}
+                        </div>
+                      </div>
+                      
+                      {/* Edit icon or points badge */}
+                      <div className="flex-shrink-0">
+                        {canEdit && isCorrect === null && (
+                          <Pencil size={16} className="text-muted-foreground" />
+                        )}
+                        {isCorrect === true && (
+                          <span className="point-badge px-2.5 py-1 rounded-full text-white text-sm font-bold">
+                            +{points}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              // DESKTOP: Keep existing PickRow layout
+              <div className="divide-y divide-border/50">
+                {mainProps.map((prop) => {
+                  const matchId = `${prefix}_${prop.id}`;
+                  const pick = picks.find(p => p.match_id === matchId);
+                  return (
+                    <PickRow
+                      key={matchId}
+                      label={prop.title}
+                      prediction={pick?.prediction || ""}
+                      isCorrect={getPickResult(matchId)}
+                      points={getPropScore(prop.id)}
+                      canEdit={canEdit}
+                      onEdit={() => onEditPick?.(matchId, pick?.prediction || "")}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </CollapsibleContent>
         </div>
       </Collapsible>
@@ -274,22 +369,92 @@ export function RumblePropsSection({ picks, results, gender, onEditPick, canEdit
             />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="divide-y divide-secondary/20">
-              {finalFourPicks.map((pick, i) => {
-                const matchId = `${prefix}_final_four_${i + 1}`;
-                return (
-                  <PickRow
-                    key={matchId}
-                    label={`Final Four #${i + 1}`}
-                    prediction={pick?.prediction || ""}
-                    isCorrect={getPickResult(matchId)}
-                    points={SCORING.FINAL_FOUR_PICK}
-                    canEdit={canEdit}
-                    onEdit={() => onEditPick?.(matchId, pick?.prediction || "")}
-                  />
-                );
-              })}
-            </div>
+            {isMobile ? (
+              // MOBILE: 4-column grid with 72px photos
+              <div className="p-4">
+                <div className="grid grid-cols-4 gap-3 justify-items-center">
+                  {finalFourPicks.map((pick, i) => {
+                    const matchId = `${prefix}_final_four_${i + 1}`;
+                    const isCorrect = getPickResult(matchId);
+                    const isWrong = isCorrect === false;
+
+                    return (
+                      <div key={matchId} className="flex flex-col items-center">
+                        <button
+                          onClick={() => canEdit && isCorrect === null && onEditPick?.(matchId, pick?.prediction || "")}
+                          disabled={!canEdit || isCorrect !== null}
+                          className="relative"
+                        >
+                          {pick?.prediction ? (
+                            <>
+                              <img
+                                src={getWrestlerImageUrl(getEntrantDisplayName(pick.prediction))}
+                                alt={pick.prediction}
+                                className={cn(
+                                  "w-[72px] h-[72px] rounded-full object-cover border-2",
+                                  isCorrect === true ? "border-success" :
+                                  isWrong ? "border-destructive" : 
+                                  "border-primary"
+                                )}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = getPlaceholderImageUrl(pick.prediction);
+                                }}
+                              />
+                              {isCorrect === true && (
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-success-foreground" strokeWidth={3} />
+                                </div>
+                              )}
+                              {isWrong && (
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
+                                  <X className="w-3 h-3 text-destructive-foreground" strokeWidth={3} />
+                                </div>
+                              )}
+                              {canEdit && isCorrect === null && (
+                                <div className="absolute inset-0 rounded-full bg-black/0 hover:bg-black/30 flex items-center justify-center transition-colors">
+                                  <Pencil size={16} className="text-white opacity-0 hover:opacity-100" />
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className={cn(
+                              "w-[72px] h-[72px] rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center",
+                              canEdit && "hover:border-primary/50"
+                            )}>
+                              <Plus className="w-6 h-6 text-muted-foreground/50" />
+                            </div>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-center mt-3">
+                  <span className="text-xs text-muted-foreground">
+                    {finalFourPicks.filter(p => p?.prediction).length}/4 picked
+                  </span>
+                </div>
+              </div>
+            ) : (
+              // DESKTOP: Keep existing PickRow layout
+              <div className="divide-y divide-secondary/20">
+                {finalFourPicks.map((pick, i) => {
+                  const matchId = `${prefix}_final_four_${i + 1}`;
+                  return (
+                    <PickRow
+                      key={matchId}
+                      label={`Final Four #${i + 1}`}
+                      prediction={pick?.prediction || ""}
+                      isCorrect={getPickResult(matchId)}
+                      points={SCORING.FINAL_FOUR_PICK}
+                      canEdit={canEdit}
+                      onEdit={() => onEditPick?.(matchId, pick?.prediction || "")}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </CollapsibleContent>
         </div>
       </Collapsible>
