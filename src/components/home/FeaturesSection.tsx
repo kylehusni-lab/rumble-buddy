@@ -42,14 +42,14 @@ export function FeaturesSection({ id }: FeaturesSectionProps) {
           {/* Header */}
           <div className="text-center space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-ott-accent">
-              Features
+              How It Works
             </span>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">
-              Built for the big night
+              Everything you need for Rumble night
             </h2>
           </div>
 
-          {/* Feature Grid - 2 columns centered */}
+          {/* Feature Grid - 2x2 on desktop, stacked on mobile */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 max-w-3xl mx-auto">
             {features.map(({ icon: Icon, title, description }, index) => (
               <motion.div
@@ -58,15 +58,17 @@ export function FeaturesSection({ id }: FeaturesSectionProps) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="space-y-4"
+                className="flex gap-4 items-start"
               >
-                <div className="w-12 h-12 rounded-xl bg-ott-surface-elevated border border-border flex items-center justify-center">
+                <div className="w-12 h-12 shrink-0 rounded-xl bg-ott-surface-elevated border border-border flex items-center justify-center">
                   <Icon className="w-6 h-6 text-ott-accent" />
                 </div>
-                <h3 className="font-semibold text-lg">{title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  {description}
-                </p>
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-lg">{title}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {description}
+                  </p>
+                </div>
               </motion.div>
             ))}
           </div>

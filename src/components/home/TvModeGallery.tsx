@@ -102,18 +102,15 @@ export function TvModeGallery({ id }: TvModeGalleryProps) {
             <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none z-10" />
             
             {/* Screenshot Display */}
-            <AnimatePresence mode="wait">
-              <motion.img
-                key={currentSlide.id}
-                src={currentSlide.image}
-                alt={currentSlide.title}
-                initial={{ opacity: 0, scale: 1.02 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.3 }}
-                className="absolute inset-0 w-full h-full object-cover object-top"
-              />
-            </AnimatePresence>
+            <img
+              key={currentSlide.id}
+              src={currentSlide.image}
+              alt={currentSlide.title}
+              className="absolute inset-0 w-full h-full object-cover object-top"
+              onError={(e) => {
+                console.error('Image failed to load:', currentSlide.image);
+              }}
+            />
 
             {/* Slide Indicator Dots */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
