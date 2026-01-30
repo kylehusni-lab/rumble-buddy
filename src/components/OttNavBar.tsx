@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, LogIn, Users } from "lucide-react";
 import { OttLogoMark } from "./OttLogo";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { useAuth } from "@/hooks/useAuth";
 
 interface OttNavBarProps {
   onStoryClick?: () => void;
@@ -13,6 +14,7 @@ interface OttNavBarProps {
 export function OttNavBar({ onStoryClick, onFeaturesClick }: OttNavBarProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
 
   const handleNavClick = (action?: () => void) => {
     setIsOpen(false);
@@ -57,14 +59,39 @@ export function OttNavBar({ onStoryClick, onFeaturesClick }: OttNavBarProps) {
 
         {/* Right side - CTA + Mobile Menu */}
         <div className="flex items-center gap-2">
-          {/* Desktop CTA */}
-          <Button 
-            onClick={() => navigate("/join")}
-            className="hidden sm:inline-flex bg-ott-accent text-background hover:bg-ott-accent/90 font-semibold"
-            size="sm"
-          >
-            Join Party
-          </Button>
+          {/* Desktop CTAs */}
+          {!isLoading && (
+            isAuthenticated ? (
+              <Button 
+                onClick={() => navigate("/my-parties")}
+                className="hidden sm:inline-flex"
+                variant="outline"
+                size="sm"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                My Parties
+              </Button>
+            ) : (
+              <>
+                <Button 
+                  onClick={() => navigate("/sign-in")}
+                  className="hidden sm:inline-flex"
+                  variant="ghost"
+                  size="sm"
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Sign In
+                </Button>
+                <Button 
+                  onClick={() => navigate("/join")}
+                  className="hidden sm:inline-flex bg-ott-accent text-background hover:bg-ott-accent/90 font-semibold"
+                  size="sm"
+                >
+                  Join Party
+                </Button>
+              </>
+            )
+          )}
 
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -109,13 +136,36 @@ export function OttNavBar({ onStoryClick, onFeaturesClick }: OttNavBarProps) {
                 </div>
 
                 {/* Footer CTA */}
-                <div className="p-4 border-t border-border">
-                  <Button 
-                    onClick={() => handleRouteClick("/join")}
-                    className="w-full bg-ott-accent text-background hover:bg-ott-accent/90 font-semibold"
-                  >
-                    Join Party
-                  </Button>
+                <div className="p-4 border-t border-border space-y-2">
+                  {!isLoading && (
+                    isAuthenticated ? (
+                      <Button 
+                        onClick={() => handleRouteClick("/my-parties")}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        My Parties
+                      </Button>
+                    ) : (
+                      <>
+                        <Button 
+                          onClick={() => handleRouteClick("/sign-in")}
+                          className="w-full"
+                          variant="ghost"
+                        >
+                          <LogIn className="h-4 w-4 mr-2" />
+                          Sign In
+                        </Button>
+                        <Button 
+                          onClick={() => handleRouteClick("/join")}
+                          className="w-full bg-ott-accent text-background hover:bg-ott-accent/90 font-semibold"
+                        >
+                          Join Party
+                        </Button>
+                      </>
+                    )
+                  )}
                 </div>
               </div>
             </SheetContent>

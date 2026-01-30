@@ -30,6 +30,8 @@ const SoloSetup = lazy(() => import("./pages/SoloSetup"));
 const SoloPicks = lazy(() => import("./pages/SoloPicks"));
 const SoloDashboard = lazy(() => import("./pages/SoloDashboard"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const SignIn = lazy(() => import("./pages/SignIn"));
+const MyParties = lazy(() => import("./pages/MyParties"));
 
 const queryClient = new QueryClient();
 
@@ -71,6 +73,8 @@ const App = () => (
             <Route path="/admin/wrestlers" element={<WrestlerAdmin />} />
             <Route path="/legal" element={<Legal />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/sign-in" element={<SignIn />} />
+            <Route path="/my-parties" element={<MyParties />} />
 
             <Route path="/solo/setup" element={<SoloSetup />} />
             <Route path="/solo/picks" element={<SoloPicks />} />
