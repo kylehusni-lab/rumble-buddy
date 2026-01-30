@@ -34,7 +34,11 @@ export function Logo({ size = "md", showTagline = false, className }: LogoProps)
         <motion.img
           src={royalRumbleLogo}
           alt="Royal Rumble 2026"
-          style={{ width: sizes[size].width }}
+          width={sizes[size].width}
+          height={Math.round(sizes[size].width * 0.415)}
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
           className="object-contain relative z-10 drop-shadow-[0_0_25px_rgba(34,139,34,0.5)]"
           animate={{ 
             scale: [1, 1.02, 1]
