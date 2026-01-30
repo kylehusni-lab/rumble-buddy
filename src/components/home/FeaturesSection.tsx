@@ -1,11 +1,21 @@
 import { motion } from "framer-motion";
-import { Zap, Tv } from "lucide-react";
+import { User, Users, Clock, Tv } from "lucide-react";
 
 const features = [
   {
-    icon: Zap,
-    title: "Real-time Updates",
-    description: "Scores update instantly as matches end and eliminations happen.",
+    icon: User,
+    title: "Solo Mode",
+    description: "Play by yourself - make picks and score your own match without a group.",
+  },
+  {
+    icon: Users,
+    title: "Party Mode",
+    description: "Host a watch party with up to 9 friends and compete on a live leaderboard.",
+  },
+  {
+    icon: Clock,
+    title: "Watch at Your Pace",
+    description: "Host controls scoring, so it works whether you're live or slightly behind.",
   },
   {
     icon: Tv,
@@ -40,7 +50,7 @@ export function FeaturesSection({ id }: FeaturesSectionProps) {
           </div>
 
           {/* Feature Grid - 2 columns centered */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 max-w-2xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 max-w-3xl mx-auto">
             {features.map(({ icon: Icon, title, description }, index) => (
               <motion.div
                 key={title}
