@@ -423,11 +423,10 @@ export default function HostSetup() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          data-tour="guests-list"
         >
           <Collapsible open={guestsOpen} onOpenChange={setGuestsOpen}>
             <CollapsibleTrigger className="w-full">
-              <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between">
+              <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between" data-tour="guests-list">
                 <div className="flex items-center gap-2">
                   <Users className="text-primary" size={20} />
                   <span className="font-bold">Guests ({totalGuests})</span>

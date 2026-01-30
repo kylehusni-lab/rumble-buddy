@@ -54,6 +54,10 @@ export function TourOverlay() {
       switch (placement) {
         case "top":
           tooltipTop = rect.top + window.scrollY - tooltipHeight - gap;
+          // If element is near bottom of viewport (like fixed footer), ensure extra clearance
+          if (rect.top > window.innerHeight - 150) {
+            tooltipTop = Math.max(16, rect.top + window.scrollY - tooltipHeight - gap - 20);
+          }
           tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
           break;
         case "bottom":
