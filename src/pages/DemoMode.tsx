@@ -17,11 +17,16 @@ export default function DemoMode() {
   }, []);
 
   const generateGroupCode = async (): Promise<string> => {
+    // Use same character set as AdminDashboard - excludes confusing chars (0,O,I,1,L)
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let attempts = 0;
     const maxAttempts = 10;
 
     while (attempts < maxAttempts) {
-      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      let code = "";
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
       
       const { data } = await supabase
         .from("parties_public")
