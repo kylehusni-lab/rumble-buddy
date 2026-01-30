@@ -1,81 +1,89 @@
 
 
-## Fix: Host Status Not Recognized from Stale Session Data
+## Fix: Match Card Interface Alignment + Final Four Duplicate Prevention
 
-### Problem Identified
+### Issues Identified
 
-The backend data is **correct** - party `X629M5` has `host_user_id` matching your auth ID. However, the **local session data is stale**.
+**Issue 1: Solo Mode Using Old Match Interface**
+- `SoloPicks.tsx` imports and uses the old `MatchCard` component (simple stacked layout)
+- `PickCardStack.tsx` (party mode) correctly uses the updated `FaceOffMatchCard` (VS badge design)
+- Solo mode needs to be updated to use `FaceOffMatchCard` for consistency
 
-**Root cause**: `HostSetup.tsx` (line 63-68) checks `getPlayerSession().isHost` from localStorage instead of verifying against the database. Since you joined the party before the host claiming flow was implemented, your localStorage has `isHost: false`.
-
-```text
-Database (CORRECT):
-  parties.host_user_id = ba1a255c-...
-
-localStorage (STALE):
-  rumble_player_data.isHost = false   <-- This is wrong!
-```
-
-The error message "You are not the host of this group" comes from `HostSetup.tsx`, not from the My Parties page.
+**Issue 2: Final Four Allows Duplicate Picks**
+- When using the grouped Final Four picker in `RumblePropsCard`, duplicates are correctly prevented (line 480 checks `finalFourSelections.includes(wrestler)`)
+- However, when editing individual Final Four slots via `SinglePickEditModal`, the validation logic in `getBlockedWrestlers()` does NOT block other Final Four wrestlers
+- This means a user can edit Final Four slot #2 and pick the same wrestler already selected in slot #1
 
 ---
 
 ### Solution
 
-#### A. Update HostSetup.tsx to Verify Host Status from Database
+#### Part A: Update Solo Mode to Use FaceOffMatchCard
 
-Instead of relying on localStorage, query the database to verify the user is actually the host.
+**File**: `src/pages/SoloPicks.tsx`
 
-**File**: `src/pages/HostSetup.tsx`
-
-**Change** (lines 60-68): Replace localStorage-based check with database verification
+1. Change import from `MatchCard` to `FaceOffMatchCard`
+2. Update component usage from `<MatchCard>` to `<FaceOffMatchCard>`
 
 ```typescript
-const fetchData = async () => {
-  try {
-    // Get current auth user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error("Please sign in to access host controls");
-      navigate("/sign-in");
-      return;
-    }
+// Change line 7:
+import { FaceOffMatchCard } from "@/components/picks/cards/FaceOffMatchCard";
 
-    // Verify host access via database (not localStorage)
-    const { data: partyData, error: partyError } = await supabase
-      .from("parties")
-      .select("code, status, host_user_id")
-      .eq("code", code)
-      .eq("host_user_id", user.id)
-      .maybeSingle();
-
-    if (partyError || !partyData) {
-      toast.error("You are not the host of this group");
-      navigate("/my-parties");
-      return;
-    }
-
-    // Continue with existing logic...
+// Change lines 333-340:
+{currentCard.type === "match" && (
+  <FaceOffMatchCard
+    title={currentCard.title}
+    options={currentCard.options as readonly [string, string]}
+    value={picks[currentCard.id] || null}
+    onChange={(value) => handlePickUpdate(currentCard.id, value)}
+    disabled={false}
+  />
+)}
 ```
 
-#### B. Update MyParties.tsx to Sync Session When User is Detected as Host
+#### Part B: Add Final Four Cross-Slot Duplicate Prevention
 
-When My Parties detects the user is a host, update their localStorage session to reflect this.
+**File**: `src/lib/pick-validation.ts`
 
-**File**: `src/pages/MyParties.tsx`
-
-**Add** after line 108: Sync session when host status is detected
+Add logic to block Final Four wrestlers that are already picked in other slots:
 
 ```typescript
-// Sync localStorage session if user is host of any party
-const session = getPlayerSession();
-if (session && combined.some(p => p.is_host && p.party_code === session.partyCode)) {
-  const hostedParty = combined.find(p => p.is_host && p.party_code === session.partyCode);
-  if (hostedParty && !session.isHost) {
-    setPlayerSession({
-      ...session,
-      isHost: true,
-    });
+export function getBlockedWrestlers(
+  gender: 'mens' | 'womens',
+  propId: string,
+  currentPicks: Record<string, string | null>
+): Set<string> {
+  const blocked = new Set<string>();
+  
+  // ... existing conflict rules logic ...
+  
+  // NEW: Block other Final Four selections when editing a Final Four slot
+  if (propId.startsWith('final_four_')) {
+    const currentSlot = propId.split('_').pop(); // e.g., "1", "2", "3", "4"
+    for (let i = 1; i <= 4; i++) {
+      if (String(i) !== currentSlot) {
+        const otherPick = currentPicks[`${gender}_final_four_${i}`];
+        if (otherPick) {
+          blocked.add(otherPick);
+        }
+      }
+    }
+  }
+  
+  return blocked;
+}
+```
+
+**File**: `src/lib/pick-validation.ts` - Also update `getBlockedReason` for user feedback
+
+```typescript
+// Add inside getBlockedReason function:
+if (propId.startsWith('final_four_')) {
+  const currentSlot = propId.split('_').pop();
+  for (let i = 1; i <= 4; i++) {
+    if (String(i) !== currentSlot && currentPicks[`${gender}_final_four_${i}`] === wrestler) {
+      return `Already picked for Final Four slot #${i}`;
+    }
   }
 }
 ```
@@ -86,27 +94,14 @@ if (session && combined.some(p => p.is_host && p.party_code === session.partyCod
 
 | File | Change |
 |------|--------|
-| `src/pages/HostSetup.tsx` | Replace localStorage check with database query for host verification |
-| `src/pages/MyParties.tsx` | Add session sync when host status is detected from database |
+| `src/pages/SoloPicks.tsx` | Replace `MatchCard` import/usage with `FaceOffMatchCard` |
+| `src/lib/pick-validation.ts` | Add Final Four cross-slot blocking in `getBlockedWrestlers` and `getBlockedReason` |
 
 ---
 
-### Why This Fix Works
+### Technical Notes
 
-1. **HostSetup.tsx** now verifies host status directly against the database using RLS policies
-2. The query `parties.host_user_id = auth.uid()` is enforced by RLS, so only actual hosts can access
-3. **MyParties.tsx** syncs the localStorage when it detects a mismatch, fixing the stale data
-4. Future sessions will have correct `isHost` values from the start
-
----
-
-### Technical Flow After Fix
-
-```text
-User clicks "JVYN3T" or "X629M5" on My Parties page
-  → navigates to /host/setup/{code}
-  → HostSetup fetches party WHERE code = X AND host_user_id = auth.uid()
-  → Database returns party data (RLS allows because user IS the host)
-  → User sees Host Setup dashboard
-```
+- The Final Four grouped picker (`RumblePropsCard.tsx`) already prevents duplicates via `finalFourSelections.includes(wrestler)` check
+- The individual edit modal (`SinglePickEditModal.tsx`) relies on `getBlockedWrestlers()` which currently doesn't check other Final Four slots
+- Both Solo and Party modes will now use the same premium Face-Off interface for match picks
 
