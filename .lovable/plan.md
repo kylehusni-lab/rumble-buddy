@@ -1,204 +1,158 @@
 
 
-# Request Access Modal + Enhanced Navigation + Learn More CTA
+# Commissioner Mode Expansion + User Authentication
 
 ## Summary
-This plan addresses three improvements to the homepage and join flow:
-1. Make all "Request Access" buttons trigger the modal (currently JoinParty navigates away)
-2. Replace the bouncing "Scroll" indicator with a more engaging "Learn More" button
-3. Expand the top navigation with more section links
+Transform Commissioner Mode into a full admin panel with party management, and require proper user authentication (email/password) for party members instead of anonymous auth.
 
 ---
 
-## 1. Consistent Request Access Modal on JoinParty Page
+## Current State Analysis
 
-**Current behavior**: The "Request Access" button on `/join` navigates back to the homepage instead of opening the modal directly.
+**Access Request Flow (today):**
+1. User submits request via landing page modal
+2. Admin approves in Commissioner Mode, generates 6-char code
+3. User receives code, goes to `/join`, enters it
+4. User provides name/email and joins with **anonymous Supabase auth**
 
-**New behavior**: Opens the same Request Access modal inline without leaving the page.
-
-**File**: `src/pages/JoinParty.tsx`
-
-**Changes**:
-- Import `RequestAccessModal` component
-- Add `isModalOpen` state
-- Replace `navigate("/")` with `setIsModalOpen(true)` on the Request Access button
-- Render the modal at the bottom of the component
+**Key Gap:** Players currently use anonymous auth - no real accounts, no login/password, no way to enforce identity or manage access properly.
 
 ---
 
-## 2. Replace Scroll Indicator with "Learn More" Button
+## What We Will Build
 
-**Current behavior**: Passive "Scroll" text with a bouncing chevron that has no interactivity.
+### Part 1: Enhanced Commissioner Mode Dashboard
 
-**New behavior**: An interactive "Learn More" button that:
-- Displays as a subtle pill/button with border
-- Smooth-scrolls to the Story section when clicked
-- Still has the animated chevron to draw attention
-- Feels intentional and actionable
+Add new sections to the existing `/admin` dashboard:
 
-**Files**: 
-- `src/components/home/HeroSection.tsx` - Accept new `onLearnMore` prop, update UI
-- `src/pages/HomePage.tsx` - Pass `scrollToStory` as `onLearnMore`
+**1. Access Requests (Enhanced)**
+- Add "Reject" button alongside Approve
+- Show rejected requests in a separate section or with status badge
 
-**Visual treatment**:
+**2. Active Parties View (New Section)**
+- Table showing all parties with:
+  - Party Code
+  - Host Name/Email
+  - Member Count
+  - Status (pre_event / live / ended)
+  - Created Date
+- Click into any party to manage members
+
+**3. Party Management Modal/View**
+- View all members in a party
+- Remove individual members
+- Add member by email (creates invite or directly adds if user exists)
+
+**4. Create Party Directly (New Feature)**
+- Button to generate a new party code
+- Optionally assign to an approved access request or create standalone
+
+---
+
+### Part 2: Real User Authentication for Party Members
+
+Replace anonymous auth with email/password signup:
+
+**New Player Join Flow:**
+1. User enters party code at `/join`
+2. Redirected to `/player/auth?code=XXXX`
+3. Two tabs: **Sign Up** | **Log In**
+4. Sign up requires: Email, Password, Display Name
+5. On success, user is linked to the party and redirected to picks
+
+**Database Changes:**
+- Players table already has `user_id` - we enforce it's not null for new joins
+- Enable email auto-confirm in auth settings (no email verification delays)
+
+**Key Files to Modify:**
+- `src/lib/auth.ts` - Add signUp/signIn functions
+- `src/pages/PlayerJoin.tsx` - Redirect to auth flow instead of inline form
+- Create `src/pages/PlayerAuth.tsx` - New signup/login page
+- `src/hooks/useAuth.ts` - Add signUp/signIn methods
+
+---
+
+## Technical Implementation
+
+### Database Changes
+
 ```text
-+---------------------------+
-|  Learn More               |
-|      v (animated)         |
-+---------------------------+
+1. Add 'rejected_at' column to access_requests table
+   - Allows tracking rejection alongside approval
+
+2. Create admin view for parties
+   - Security definer function to fetch all parties with member counts
+   - Only callable by admin role
 ```
-- Rounded pill shape with border
-- Hover state that brightens
-- Text changes from "Scroll" to "Learn More"
+
+### New Components
+
+```text
+src/pages/AdminDashboard.tsx (modify)
+  - Add Tabs: Requests | Parties
+  - Add Reject button to pending requests
+  - Add ActivePartiesTab component
+
+src/components/admin/ActivePartiesTab.tsx (new)
+  - Lists all parties with stats
+  - Links to party detail
+
+src/components/admin/PartyManagementModal.tsx (new)
+  - View/remove party members
+  - Add member by email
+
+src/pages/PlayerAuth.tsx (new)
+  - Signup/Login tabs
+  - Party code passed via query param
+  - Auto-confirm email setting enabled
+```
+
+### Auth Flow Changes
+
+```text
+Current:
+  JoinParty -> PlayerJoin (name/email form) -> Anonymous Auth -> Dashboard
+
+New:
+  JoinParty -> PlayerAuth (signup/login tabs) -> Real Auth -> Dashboard
+```
 
 ---
 
-## 3. Expanded Top Navigation
+## Security Considerations
 
-**Current nav links**: Our Story, Features
+1. **Admin-only functions** - All party management uses `has_role(auth.uid(), 'admin')` checks
+2. **Real user accounts** - Players have proper Supabase auth accounts, not anonymous
+3. **Auto-confirm emails** - No friction for party night (configure via auth settings)
+4. **RLS enforcement** - Players can only access parties they belong to
 
-**Proposed nav links**: Our Story, Features, TV Mode, Demo
+---
 
-| Link | Action |
+## Files to Create/Modify
+
+| File | Action |
 |------|--------|
-| Our Story | Scroll to Story section |
-| Features | Scroll to Features section |
-| TV Mode | Scroll to TV Mode Gallery section |
-| Demo | Navigate to `/demo` |
-
-**Files**:
-- `src/components/OttNavBar.tsx` - Add new props and nav items
-- `src/pages/HomePage.tsx` - Add tvModeRef, pass new handlers
-
----
-
-## Technical Implementation Details
-
-### JoinParty.tsx Changes
-```tsx
-// New imports
-import { RequestAccessModal } from "@/components/RequestAccessModal";
-
-// New state
-const [isModalOpen, setIsModalOpen] = useState(false);
-
-// Updated button handler
-<Button
-  variant="ghost"
-  size="sm"
-  onClick={() => setIsModalOpen(true)}
-  className="text-ott-accent hover:text-ott-accent/80"
->
-  Request Access
-</Button>
-
-// Add modal at end of component
-<RequestAccessModal 
-  isOpen={isModalOpen} 
-  onClose={() => setIsModalOpen(false)} 
-/>
-```
-
-### HeroSection.tsx Changes
-```tsx
-// Updated props interface
-interface HeroSectionProps {
-  onRequestAccess: () => void;
-  onLearnMore?: () => void;  // New
-}
-
-// Replace scroll indicator with interactive button
-<motion.button
-  onClick={onLearnMore}
-  className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 
-             px-4 py-2 rounded-full border border-border/50 bg-background/50 backdrop-blur-sm
-             text-muted-foreground hover:text-foreground hover:border-border transition-colors
-             group cursor-pointer"
-  initial={{ opacity: 0, y: -10 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ delay: 1, duration: 0.5 }}
->
-  <span className="text-xs font-medium uppercase tracking-wider">Learn More</span>
-  <motion.div
-    animate={{ y: [0, 4, 0] }}
-    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-  >
-    <ChevronDown className="w-4 h-4" />
-  </motion.div>
-</motion.button>
-```
-
-### OttNavBar.tsx Changes
-```tsx
-// Updated props
-interface OttNavBarProps {
-  onStoryClick?: () => void;
-  onFeaturesClick?: () => void;
-  onTvModeClick?: () => void;  // New
-}
-
-// Updated nav links section
-<div className="hidden md:flex items-center gap-6">
-  <button onClick={onStoryClick} className="...">
-    Our Story
-  </button>
-  <button onClick={onFeaturesClick} className="...">
-    Features
-  </button>
-  <button onClick={onTvModeClick} className="...">
-    TV Mode
-  </button>
-  <button onClick={() => navigate("/demo")} className="...">
-    Demo
-  </button>
-</div>
-```
-
-### HomePage.tsx Changes
-```tsx
-// Add new ref
-const tvModeRef = useRef<HTMLDivElement>(null);
-
-// Add scroll function
-const scrollToTvMode = () => {
-  tvModeRef.current?.scrollIntoView({ behavior: "smooth" });
-};
-
-// Update HeroSection
-<HeroSection 
-  onRequestAccess={() => setIsRequestModalOpen(true)} 
-  onLearnMore={scrollToStory}  // New prop
-/>
-
-// Update OttNavBar
-<OttNavBar 
-  onStoryClick={scrollToStory} 
-  onFeaturesClick={scrollToFeatures}
-  onTvModeClick={scrollToTvMode}  // New prop
-/>
-
-// Wrap TvModeGallery with ref
-<div ref={tvModeRef}>
-  <TvModeGallery id="tv-mode" />
-</div>
-```
+| `src/pages/AdminDashboard.tsx` | Add tabs, reject button, parties section |
+| `src/components/admin/ActivePartiesTab.tsx` | New - party list view |
+| `src/components/admin/PartyManagementModal.tsx` | New - member management |
+| `src/pages/PlayerAuth.tsx` | New - signup/login page |
+| `src/pages/PlayerJoin.tsx` | Modify - redirect to auth |
+| `src/lib/auth.ts` | Add signUp/signIn functions |
+| `src/hooks/useAuth.ts` | Add signUp/signIn methods |
+| Database migration | Add rejected_at, admin party view function |
 
 ---
 
-## Files Changed Summary
+## User Experience Summary
 
-| File | Changes |
-|------|---------|
-| `src/pages/JoinParty.tsx` | Add modal import, state, and rendering |
-| `src/components/home/HeroSection.tsx` | Add `onLearnMore` prop, replace scroll indicator with button |
-| `src/pages/HomePage.tsx` | Add tvModeRef, pass scroll handlers to both components |
-| `src/components/OttNavBar.tsx` | Add TV Mode and Demo nav links with new props |
+**For You (Commissioner Mode):**
+- Approve OR Reject access requests
+- View all active parties at a glance
+- Click into any party to see members and remove if needed
+- Create party codes directly
 
----
-
-## User Experience Impact
-
-- **Request Access**: Users can now request access from any page without losing context
-- **Learn More**: Clear call-to-action that invites exploration rather than passive scrolling hint
-- **Navigation**: Users can quickly jump to any section from the top nav, including TV Mode and Demo
+**For Party Members:**
+- Enter code at `/join`
+- Create account with email/password (or log in if returning)
+- Proper user identity tied to their picks
 
