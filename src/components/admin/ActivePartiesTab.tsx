@@ -17,6 +17,7 @@ interface Party {
   host_email: string | null;
   host_display_name: string | null;
   is_demo: boolean;
+  email_sent: boolean;
 }
 
 export function ActivePartiesTab() {

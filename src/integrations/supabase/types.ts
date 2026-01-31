@@ -102,6 +102,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          email_sent: boolean | null
           event_started_at: string | null
           host_session_id: string
           host_user_id: string | null
@@ -113,6 +114,7 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          email_sent?: boolean | null
           event_started_at?: string | null
           host_session_id: string
           host_user_id?: string | null
@@ -124,6 +126,7 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          email_sent?: boolean | null
           event_started_at?: string | null
           host_session_id?: string
           host_user_id?: string | null
