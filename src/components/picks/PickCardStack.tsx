@@ -187,6 +187,14 @@ export function PickCardStack({
     setShowIncompleteWarning(false);
 
     try {
+      // Verify auth session is still valid before saving
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Your session has expired. Please sign in again.");
+        navigate("/sign-in");
+        return;
+      }
+
       // Convert picks to database format
       const pickRecords: { player_id: string; match_id: string; prediction: string }[] = [];
 
@@ -246,11 +254,18 @@ export function PickCardStack({
       if (error) throw error;
 
       setHasSubmitted(true);
-      toast.success("Picks saved! Good luck! 🎉");
+      toast.success("Picks saved! Good luck!");
       navigate(isHost ? `/host/control/${partyCode}` : `/player/dashboard/${partyCode}`);
     } catch (err) {
       console.error("Error submitting picks:", err);
-      toast.error("Failed to save picks. Please try again.");
+      
+      // Provide more specific error messages
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.toLowerCase().includes("rls") || errorMessage.toLowerCase().includes("policy")) {
+        toast.error("Permission denied. Please try signing in again.");
+      } else {
+        toast.error("Failed to save picks. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
