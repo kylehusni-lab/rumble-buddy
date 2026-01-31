@@ -365,16 +365,23 @@ export default function TvDisplay() {
           const player = playersRef.current.find(p => p.id === updated.assigned_to_player_id);
           const ownerName = player?.display_name || "Vacant";
           addActivityEventRef.current("entry", `#${updated.number}: ${updated.wrestler_name} (${ownerName})`);
-          
-          // Show score popup for entry points
-          if (player) {
-            addScoreEventRef.current(5, player.display_name);
-          }
         }
         
-        // Add activity event for elimination
+        // Add activity event for elimination and show score popup for eliminator
         if (updated.elimination_timestamp && !old?.elimination_timestamp) {
           addActivityEventRef.current("elimination", `${updated.wrestler_name} eliminated`);
+          
+          // Find the eliminator and show score popup for their owner
+          if (updated.eliminated_by_number) {
+            const numbersToCheck = updated.rumble_type === "mens" ? mensNumbersRef.current : womensNumbersRef.current;
+            const eliminator = numbersToCheck.find(n => n.number === updated.eliminated_by_number);
+            if (eliminator?.assigned_to_player_id) {
+              const eliminatorOwner = playersRef.current.find(p => p.id === eliminator.assigned_to_player_id);
+              if (eliminatorOwner) {
+                addScoreEventRef.current(5, eliminatorOwner.display_name);
+              }
+            }
+          }
         }
 
         // Refresh numbers
