@@ -98,9 +98,13 @@ export const RumblePropsCard = memo(function RumblePropsCard({
 
   const handleWrestlerSelect = useCallback((wrestler: string) => {
     if (!activePickerId || disabled) return;
-    onChange({ ...values, [activePickerId]: wrestler });
-    setActivePickerId(null);
-    setSearchQuery("");
+    try {
+      onChange({ ...values, [activePickerId]: wrestler });
+      setActivePickerId(null);
+      setSearchQuery("");
+    } catch (err) {
+      console.error("Error selecting wrestler:", err);
+    }
   }, [activePickerId, disabled, onChange, values]);
 
   const openPicker = useCallback((matchId: string) => {
@@ -121,21 +125,25 @@ export const RumblePropsCard = memo(function RumblePropsCard({
   };
 
   const handleFinalFourSelect = (wrestler: string) => {
-    // Find first empty slot or toggle if already selected
-    const existingIndex = finalFourSelections.indexOf(wrestler);
-    if (existingIndex !== -1) {
-      // Remove selection
-      const newSelections = [...finalFourSelections];
-      newSelections[existingIndex] = null;
-      setFinalFourSelections(newSelections);
-    } else {
-      // Add to first empty slot
-      const emptyIndex = finalFourSelections.indexOf(null);
-      if (emptyIndex !== -1) {
+    try {
+      // Find first empty slot or toggle if already selected
+      const existingIndex = finalFourSelections.indexOf(wrestler);
+      if (existingIndex !== -1) {
+        // Remove selection
         const newSelections = [...finalFourSelections];
-        newSelections[emptyIndex] = wrestler;
+        newSelections[existingIndex] = null;
         setFinalFourSelections(newSelections);
+      } else {
+        // Add to first empty slot
+        const emptyIndex = finalFourSelections.indexOf(null);
+        if (emptyIndex !== -1) {
+          const newSelections = [...finalFourSelections];
+          newSelections[emptyIndex] = wrestler;
+          setFinalFourSelections(newSelections);
+        }
       }
+    } catch (err) {
+      console.error("Error selecting Final Four wrestler:", err);
     }
   };
 

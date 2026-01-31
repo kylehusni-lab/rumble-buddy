@@ -112,18 +112,32 @@ export function PickCardStack({
 
   const handlePickUpdate = useCallback((cardId: string, value: any) => {
     if (isLocked) return;
-    setPicks(prev => ({ ...prev, [cardId]: value }));
-    // No auto-advance - let users navigate manually to see their selection
+    try {
+      setPicks(prev => ({ ...prev, [cardId]: value }));
+    } catch (err) {
+      console.error("Error updating pick:", err);
+      toast.error("Failed to update pick. Please try again.");
+    }
   }, [isLocked]);
 
   const handleChaosPropsUpdate = useCallback((values: Record<string, "YES" | "NO" | null>) => {
     if (isLocked) return;
-    setPicks(prev => ({ ...prev, ...values }));
+    try {
+      setPicks(prev => ({ ...prev, ...values }));
+    } catch (err) {
+      console.error("Error updating chaos props:", err);
+      toast.error("Failed to update selection. Please try again.");
+    }
   }, [isLocked]);
 
   const handleRumblePropsUpdate = useCallback((values: Record<string, string | null>) => {
     if (isLocked) return;
-    setPicks(prev => ({ ...prev, ...values }));
+    try {
+      setPicks(prev => ({ ...prev, ...values }));
+    } catch (err) {
+      console.error("Error updating rumble props:", err);
+      toast.error("Failed to update selection. Please try again.");
+    }
   }, [isLocked]);
 
   // Touch event handlers for swipe detection (without visual dragging)
