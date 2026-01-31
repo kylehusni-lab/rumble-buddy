@@ -207,17 +207,23 @@ export default function HostSetup() {
           setPlayerPicks(picksCountMap);
         }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "picks" }, async () => {
-        // Refresh picks counts when picks change
-        const picksCountMap: Record<string, number> = {};
-        for (const player of players) {
-          const { count } = await supabase
-            .from("picks")
-            .select("*", { count: "exact", head: true })
-            .eq("player_id", player.id);
-          picksCountMap[player.id] = count || 0;
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "picks" }, async () => {
+        // Refresh picks counts when picks change (batch query instead of N+1)
+        if (players.length === 0) return;
+        
+        const playerIds = players.map(p => p.id);
+        const { data } = await supabase
+          .from("picks")
+          .select("player_id")
+          .in("player_id", playerIds);
+        
+        if (data) {
+          const picksCountMap: Record<string, number> = {};
+          playerIds.forEach(id => {
+            picksCountMap[id] = data.filter(p => p.player_id === id).length;
+          });
+          setPlayerPicks(picksCountMap);
         }
-        setPlayerPicks(picksCountMap);
       })
       .subscribe((status) => {
         setIsConnected(status === "SUBSCRIBED");
