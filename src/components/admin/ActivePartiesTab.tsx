@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Loader2, Users, Calendar, RefreshCw, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PartyManagementModal } from "./PartyManagementModal";
+
+type PartyFilter = "admin" | "demo" | "user" | "all";
 
 interface Party {
   code: string;
@@ -24,6 +27,7 @@ export function ActivePartiesTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedParty, setSelectedParty] = useState<Party | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [filter, setFilter] = useState<PartyFilter>("admin");
 
   useEffect(() => {
     fetchParties();
@@ -43,6 +47,20 @@ export function ActivePartiesTab() {
       setIsLoading(false);
     }
   };
+
+  const filteredParties = useMemo(() => {
+    switch (filter) {
+      case "admin":
+        return parties.filter(p => p.host_session_id === "admin-created" && !p.is_demo);
+      case "demo":
+        return parties.filter(p => p.is_demo);
+      case "user":
+        return parties.filter(p => p.host_session_id !== "admin-created" && !p.is_demo);
+      case "all":
+      default:
+        return parties;
+    }
+  }, [parties, filter]);
 
   const generatePartyCode = (): string => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -103,8 +121,21 @@ export function ActivePartiesTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Active Parties ({parties.length})</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg font-semibold">Active Parties ({filteredParties.length})</h2>
+          <Select value={filter} onValueChange={(v) => setFilter(v as PartyFilter)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Admin-created</SelectItem>
+              <SelectItem value="demo">Demo</SelectItem>
+              <SelectItem value="user">User-created</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchParties}>
             <RefreshCw className="w-4 h-4 mr-2" />
@@ -120,9 +151,9 @@ export function ActivePartiesTab() {
       </div>
 
       {/* Parties Table */}
-      {parties.length === 0 ? (
+      {filteredParties.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          No parties created yet
+          {filter === "all" ? "No parties created yet" : `No ${filter} parties found`}
         </div>
       ) : (
         <div className="bg-ott-surface border border-border rounded-lg overflow-hidden">
@@ -140,7 +171,7 @@ export function ActivePartiesTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {parties.map((party) => (
+                {filteredParties.map((party) => (
                   <tr key={party.code} className="hover:bg-ott-surface-elevated/50 transition-colors">
                     <td className="px-4 py-3">
                       <code className="text-ott-accent font-mono text-sm bg-ott-accent/10 px-2 py-1 rounded">
@@ -150,8 +181,10 @@ export function ActivePartiesTab() {
                     <td className="px-4 py-3">
                       {party.is_demo ? (
                         <Badge variant="outline" className="border-ott-accent text-ott-accent">Demo</Badge>
+                      ) : party.host_session_id === "admin-created" ? (
+                        <Badge variant="secondary">Admin</Badge>
                       ) : (
-                        <Badge variant="secondary">Regular</Badge>
+                        <Badge variant="secondary">User</Badge>
                       )}
                     </td>
                     <td className="px-4 py-3">
