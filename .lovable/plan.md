@@ -1,101 +1,65 @@
 
-# Fix Potential Crash Sources in Wrestler Selection Flow
 
-## Overview
-Implement defensive error handling to prevent app crashes during wrestler selections and add a global error boundary for graceful recovery.
+# Fix: Parties Not Loading in Admin Mode
 
----
+## Problem Identified
 
-## Problem Analysis
-1. **No global error boundary** - Unhandled errors cause white-screen crashes
-2. **No unhandled promise rejection handler** - Async errors in selection flow crash the app
-3. **Minor:** CountdownUnit ref warning on homepage (cosmetic, not crash-related)
+The **Parties tab fails to load** in Commissioner Mode because the `admin_get_all_parties` database function references a column that doesn't exist.
+
+**Error Details:**
+- The RPC function `admin_get_all_parties` tries to SELECT `p.email_sent` from the `parties` table
+- The `email_sent` column does **not exist** on the `parties` table
+- This causes a SQL error, preventing any party data from being returned
+- The `admin_update_party_email_sent` function has the same issue
 
 ---
 
 ## Solution
 
-### 1. Add Global Error Boundary Component
-Create a new `ErrorBoundary.tsx` component that catches React rendering errors:
-
-| Property | Value |
-|----------|-------|
-| Location | `src/components/ErrorBoundary.tsx` |
-| Catches | React rendering errors |
-| Fallback UI | User-friendly error message with retry button |
-
-### 2. Add Unhandled Promise Rejection Handler
-Add to App.tsx a global handler for async errors:
-
-```typescript
-useEffect(() => {
-  const handleRejection = (event: PromiseRejectionEvent) => {
-    console.error("Unhandled rejection:", event.reason);
-    toast.error("An unexpected error occurred. Please try again.");
-    event.preventDefault();
-  };
-
-  window.addEventListener("unhandledrejection", handleRejection);
-  return () => window.removeEventListener("unhandledrejection", handleRejection);
-}, []);
-```
-
-### 3. Wrap Selection Handlers with Try-Catch
-Add defensive error handling to:
-- `PickCardStack.tsx` - handlePickUpdate, handleChaosPropsUpdate, handleRumblePropsUpdate
-- `RumblePropsCard.tsx` - handleWrestlerSelect, handleFinalFourSelect
-
-### 4. Fix CountdownUnit Ref Warning
-Convert `CountdownUnit` to use `forwardRef` or ensure it's not receiving refs:
-
-```typescript
-const CountdownUnit = forwardRef<HTMLDivElement, Props>(
-  function CountdownUnit({ value, label }, ref) {
-    return (
-      <div ref={ref} className="text-center">
-        ...
-      </div>
-    );
-  }
-);
-```
+Add the missing `email_sent` column to the `parties` table to match what the RPC functions expect.
 
 ---
 
-## Files to Modify
+## Database Migration
 
-| File | Change |
-|------|--------|
-| `src/components/ErrorBoundary.tsx` | NEW - Create error boundary component |
-| `src/App.tsx` | Wrap routes in ErrorBoundary, add global rejection handler |
-| `src/components/home/HeroSection.tsx` | Fix CountdownUnit forwardRef warning |
-| `src/components/picks/PickCardStack.tsx` | Add try-catch to pick handlers |
-| `src/components/picks/cards/RumblePropsCard.tsx` | Add try-catch to selection handlers |
+```sql
+-- Add email_sent column to parties table for tracking host communication
+ALTER TABLE public.parties 
+ADD COLUMN email_sent boolean DEFAULT false;
 
----
-
-## Implementation Order
-1. Create ErrorBoundary component
-2. Update App.tsx with error boundary and global handler
-3. Fix CountdownUnit ref warning
-4. Add defensive try-catch to selection handlers
+-- Add comment for documentation
+COMMENT ON COLUMN public.parties.email_sent IS 
+  'Tracks whether the party code has been emailed to the host';
+```
 
 ---
 
 ## Technical Details
 
-**ErrorBoundary Component:**
-- Uses React class component (required for error boundaries)
-- Catches errors in child component tree
-- Provides "Try Again" button that resets state
-- Logs errors for debugging
+| Item | Current State | Fix |
+|------|--------------|-----|
+| `parties.email_sent` column | Missing | Add with `boolean DEFAULT false` |
+| `admin_get_all_parties` RPC | Fails on `p.email_sent` | Will work after column added |
+| `admin_update_party_email_sent` RPC | Fails on UPDATE | Will work after column added |
+| TypeScript types | Missing `email_sent` | Will auto-update after migration |
+| Frontend interface | Has `email_sent` field | Already correct |
 
-**Global Promise Handler:**
-- Catches unhandled async errors
-- Shows toast notification instead of crashing
-- Prevents default crash behavior
+---
 
-**Selection Handler Protection:**
-- Wrap state updates in try-catch
-- Show toast on error
-- Maintain current state on failure (no data loss)
+## Files to Update
+
+| File | Change |
+|------|--------|
+| Database migration | Add `email_sent` column to `parties` table |
+| `src/components/admin/ActivePartiesTab.tsx` | Add `email_sent: boolean` to Party interface (already present based on memory context) |
+
+---
+
+## Verification Steps
+
+After the fix:
+1. Navigate to `/admin`
+2. Click the "Parties" tab
+3. Confirm parties list loads successfully
+4. Test "Create Party" and "Manage" functions
+
