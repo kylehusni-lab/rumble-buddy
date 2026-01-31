@@ -20,6 +20,7 @@ export function RequestAccessModal({ isOpen, onClose }: RequestAccessModalProps)
   const [email, setEmail] = useState("");
   const [playStyle, setPlayStyle] = useState<"Solo" | "Group" | "">("");
   const [groupSize, setGroupSize] = useState<"2-5" | "6-10" | "">("");
+  const [referralSource, setReferralSource] = useState<"reddit" | "twitter" | "friend" | "other" | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -44,6 +45,7 @@ export function RequestAccessModal({ isOpen, onClose }: RequestAccessModalProps)
         email: email.trim().toLowerCase(),
         play_style: playStyle,
         group_size: playStyle === "Group" ? groupSize : null,
+        referral_source: referralSource || null,
       });
 
       if (error) throw error;
@@ -63,6 +65,7 @@ export function RequestAccessModal({ isOpen, onClose }: RequestAccessModalProps)
     setEmail("");
     setPlayStyle("");
     setGroupSize("");
+    setReferralSource("");
     setIsSubmitted(false);
     onClose();
   };
@@ -160,6 +163,21 @@ export function RequestAccessModal({ isOpen, onClose }: RequestAccessModalProps)
                   </Select>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label>How did you hear about us?</Label>
+                <Select value={referralSource} onValueChange={(val) => setReferralSource(val as "reddit" | "twitter" | "friend" | "other")}>
+                  <SelectTrigger className="bg-ott-surface-elevated border-border">
+                    <SelectValue placeholder="Select an option (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="reddit">Reddit</SelectItem>
+                    <SelectItem value="twitter">X (Twitter)</SelectItem>
+                    <SelectItem value="friend">A Friend</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               <Button 
                 type="submit" 

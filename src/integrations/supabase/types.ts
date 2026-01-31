@@ -25,6 +25,7 @@ export type Database = {
           name: string
           party_code: string | null
           play_style: string
+          referral_source: string | null
           rejected_at: string | null
           status: string | null
         }
@@ -38,6 +39,7 @@ export type Database = {
           name: string
           party_code?: string | null
           play_style: string
+          referral_source?: string | null
           rejected_at?: string | null
           status?: string | null
         }
@@ -51,6 +53,7 @@ export type Database = {
           name?: string
           party_code?: string | null
           play_style?: string
+          referral_source?: string | null
           rejected_at?: string | null
           status?: string | null
         }
