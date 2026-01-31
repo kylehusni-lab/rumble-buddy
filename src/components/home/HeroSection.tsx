@@ -18,18 +18,16 @@ interface TimeRemaining {
   seconds: number;
 }
 
-function CountdownUnit({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="text-center">
-      <div className="text-lg sm:text-2xl lg:text-3xl font-black tabular-nums text-ott-accent">
-        {String(value).padStart(2, '0')}
-      </div>
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-        {label}
-      </div>
+const CountdownUnit = ({ value, label }: { value: number; label: string }) => (
+  <div className="text-center">
+    <div className="text-lg sm:text-2xl lg:text-3xl font-black tabular-nums text-ott-accent">
+      {String(value).padStart(2, '0')}
     </div>
-  );
-}
+    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+      {label}
+    </div>
+  </div>
+);
 
 export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) {
   const navigate = useNavigate();
