@@ -54,6 +54,11 @@ export function WrestlerPickerModal({
         origin: { y: 0.6 },
         colors: ["#D4AF37", "#4B0082", "#FFFFFF"],
       });
+      
+      // Clean up canvas memory after animation completes (prevents iOS Safari crashes)
+      setTimeout(() => {
+        confetti.reset();
+      }, 3000);
     }
     
     // Small delay to show selection before closing

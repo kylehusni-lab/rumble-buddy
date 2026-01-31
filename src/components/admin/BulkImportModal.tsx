@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { Upload } from 'lucide-react';
 import {
   Dialog,
@@ -24,7 +24,7 @@ interface BulkImportModalProps {
   onImport: (names: string[], division: 'mens' | 'womens') => Promise<{ imported: number; skipped: number }>;
 }
 
-export function BulkImportModal({ open, onOpenChange, onImport }: BulkImportModalProps) {
+export const BulkImportModal = forwardRef<HTMLDivElement, BulkImportModalProps>(function BulkImportModal({ open, onOpenChange, onImport }, ref) {
   const [namesText, setNamesText] = useState('');
   const [division, setDivision] = useState<'mens' | 'womens'>('mens');
   const [isImporting, setIsImporting] = useState(false);
@@ -128,4 +128,4 @@ export function BulkImportModal({ open, onOpenChange, onImport }: BulkImportModa
       </DialogContent>
     </Dialog>
   );
-}
+});

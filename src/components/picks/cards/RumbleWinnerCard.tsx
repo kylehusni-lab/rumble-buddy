@@ -63,6 +63,11 @@ export const RumbleWinnerCard = memo(function RumbleWinnerCard({
         origin: { y: 0.6 },
         colors: ['#D4AF37', '#4B0082', '#FFD700'],
       });
+      
+      // Clean up canvas memory after animation completes (prevents iOS Safari crashes)
+      setTimeout(() => {
+        confetti.reset();
+      }, 3000);
     }
   }, [disabled, onChange]);
 
