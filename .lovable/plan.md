@@ -1,120 +1,215 @@
 
 
-# Fix Demo Mode Onboarding Tour Issues
+# Realtime Performance Review and Optimization Plan
 
-## Problem Analysis
+## Current State Analysis
 
-Based on the code review, I identified two issues with the guided tour:
-
-1. **Guest Step Too Long**: The `guests-list` tour step targets the entire `Collapsible` component which includes the header AND the expanded guest cards. This creates a very tall highlight area.
-
-2. **TV Mode Step Too Low**: The `tv-mode` step targets a button inside a fixed footer. The tooltip positioning uses `placement: "top"` but calculates position based on viewport coordinates, causing the tooltip to appear too low or partially off-screen.
+After reviewing all realtime subscription implementations across the codebase, I identified several performance issues and optimization opportunities.
 
 ---
 
-## Solution
+## Issues Found
 
-### 1. Fix Guest List Targeting
+### Issue 1: Unfiltered Picks Subscription in TvDisplay (Critical)
 
-**Current**: Targets the entire collapsible container (`data-tour="guests-list"`)
+**File**: `src/pages/TvDisplay.tsx` (lines 404-409)
 
-**Fix**: Move the `data-tour` attribute to just the collapsible trigger (the header row) so only the "Guests (X)" bar is highlighted, not the expanded content.
+**Problem**: The subscription listens to ALL picks across ALL parties without any filter:
+```typescript
+.on("postgres_changes", { event: "*", schema: "public", table: "picks" }, () => {
+  supabase.from("picks").select("player_id, match_id, prediction").then(...)
+})
+```
 
-**File**: `src/pages/HostSetup.tsx`
-- Move `data-tour="guests-list"` from the outer `<motion.div>` to the `CollapsibleTrigger`'s inner div
+**Impact**: 
+- Receives realtime events from every party in the system
+- Triggers unnecessary re-fetches for unrelated data
+- No filter on the fetch query either - fetches ALL picks from database
 
-### 2. Fix TV Mode Button Positioning
-
-The issue is that for elements in a fixed footer, the tooltip appears too close to the bottom edge. Two changes needed:
-
-**A. Shorten the content** (it's currently verbose):
-- Current: "Cast this to your TV during the event. It shows the leaderboard, everyone's picks, and updates live as matches are scored."
-- New: "Cast this to your TV during the event to show the live leaderboard and picks."
-
-**B. Improve tooltip positioning for fixed elements**:
-- Add logic in `TourOverlay.tsx` to detect when the target is near the viewport bottom and ensure the tooltip has adequate space above
-- Increase the gap and ensure minimum distance from viewport bottom
-
-**File**: `src/lib/demo-tour-steps.ts`
-- Update content for cleaner, shorter text
-
-**File**: `src/components/tour/TourOverlay.tsx`
-- Improve "top" placement calculation to ensure tooltip stays visible for elements near the viewport bottom
+**Fix**: Add proper filter and use the RPC snapshot function that already exists.
 
 ---
 
-## Implementation Details
+### Issue 2: Unfiltered Picks Subscription in HostSetup (Medium)
 
-### Changes to `src/pages/HostSetup.tsx`
+**File**: `src/pages/HostSetup.tsx` (lines 210-221)
 
-Move the tour target from the wrapper to the trigger:
-
-```tsx
-// Before (line 422-427):
-<motion.div
-  ...
-  data-tour="guests-list"
->
-  <Collapsible open={guestsOpen} onOpenChange={setGuestsOpen}>
-    <CollapsibleTrigger className="w-full">
-      <div className="bg-card border...">
-
-// After:
-<motion.div ...>
-  <Collapsible open={guestsOpen} onOpenChange={setGuestsOpen}>
-    <CollapsibleTrigger className="w-full">
-      <div className="bg-card border..." data-tour="guests-list">
+**Problem**: Similar issue - no filter on picks table subscription:
+```typescript
+.on("postgres_changes", { event: "*", schema: "public", table: "picks" }, async () => {
+  // Refresh picks counts when picks change
+})
 ```
 
-### Changes to `src/lib/demo-tour-steps.ts`
+**Impact**: Triggers on ANY pick change across the entire platform.
 
-Shorten verbose content:
+**Fix**: Filter by player IDs in the current party.
 
+---
+
+### Issue 3: Global Wrestlers Subscription in usePlatformConfig (Low)
+
+**File**: `src/hooks/usePlatformConfig.ts` (lines 85-98)
+
+**Problem**: No filter on wrestlers table - subscribes to ALL wrestler changes:
 ```typescript
-// Guest Status step - shorter content
-{
-  id: "guests-list",
-  target: "[data-tour='guests-list']",
-  title: "Guest Status",
-  content: "Track each guest's progress. Green means picks are complete.",
-  placement: "top",
-},
-
-// TV Mode step - shorter content  
-{
-  id: "tv-mode",
-  target: "[data-tour='tv-mode']",
-  title: "TV Display",
-  content: "Cast this to your TV to show the live leaderboard and picks.",
-  placement: "top",
-},
+.on("postgres_changes", {
+  event: "*",
+  schema: "public",
+  table: "wrestlers",
+}, () => fetchConfig())
 ```
 
-### Changes to `src/components/tour/TourOverlay.tsx`
+**Impact**: Low impact since wrestlers table changes infrequently (admin-only), but still unnecessary overhead.
 
-Improve top placement for fixed footer elements:
+**Fix**: Add filter for `is_active=eq.true` and `is_rumble_participant=eq.true`.
+
+---
+
+### Issue 4: Overly Broad Event Types (Low)
+
+**Multiple Files**: Most subscriptions use `event: "*"` instead of specific events.
+
+**Problem**: Subscribing to INSERT, UPDATE, and DELETE when often only UPDATE or INSERT is needed.
+
+**Examples**:
+- `rumble_numbers`: Only needs UPDATE (entries and eliminations)
+- `match_results`: Only needs INSERT (results are created, rarely updated/deleted)
+- `players` points: Only needs UPDATE
+
+**Fix**: Use specific event types where possible.
+
+---
+
+### Issue 5: Redundant Polling + Realtime in TvDisplay (Medium)
+
+**File**: `src/pages/TvDisplay.tsx` (lines 218-260)
+
+**Problem**: TvDisplay uses BOTH 3-second polling AND realtime subscriptions for the same data.
+
+**Impact**: Duplicate network requests and processing.
+
+**Fix**: Remove polling when realtime is connected, or reduce polling frequency as a fallback only.
+
+---
+
+## Optimization Plan
+
+### 1. Fix TvDisplay Picks Subscription
 
 ```typescript
-case "top":
-  // Ensure tooltip doesn't go above viewport
-  tooltipTop = rect.top + window.scrollY - tooltipHeight - gap;
-  // If element is in bottom portion of screen, ensure adequate space
-  if (rect.top > window.innerHeight - 150) {
-    tooltipTop = Math.max(16, rect.top + window.scrollY - tooltipHeight - gap - 20);
+// Before (no filter, fetches everything)
+.on("postgres_changes", { event: "*", schema: "public", table: "picks" }, () => {
+  supabase.from("picks").select("player_id, match_id, prediction").then(...)
+})
+
+// After (filtered to party players, specific events)
+.on("postgres_changes", { 
+  event: "INSERT", 
+  schema: "public", 
+  table: "picks" 
+}, async () => {
+  // Use the existing RPC snapshot for efficiency
+  const snapshot = await fetchTvSnapshot();
+  if (snapshot?.picks) setPicks(snapshot.picks);
+})
+```
+
+### 2. Fix HostSetup Picks Subscription
+
+```typescript
+// After - only listen for INSERT/UPDATE on picks
+.on("postgres_changes", { 
+  event: "INSERT", 
+  schema: "public", 
+  table: "picks" 
+}, async () => {
+  // Only refresh if we have players loaded
+  if (players.length > 0) {
+    // Batch fetch counts instead of individual queries
+    const playerIds = players.map(p => p.id);
+    const { data } = await supabase
+      .from("picks")
+      .select("player_id")
+      .in("player_id", playerIds);
+    
+    if (data) {
+      const picksCountMap: Record<string, number> = {};
+      playerIds.forEach(id => {
+        picksCountMap[id] = data.filter(p => p.player_id === id).length;
+      });
+      setPlayerPicks(picksCountMap);
+    }
   }
-  tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
-  break;
+})
 ```
 
-Also reduce the hardcoded `tooltipHeight` estimate from 160 to a more accurate value or calculate it dynamically after render.
+### 3. Add Filters to usePlatformConfig
+
+```typescript
+// After - filter to only active rumble participants
+.on("postgres_changes", {
+  event: "*",
+  schema: "public",
+  table: "wrestlers",
+  filter: "is_rumble_participant=eq.true"
+}, () => fetchConfig())
+```
+
+### 4. Optimize Event Types
+
+| Subscription | Current | Optimized |
+|--------------|---------|-----------|
+| `match_results` | `event: "*"` | `event: "INSERT"` (results are created, rarely updated) |
+| `rumble_numbers` | `event: "*"` | `event: "UPDATE"` (entries/eliminations are updates) |
+| `players` points | `event: "*"` | `event: "UPDATE"` (points only change via update) |
+
+### 5. Remove Redundant Polling in TvDisplay
+
+```typescript
+// After - conditional polling as fallback only
+useEffect(() => {
+  if (!code) return;
+  
+  // Initial fetch
+  poll();
+  
+  // Only poll if realtime fails to connect within 5 seconds
+  let pollInterval: NodeJS.Timeout | null = null;
+  const startPolling = () => {
+    if (!pollInterval) {
+      pollInterval = setInterval(poll, 5000); // Reduced frequency
+    }
+  };
+  
+  // Give realtime 5 seconds to connect, then fall back to polling
+  const fallbackTimer = setTimeout(startPolling, 5000);
+  
+  return () => {
+    clearTimeout(fallbackTimer);
+    if (pollInterval) clearInterval(pollInterval);
+  };
+}, [code, fetchTvSnapshot, applySnapshot]);
+```
 
 ---
 
-## Summary of File Changes
+## Summary of Changes
 
-| File | Change |
-|------|--------|
-| `src/pages/HostSetup.tsx` | Move `data-tour="guests-list"` to the trigger's inner div |
-| `src/lib/demo-tour-steps.ts` | Shorten content for guest-list and tv-mode steps |
-| `src/components/tour/TourOverlay.tsx` | Improve tooltip positioning for elements near viewport bottom |
+| File | Change | Impact |
+|------|--------|--------|
+| `src/pages/TvDisplay.tsx` | Add filter to picks subscription, remove redundant polling | High - prevents global event noise |
+| `src/pages/HostSetup.tsx` | Batch picks count query, filter subscription | Medium - reduces N+1 queries |
+| `src/hooks/usePlatformConfig.ts` | Add `is_rumble_participant` filter | Low - minor efficiency gain |
+| `src/pages/HostControl.tsx` | Optimize event types (UPDATE only where appropriate) | Low - reduces event processing |
+| `src/pages/PlayerDashboard.tsx` | Optimize event types | Low - reduces event processing |
+
+---
+
+## Technical Notes
+
+- All filters use Supabase's supported filter syntax: `column=eq.value`
+- The `picks` table doesn't have a direct `party_code` column, so we can't filter at the subscription level - instead we filter the refetch query
+- The RPC function `get_tv_snapshot` already handles efficient data fetching for TvDisplay
+- Channel names already use unique suffixes (e.g., `tv-display-${code}`) which is good practice
 
