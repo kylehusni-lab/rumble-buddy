@@ -1,65 +1,127 @@
 
+# Fix: Save Picks Failures and iOS Safari Crashes
 
-# Fix: Parties Not Loading in Admin Mode
+## Problem Analysis
 
-## Problem Identified
+Two distinct issues identified:
 
-The **Parties tab fails to load** in Commissioner Mode because the `admin_get_all_parties` database function references a column that doesn't exist.
+### 1. Failed to Save Picks
+**Root Cause**: RLS policies require `auth.uid()` to match the player's `user_id`. If the auth session expires or there's a mismatch, the database operation fails silently.
 
-**Error Details:**
-- The RPC function `admin_get_all_parties` tries to SELECT `p.email_sent` from the `parties` table
-- The `email_sent` column does **not exist** on the `parties` table
-- This causes a SQL error, preventing any party data from being returned
-- The `admin_update_party_email_sent` function has the same issue
+**Evidence**: The `handleSubmit` function in `PickCardStack.tsx` catches errors but doesn't verify auth state before attempting to save.
+
+### 2. Safari Crashes on iOS During Wrestler Selection
+**Root Cause**: The `canvas-confetti` library creates canvas elements that iOS Safari fails to garbage collect properly. After multiple wrestler selections with confetti effects, memory accumulates and eventually causes Safari to crash.
+
+**Evidence**: Web research confirms this is a known iOS Safari issue with canvas elements (WebKit bug #195325). The workaround is to call `confetti.reset()` after the animation completes.
 
 ---
 
 ## Solution
 
-Add the missing `email_sent` column to the `parties` table to match what the RPC functions expect.
+### Part 1: Add Confetti Memory Cleanup
 
----
-
-## Database Migration
-
-```sql
--- Add email_sent column to parties table for tracking host communication
-ALTER TABLE public.parties 
-ADD COLUMN email_sent boolean DEFAULT false;
-
--- Add comment for documentation
-COMMENT ON COLUMN public.parties.email_sent IS 
-  'Tracks whether the party code has been emailed to the host';
-```
-
----
-
-## Technical Details
-
-| Item | Current State | Fix |
-|------|--------------|-----|
-| `parties.email_sent` column | Missing | Add with `boolean DEFAULT false` |
-| `admin_get_all_parties` RPC | Fails on `p.email_sent` | Will work after column added |
-| `admin_update_party_email_sent` RPC | Fails on UPDATE | Will work after column added |
-| TypeScript types | Missing `email_sent` | Will auto-update after migration |
-| Frontend interface | Has `email_sent` field | Already correct |
-
----
-
-## Files to Update
+Modify confetti usage to reset canvas after each animation completes:
 
 | File | Change |
 |------|--------|
-| Database migration | Add `email_sent` column to `parties` table |
-| `src/components/admin/ActivePartiesTab.tsx` | Add `email_sent: boolean` to Party interface (already present based on memory context) |
+| `RumbleWinnerCard.tsx` | Add `setTimeout(() => confetti.reset(), 3000)` after firing |
+| `WrestlerPickerModal.tsx` | Add `setTimeout(() => confetti.reset(), 3000)` after firing |
+
+```typescript
+// Example pattern for safe confetti usage
+confetti({
+  particleCount: 80,
+  spread: 60,
+  origin: { y: 0.6 },
+  colors: ['#D4AF37', '#4B0082', '#FFD700'],
+});
+
+// Clean up canvas memory after animation completes
+setTimeout(() => {
+  confetti.reset();
+}, 3000);
+```
+
+### Part 2: Improve Pick Saving Error Handling
+
+Add auth session verification before saving picks:
+
+| File | Change |
+|------|--------|
+| `PickCardStack.tsx` | Verify auth session before save, show specific error messages |
+
+```typescript
+const handleSubmit = async () => {
+  if (!playerId || isLocked) return;
+
+  setIsSubmitting(true);
+  setShowIncompleteWarning(false);
+
+  try {
+    // Verify auth session is still valid
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Your session has expired. Please sign in again.");
+      navigate("/sign-in");
+      return;
+    }
+
+    // ... rest of pick saving logic
+  } catch (err) {
+    console.error("Error submitting picks:", err);
+    
+    // Provide more specific error messages
+    if (err instanceof Error && err.message.includes("RLS")) {
+      toast.error("Permission denied. Please try signing in again.");
+    } else {
+      toast.error("Failed to save picks. Please try again.");
+    }
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+```
+
+### Part 3: Fix React forwardRef Warning
+
+Wrap `BulkImportModal` with `forwardRef` to prevent the warning:
+
+| File | Change |
+|------|--------|
+| `BulkImportModal.tsx` | Wrap component with `forwardRef` |
 
 ---
 
-## Verification Steps
+## Files to Modify
 
-After the fix:
-1. Navigate to `/admin`
-2. Click the "Parties" tab
-3. Confirm parties list loads successfully
-4. Test "Create Party" and "Manage" functions
+| File | Change |
+|------|--------|
+| `src/components/picks/cards/RumbleWinnerCard.tsx` | Add `confetti.reset()` cleanup after 3s timeout |
+| `src/components/WrestlerPickerModal.tsx` | Add `confetti.reset()` cleanup after 3s timeout |
+| `src/components/picks/PickCardStack.tsx` | Add auth session check before saving, improve error messages |
+| `src/components/admin/BulkImportModal.tsx` | Wrap with `forwardRef` to fix React warning |
+
+---
+
+## Technical Notes
+
+**Canvas Confetti Memory Issue**:
+- iOS Safari has a hard limit on total canvas memory (~256MB on older devices)
+- Canvas elements are not immediately garbage collected when dereferenced
+- The `confetti.reset()` function explicitly clears the canvas and releases memory
+- 3-second timeout ensures the animation completes before cleanup
+
+**Auth Session Handling**:
+- Supabase sessions can expire after inactivity
+- Adding a session check before critical operations prevents silent failures
+- Provides clear user feedback and recovery path
+
+---
+
+## Implementation Order
+
+1. Add confetti cleanup to prevent iOS Safari crashes
+2. Enhance pick saving with auth verification
+3. Fix forwardRef warning in BulkImportModal
 
