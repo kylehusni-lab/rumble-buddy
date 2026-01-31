@@ -584,7 +584,6 @@ export type Database = {
         Returns: {
           code: string
           created_at: string
-          email_sent: boolean
           event_started_at: string
           host_display_name: string
           host_email: string
@@ -607,10 +606,6 @@ export type Database = {
         }[]
       }
       admin_remove_player: { Args: { p_player_id: string }; Returns: boolean }
-      admin_update_party_email_sent: {
-        Args: { p_email_sent: boolean; p_party_code: string }
-        Returns: boolean
-      }
       get_or_create_solo_player: {
         Args: { p_display_name?: string }
         Returns: {
