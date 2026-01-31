@@ -125,9 +125,23 @@ export default function HostControl() {
 
     const fetchData = async () => {
       try {
-        // Verify host access via session
-        const session = getPlayerSession();
-        if (!session?.isHost || session.partyCode !== code) {
+        // Get current auth user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast.error("Please sign in to access host controls");
+          navigate("/sign-in");
+          return;
+        }
+
+        // Verify host access via database (not localStorage)
+        const { data: hostCheck, error: hostError } = await supabase
+          .from("parties")
+          .select("code")
+          .eq("code", code)
+          .eq("host_user_id", user.id)
+          .maybeSingle();
+
+        if (hostError || !hostCheck) {
           toast.error("You are not the host of this group");
           navigate("/my-parties");
           return;
