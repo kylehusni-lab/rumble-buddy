@@ -214,7 +214,7 @@ export default function TvDisplay() {
     }
   }, []);
 
-  // Effect for polling (works for both pre_event and live states)
+  // Effect for initial fetch + fallback polling (realtime is primary)
   useEffect(() => {
     if (!code) return;
     
@@ -253,10 +253,17 @@ export default function TvDisplay() {
     // Run immediately on mount
     poll();
     
-    // Poll every 3 seconds
-    const interval = setInterval(poll, 3000);
+    // Fallback polling - only start after 5 seconds (give realtime time to connect)
+    // Reduced frequency to 5 seconds since realtime is primary
+    let pollInterval: NodeJS.Timeout | null = null;
+    const fallbackTimer = setTimeout(() => {
+      pollInterval = setInterval(poll, 5000);
+    }, 5000);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(fallbackTimer);
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [code, fetchTvSnapshot, applySnapshot]);
 
   // Check for initial reveal on mount (for late-joining TVs)
@@ -380,7 +387,7 @@ export default function TvDisplay() {
           }
         });
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, async (payload) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, async (payload) => {
         const matchResult = payload.new as any;
         if (!matchResult?.match_id) return;
 
@@ -401,11 +408,10 @@ export default function TvDisplay() {
           addActivityEventRef.current("result", `${label} Rumble Winner: ${matchResult.result}!`);
         }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "picks" }, () => {
-        // Refresh picks when they change
-        supabase.from("picks").select("player_id, match_id, prediction").then(({ data }) => {
-          if (data) setPicks(data);
-        });
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "picks" }, async () => {
+        // Refresh picks via snapshot RPC (filtered to party players)
+        const snapshot = await fetchTvSnapshot();
+        if (snapshot?.picks) setPicks(snapshot.picks);
       })
       .subscribe();
 

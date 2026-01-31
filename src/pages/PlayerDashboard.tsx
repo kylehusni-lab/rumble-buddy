@@ -398,10 +398,10 @@ export default function PlayerDashboard() {
         }
         fetchData();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `id=eq.${session.playerId}` }, () => fetchData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "picks", filter: `player_id=eq.${session.playerId}` }, () => fetchData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, () => fetchData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, (payload) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "players", filter: `id=eq.${session.playerId}` }, () => fetchData())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "picks", filter: `player_id=eq.${session.playerId}` }, () => fetchData())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, () => fetchData())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, (payload) => {
         const matchResult = payload.new as any;
         if (matchResult?.match_id && matchResult?.result) {
           checkForPlayerCelebration(matchResult.match_id, matchResult.result, allNumbers);

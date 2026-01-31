@@ -81,7 +81,7 @@ export function usePlatformConfig() {
   useEffect(() => {
     fetchConfig();
 
-    // Subscribe to realtime changes on wrestlers table
+    // Subscribe to realtime changes on wrestlers table (filtered to rumble participants)
     const channel = supabase
       .channel("wrestlers-changes")
       .on(
@@ -90,6 +90,7 @@ export function usePlatformConfig() {
           event: "*",
           schema: "public",
           table: "wrestlers",
+          filter: "is_rumble_participant=eq.true",
         },
         () => {
           fetchConfig();

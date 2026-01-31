@@ -203,14 +203,14 @@ export default function HostControl() {
     // Realtime subscriptions
     const channel = supabase
       .channel(`host-control-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, async () => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "match_results", filter: `party_code=eq.${code}` }, async () => {
         const { data } = await supabase
           .from("match_results")
           .select("match_id, result")
           .eq("party_code", code);
         if (data) setMatchResults(data);
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, async () => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, async () => {
         const { data: mensData } = await supabase
           .from("rumble_numbers")
           .select("*")
@@ -227,7 +227,7 @@ export default function HostControl() {
           .order("number");
         if (womensData) setWomensNumbers(womensData);
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `party_code=eq.${code}` }, async () => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "players", filter: `party_code=eq.${code}` }, async () => {
         const { data } = await supabase
           .from("players_public")
           .select("id, display_name, points")
