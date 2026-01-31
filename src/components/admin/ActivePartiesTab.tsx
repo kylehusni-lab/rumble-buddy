@@ -51,14 +51,16 @@ export function ActivePartiesTab() {
     }
   };
 
+  const isAdminCreated = (sessionId: string) => sessionId.startsWith("admin-approved-") || sessionId === "admin-created";
+
   const filteredParties = useMemo(() => {
     switch (filter) {
       case "admin":
-        return parties.filter(p => p.host_session_id === "admin-created" && !p.is_demo);
+        return parties.filter(p => isAdminCreated(p.host_session_id) && !p.is_demo);
       case "demo":
         return parties.filter(p => p.is_demo);
       case "user":
-        return parties.filter(p => p.host_session_id !== "admin-created" && !p.is_demo);
+        return parties.filter(p => !isAdminCreated(p.host_session_id) && !p.is_demo);
       case "all":
       default:
         return parties;
@@ -66,9 +68,9 @@ export function ActivePartiesTab() {
   }, [parties, filter]);
 
   const partyCounts = useMemo(() => ({
-    admin: parties.filter(p => p.host_session_id === "admin-created" && !p.is_demo).length,
+    admin: parties.filter(p => isAdminCreated(p.host_session_id) && !p.is_demo).length,
     demo: parties.filter(p => p.is_demo).length,
-    user: parties.filter(p => p.host_session_id !== "admin-created" && !p.is_demo).length,
+    user: parties.filter(p => !isAdminCreated(p.host_session_id) && !p.is_demo).length,
     total: parties.length,
   }), [parties]);
 
@@ -257,7 +259,7 @@ export function ActivePartiesTab() {
                     <td className="px-4 py-3">
                       {party.is_demo ? (
                         <Badge variant="outline" className="border-ott-accent text-ott-accent">Demo</Badge>
-                      ) : party.host_session_id === "admin-created" ? (
+                      ) : isAdminCreated(party.host_session_id) ? (
                         <Badge variant="secondary">Admin</Badge>
                       ) : (
                         <Badge variant="secondary">User</Badge>
