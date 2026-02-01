@@ -123,31 +123,62 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
             </div>
 
             {/* Event Banner with Countdown */}
-            <div className="flex flex-col items-center lg:items-start gap-3 bg-ott-surface-elevated border border-border rounded-lg px-4 py-3">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-ott-accent">
-                  Next Event
-                </span>
-                <div className="flex flex-col">
-                  <span className="font-semibold">{EVENT_CONFIG.TITLE}</span>
-                  {EVENT_CONFIG.IS_MULTI_NIGHT && (
-                    <span className="text-xs text-muted-foreground">
-                      {getEventDateDisplay()} {getCurrentNightLabel() && !isLive && `- Countdown to ${getCurrentNightLabel()}`}
-                    </span>
-                  )}
+            <div className="bg-ott-surface-elevated border border-border rounded-lg px-4 py-3">
+              {/* Desktop: horizontal layout */}
+              <div className="hidden sm:flex sm:items-center sm:gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-ott-accent">
+                    Next Event
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="font-semibold">{EVENT_CONFIG.TITLE}</span>
+                    {EVENT_CONFIG.IS_MULTI_NIGHT && (
+                      <span className="text-xs text-muted-foreground">
+                        {getEventDateDisplay()} {getCurrentNightLabel() && !isLive && `- Countdown to ${getCurrentNightLabel()}`}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                {timeRemaining && (
+                  <div className="flex items-center gap-2 ml-auto pl-4 border-l border-border">
+                    <CountdownUnit value={timeRemaining.days} label="days" />
+                    <span className="text-muted-foreground text-sm">:</span>
+                    <CountdownUnit value={timeRemaining.hours} label="hrs" />
+                    <span className="text-muted-foreground text-sm">:</span>
+                    <CountdownUnit value={timeRemaining.minutes} label="min" />
+                    <span className="text-muted-foreground text-sm">:</span>
+                    <CountdownUnit value={timeRemaining.seconds} label="sec" />
+                  </div>
+                )}
               </div>
-              {timeRemaining && (
-                <div className="flex items-center justify-center gap-2">
-                  <CountdownUnit value={timeRemaining.days} label="days" />
-                  <span className="text-muted-foreground text-sm">:</span>
-                  <CountdownUnit value={timeRemaining.hours} label="hrs" />
-                  <span className="text-muted-foreground text-sm">:</span>
-                  <CountdownUnit value={timeRemaining.minutes} label="min" />
-                  <span className="text-muted-foreground text-sm">:</span>
-                  <CountdownUnit value={timeRemaining.seconds} label="sec" />
+              
+              {/* Mobile: stacked & centered */}
+              <div className="flex flex-col items-center gap-3 sm:hidden">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-ott-accent">
+                    Next Event
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="font-semibold">{EVENT_CONFIG.TITLE}</span>
+                    {EVENT_CONFIG.IS_MULTI_NIGHT && (
+                      <span className="text-xs text-muted-foreground">
+                        {getEventDateDisplay()} {getCurrentNightLabel() && !isLive && `- Countdown to ${getCurrentNightLabel()}`}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              )}
+                {timeRemaining && (
+                  <div className="flex items-center justify-center gap-3">
+                    <CountdownUnit value={timeRemaining.days} label="days" />
+                    <span className="text-muted-foreground text-sm">:</span>
+                    <CountdownUnit value={timeRemaining.hours} label="hrs" />
+                    <span className="text-muted-foreground text-sm">:</span>
+                    <CountdownUnit value={timeRemaining.minutes} label="min" />
+                    <span className="text-muted-foreground text-sm">:</span>
+                    <CountdownUnit value={timeRemaining.seconds} label="sec" />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Headline */}
