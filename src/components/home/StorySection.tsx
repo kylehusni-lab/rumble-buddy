@@ -29,7 +29,7 @@ export function StorySection({ id }: StorySectionProps) {
 
           {/* Timeline */}
           <div className="relative border-l-2 border-yellow-500/30 ml-4 pl-8 space-y-12">
-            {/* Step 1: The Experiment */}
+            {/* Step 1: The Beginning */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -41,22 +41,22 @@ export function StorySection({ id }: StorySectionProps) {
               <div className="absolute -left-[41px] top-1 w-3 h-3 rounded-full bg-yellow-500" />
               
               <h2 className="text-2xl font-bold text-foreground mb-4">
-                The Experiment
+                The Evolution
               </h2>
               <div className="space-y-4 text-muted-foreground text-lg leading-relaxed">
                 <p>
-                  Three years ago, we invited a group of friends over for the Royal Rumble with 
-                  a crazy idea. Could we turn total non-fans into wrestling obsessives in one night?
+                  We started with a poster board and a simple question: How do we make the 
+                  Royal Rumble even better? The answer was giving everyone a stake in the match.
                 </p>
                 <p>
-                  We knew it was a long shot. We needed a way to hold their attention and get them 
-                  invested in the action. So we bought a poster board, gave everyone a crash course 
-                  on the storylines, and scribbled down a random number draw to even the odds.
+                  But we didn't stop at 30-man brawls. Whether it's a high-stakes ladder match 
+                  or a main-event title fight, <span className="font-bold text-yellow-500">Over The Top (OTT)</span> is 
+                  the digital evolution of the watch party.
                 </p>
               </div>
             </motion.div>
 
-            {/* Step 2: The Spark */}
+            {/* Step 2: The Vision */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -65,38 +65,12 @@ export function StorySection({ id }: StorySectionProps) {
               className="relative"
             >
               {/* Timeline dot */}
-              <div className="absolute -left-[41px] top-1 w-3 h-3 rounded-full bg-yellow-500" />
-              
-              <h3 className="text-2xl font-bold text-yellow-500 mb-4">
-                The Spark
-              </h3>
-              <p className="text-muted-foreground text-lg leading-relaxed">
-                It worked. Suddenly people who had never watched a match were screaming at the TV 
-                because their wrestler just got eliminated.{" "}
-                <span className="text-foreground">The energy in the room was electric.</span>{" "}
-                We realized that when you give people a reason to care about every entrant, the 
-                magic clicks instantly.
-              </p>
-            </motion.div>
-
-            {/* Step 3: The Evolution - Feature Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="relative"
-            >
-              {/* Timeline dot */}
               <div className="absolute -left-[41px] top-8 w-3 h-3 rounded-full bg-yellow-500" />
               
               <div className="bg-zinc-900 border-l-4 border-yellow-500 p-8 rounded-r-lg">
                 <p className="text-foreground text-lg leading-relaxed">
-                  <span className="font-bold text-yellow-500">Over The Top (OTT)</span> is the 
-                  digital evolution of that poster board. We built it to be the definitive Rumble 
-                  app—replacing the bad handwriting and manual tracking with a premium experience 
-                  that goes hand-in-hand with the match itself. We wanted to share that thrill with 
-                  our friends. Now we want to help you share it with yours.
+                  We've replaced messy spreadsheets and forgotten bets with a premium, real-time 
+                  experience that turns every PLE into a game night.
                 </p>
               </div>
             </motion.div>
@@ -116,12 +90,13 @@ export function StorySection({ id }: StorySectionProps) {
           >
             {/* Massive headline */}
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-foreground mb-6">
-              Why We're Obsessed
+              Why Wrestling?
             </h2>
             
             {/* Italic gold subhead */}
-            <p className="text-xl lg:text-2xl italic text-yellow-500">
-              People always ask: "Why wrestling?"
+            <p className="text-xl lg:text-2xl text-muted-foreground max-w-2xl mx-auto">
+              It's the world's greatest soap opera disguised as a world-class athletic spectacle. 
+              But it's always better when you have a horse in the race.
             </p>
           </motion.div>
 
@@ -141,31 +116,23 @@ export function StorySection({ id }: StorySectionProps) {
               </motion.div>
             ))}
           </div>
+          
+          {/* Additional context */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="text-center text-lg text-muted-foreground mt-12 max-w-2xl mx-auto"
+          >
+            <span className="font-bold text-yellow-500">OTT</span> transforms you from a spectator 
+            into a strategist. From the "Big Four" to international stadium shows, we provide the 
+            context and the competition to make every match matter.
+          </motion.p>
         </div>
       </section>
 
-      {/* Section C: The Gateway */}
-      <section className="bg-background py-20 lg:py-28">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="space-y-6"
-          >
-            <p className="text-xl lg:text-2xl font-light text-zinc-300 leading-relaxed">
-              But if you don't watch every week, it can be hard to keep up. That's why the{" "}
-              <span className="font-bold text-yellow-500">Royal Rumble</span> is perfect. 
-              30 superstars, constant action, one winner.
-            </p>
-            <p className="text-xl lg:text-2xl font-light text-zinc-300 leading-relaxed">
-              It is the ultimate gateway event, and{" "}
-              <span className="font-bold text-yellow-500">OTT</span> is the key to unlocking it.
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      {/* Section C: The Gateway - Removed since we're no longer Rumble-only */}
     </>
   );
 }
