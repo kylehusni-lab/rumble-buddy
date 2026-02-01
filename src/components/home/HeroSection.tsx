@@ -152,12 +152,12 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight text-center lg:text-left leading-tight">
-              Every Kick-out. Every Count-out. Every Crown.
+              Every Pinfall. Every Prediction. Every Point.
             </h1>
 
             {/* Tagline */}
             <p className="text-lg sm:text-xl text-muted-foreground max-w-md text-center lg:text-left">
-              The ultimate companion for every WWE Premium Live Event. Make your picks, track the drama, and turn every PLE into a competition with friends.
+              The ultimate companion for wrestling watch parties. Make your picks, track the drama, and turn every event into a competition with friends.
             </p>
 
             {/* CTAs */}
