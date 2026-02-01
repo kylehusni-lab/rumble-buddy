@@ -1,5 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
-import { UNDERCARD_MATCHES, CHAOS_PROPS } from "./constants";
+// Import Rumble config directly for Demo Mode - always uses Rumble
+import { 
+  RUMBLE_2026_MATCHES, 
+  RUMBLE_2026_CHAOS_PROPS,
+  RUMBLE_2026_CONFIG,
+} from "./events/rumble-2026";
 
 export const DEMO_GUESTS = [
   { name: "Melanie", email: "melanie@demo.local" },
@@ -27,8 +32,8 @@ export async function generateDemoPicksForPlayers(
   }> = [];
 
   for (const playerId of playerIds) {
-    // Undercard matches (2 picks)
-    UNDERCARD_MATCHES.forEach((match) => {
+    // Undercard matches (2 picks) - use Rumble matches
+    RUMBLE_2026_MATCHES.forEach((match) => {
       picks.push({
         player_id: playerId,
         match_id: match.id,
@@ -104,8 +109,8 @@ export async function generateDemoPicksForPlayers(
       prediction: Math.random() > 0.5 ? "YES" : "NO",
     });
 
-    // Men's Chaos Props (6 picks)
-    CHAOS_PROPS.forEach((_, i) => {
+    // Men's Chaos Props (7 picks) - use Rumble chaos props
+    RUMBLE_2026_CHAOS_PROPS.forEach((_, i) => {
       picks.push({
         player_id: playerId,
         match_id: `mens_chaos_prop_${i + 1}`,
@@ -113,8 +118,8 @@ export async function generateDemoPicksForPlayers(
       });
     });
 
-    // Women's Chaos Props (6 picks)
-    CHAOS_PROPS.forEach((_, i) => {
+    // Women's Chaos Props (7 picks) - use Rumble chaos props
+    RUMBLE_2026_CHAOS_PROPS.forEach((_, i) => {
       picks.push({
         player_id: playerId,
         match_id: `womens_chaos_prop_${i + 1}`,
@@ -138,7 +143,7 @@ export async function seedDemoParty(
 ): Promise<{ hostPlayerId: string; guestIds: string[] }> {
   const hostEmail = "kyle.husni@gmail.com";
   
-  // Fetch entrants from database
+  // Fetch entrants from database for Rumble demo
   const { data: wrestlers } = await supabase
     .from("wrestlers")
     .select("name, division")
@@ -190,7 +195,7 @@ export async function seedDemoParty(
   }
 
 
-  // 3. Generate picks for all players
+  // 3. Generate picks for all players using Rumble config
   const allPlayerIds = [hostPlayerId, ...guestIds];
   await generateDemoPicksForPlayers(allPlayerIds, mensEntrants, womensEntrants);
 
