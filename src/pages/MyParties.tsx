@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Users, Plus, LogOut, Crown, ChevronRight, Loader2, ChevronDown, User, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogoCombined } from "@/components/logo";
+import { OttLogoImage } from "@/components/logo";
 import { LegalFooter } from "@/components/LegalFooter";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -258,7 +258,7 @@ export default function MyParties() {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
 
       <div className="relative z-10 w-full max-w-lg space-y-6 pt-8">
-        <LogoCombined size="sm" showTagline={true} />
+        <OttLogoImage size="sm" showTagline />
 
         <div className="flex items-center justify-between">
           <div>

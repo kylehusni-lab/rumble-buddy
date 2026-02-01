@@ -5,7 +5,7 @@ import { Loader2, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OttLogoMark } from "@/components/OttLogo";
+import { OttLogoImage } from "@/components/logo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -71,7 +71,7 @@ export default function AdminLogin() {
       >
         {/* Header */}
         <div className="text-center space-y-2">
-          <OttLogoMark size={48} className="mx-auto" />
+          <OttLogoImage size="sm" />
           <h1 className="text-2xl font-bold">Commissioner Mode</h1>
           <p className="text-sm text-muted-foreground">
             Admin access required

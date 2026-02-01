@@ -2,7 +2,7 @@ import { memo } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Cloud, LogOut, Tv, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { OttLogoSmall } from "@/components/OttLogo";
+import { OttLogoImage } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 interface UnifiedDashboardHeaderProps {
@@ -45,7 +45,7 @@ export const UnifiedDashboardHeader = memo(function UnifiedDashboardHeader({
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             )}
-            <OttLogoSmall />
+            <OttLogoImage size="xs" />
           </div>
           <div className="flex items-center gap-3">
             {mode === "solo" && (

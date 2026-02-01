@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
-import { RingIcon } from "./RingIcon";
-import { TypographyLockup } from "./TypographyLockup";
+import { OttLogoImage } from "./OttLogoImage";
 
 interface LogoCombinedProps {
   layout?: "horizontal" | "stacked";
@@ -15,33 +14,15 @@ export function LogoCombined({
   showTagline = true,
   className,
 }: LogoCombinedProps) {
-  const iconSizes = {
-    sm: 48,
-    md: 80,
-    lg: 120,
+  const logoSize = {
+    sm: "sm" as const,
+    md: "md" as const,
+    lg: "lg" as const,
   };
 
-  if (layout === "horizontal") {
-    return (
-      <div className={cn("flex items-center gap-4", className)}>
-        <RingIcon size={iconSizes[size]} />
-        <TypographyLockup
-          layout="stacked"
-          size={size}
-          showTagline={showTagline}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className={cn("flex flex-col items-center gap-4", className)}>
-      <RingIcon size={iconSizes[size]} />
-      <TypographyLockup
-        layout="stacked"
-        size={size}
-        showTagline={showTagline}
-      />
+    <div className={cn("flex flex-col items-center", className)}>
+      <OttLogoImage size={logoSize[size]} showTagline={showTagline} />
     </div>
   );
 }

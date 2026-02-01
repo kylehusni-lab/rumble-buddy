@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { RingIcon } from "@/components/logo";
+import { OttLogoImage } from "@/components/logo";
 
 export function FooterSection() {
   return (
@@ -10,8 +10,7 @@ export function FooterSection() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <RingIcon size={24} />
-              <span className="font-semibold text-sm text-gold">Over The Top</span>
+              <OttLogoImage size="xs" />
             </div>
 
             {/* Links */}

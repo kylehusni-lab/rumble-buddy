@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { RingIcon } from "@/components/logo";
+import { OttLogoImage } from "@/components/logo";
 
 // PlayerJoin now redirects to PlayerAuth for proper email/password authentication
 export default function PlayerJoin() {
@@ -29,7 +29,7 @@ export default function PlayerJoin() {
     <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
       <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-secondary/20" />
       <div className="relative z-10 text-center space-y-4">
-        <RingIcon size={56} className="mx-auto" />
+        <OttLogoImage size="xs" className="mx-auto" />
         <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
         <p className="text-muted-foreground">Redirecting...</p>
       </div>
