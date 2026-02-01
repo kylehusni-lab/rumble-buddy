@@ -33,13 +33,37 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
   const navigate = useNavigate();
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
   const [isLive, setIsLive] = useState(false);
+  const [activeNightIndex, setActiveNightIndex] = useState(0);
+
+  // Get the next upcoming night or the first night if all passed
+  useEffect(() => {
+    const now = Date.now();
+    const nights = EVENT_CONFIG.NIGHTS;
+    
+    // Find the first night that hasn't ended (assuming 6-hour event window)
+    const nextNightIdx = nights.findIndex(night => {
+      const eventEnd = night.date.getTime() + (6 * 60 * 60 * 1000); // 6 hours after start
+      return eventEnd > now;
+    });
+    
+    setActiveNightIndex(nextNightIdx >= 0 ? nextNightIdx : 0);
+  }, []);
 
   useEffect(() => {
     const update = () => {
       const now = Date.now();
-      const diff = EVENT_CONFIG.DATE.getTime() - now;
+      const targetDate = EVENT_CONFIG.NIGHTS[activeNightIndex]?.date || EVENT_CONFIG.DATE;
+      const diff = targetDate.getTime() - now;
 
       if (diff <= 0) {
+        // Check if there's another night coming up
+        if (EVENT_CONFIG.IS_MULTI_NIGHT && activeNightIndex < EVENT_CONFIG.NIGHTS.length - 1) {
+          const nextNightDiff = EVENT_CONFIG.NIGHTS[activeNightIndex + 1].date.getTime() - now;
+          if (nextNightDiff > 0) {
+            setActiveNightIndex(activeNightIndex + 1);
+            return;
+          }
+        }
         setIsLive(true);
         return;
       }
@@ -55,7 +79,24 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [activeNightIndex]);
+
+  // Format the event date display
+  const getEventDateDisplay = () => {
+    if (EVENT_CONFIG.IS_MULTI_NIGHT) {
+      const night1 = EVENT_CONFIG.NIGHTS[0].date;
+      const night2 = EVENT_CONFIG.NIGHTS[1].date;
+      const month = night1.toLocaleDateString('en-US', { month: 'short' });
+      return `${month} ${night1.getDate()}-${night2.getDate()}`;
+    }
+    return EVENT_CONFIG.DATE.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Get the current night label for multi-night events
+  const getCurrentNightLabel = () => {
+    if (!EVENT_CONFIG.IS_MULTI_NIGHT) return null;
+    return EVENT_CONFIG.NIGHTS[activeNightIndex]?.label || 'Night 1';
+  };
 
   return (
     <section className="relative min-h-[calc(100vh-64px)] flex items-center pt-16">
@@ -87,7 +128,14 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
                 <span className="text-[10px] font-bold uppercase tracking-wider text-ott-accent">
                   Next Event
                 </span>
-                <span className="font-semibold">Royal Rumble</span>
+                <div className="flex flex-col">
+                  <span className="font-semibold">{EVENT_CONFIG.TITLE}</span>
+                  {EVENT_CONFIG.IS_MULTI_NIGHT && (
+                    <span className="text-xs text-muted-foreground">
+                      {getEventDateDisplay()} {getCurrentNightLabel() && !isLive && `- Countdown to ${getCurrentNightLabel()}`}
+                    </span>
+                  )}
+                </div>
               </div>
               {timeRemaining && (
                 <div className="flex items-center gap-1 sm:gap-2 sm:ml-2 sm:pl-3 sm:border-l border-border">
