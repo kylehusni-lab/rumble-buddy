@@ -5,26 +5,26 @@ const features = [
   {
     icon: Users,
     title: "Party Mode",
-    subtitle: "Host up to 9 friends",
-    description: "Create a watch party, share your code, and compete on a real-time leaderboard. Random number draws keep things fair so newbies can beat the experts.",
-  },
-  {
-    icon: User,
-    title: "Solo Mode",
-    subtitle: "Play on your own terms",
-    description: "No group? No problem. Make your picks, score each match yourself, and see how your predictions stack up against the actual results.",
+    subtitle: "Same couch or miles apart",
+    description: "Create a lobby for your friends. Whether you're in the same room or streaming together remotely, you're competing in the same ring.",
   },
   {
     icon: Tv,
-    title: "TV Display Mode",
-    subtitle: "The big screen experience",
-    description: "Cast to your TV so everyone can follow the action. Track entries, eliminations, and scores with a broadcast-quality display designed for groups.",
+    title: "TV Display",
+    subtitle: "The command center",
+    description: "Cast the leaderboard to your big screen. A broadcast-quality display that keeps the score visible while you watch the hits.",
+  },
+  {
+    icon: User,
+    title: "Solo Global Rank",
+    subtitle: "Test your wrestling IQ",
+    description: "No crew? No problem. Test your predictions against the entire OTT community and see where you rank globally.",
   },
   {
     icon: Clock,
-    title: "Real-Time Scoring",
-    subtitle: "Host controls the pace",
-    description: "Whether you're watching live or slightly behind, the host marks entries and eliminations as they happen. Everyone's screens update instantly.",
+    title: "Live Host Controls",
+    subtitle: "You run the show",
+    description: "Start the matches, trigger alerts, and settle the scores in real-time. As the ref's hand hits the mat, the leaderboard shifts instantly.",
   },
 ];
 
@@ -45,13 +45,13 @@ export function FeaturesSection({ id }: FeaturesSectionProps) {
           className="text-center space-y-4 mb-16 lg:mb-24"
         >
           <span className="text-xs font-bold uppercase tracking-wider text-ott-accent">
-            How It Works
+            Pick Your Way to the Top
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold max-w-2xl mx-auto leading-tight">
-            Everything you need for watch party night
+            Every PLE. Every Match. Every Moment.
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            From picks to scoring to the big reveal, we've got every moment covered.
+            Predict winners, method of victory, and match of the night. Real-time scoring keeps the competition fierce.
           </p>
         </motion.div>
 

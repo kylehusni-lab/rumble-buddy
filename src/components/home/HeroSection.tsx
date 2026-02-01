@@ -150,10 +150,14 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
               )}
             </div>
 
+            {/* Headline */}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight text-center lg:text-left leading-tight">
+              Every Kick-out. Every Count-out. Every Crown.
+            </h1>
+
             {/* Tagline */}
             <p className="text-lg sm:text-xl text-muted-foreground max-w-md text-center lg:text-left">
-              Your tag team partner for watch party night. Make your picks, track entries, 
-              and compete with friends in real-time.
+              The ultimate companion for every WWE Premium Live Event. Make your picks, track the drama, and turn every PLE into a competition with friends.
             </p>
 
             {/* CTAs */}
