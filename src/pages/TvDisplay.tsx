@@ -356,7 +356,7 @@ export default function TvDisplay() {
           if (data) setPlayers(data as Player[]);
         });
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, (payload) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rumble_numbers", filter: `party_code=eq.${code}` }, async (payload) => {
         const updated = payload.new as any;
         const old = payload.old as any;
         
@@ -371,14 +371,25 @@ export default function TvDisplay() {
         if (updated.elimination_timestamp && !old?.elimination_timestamp) {
           addActivityEventRef.current("elimination", `${updated.wrestler_name} eliminated`);
           
-          // Find the eliminator and show score popup for their owner
+          // Find the eliminator and show score popup for their owner - fetch fresh data to avoid stale refs
           if (updated.eliminated_by_number) {
-            const numbersToCheck = updated.rumble_type === "mens" ? mensNumbersRef.current : womensNumbersRef.current;
-            const eliminator = numbersToCheck.find(n => n.number === updated.eliminated_by_number);
-            if (eliminator?.assigned_to_player_id) {
-              const eliminatorOwner = playersRef.current.find(p => p.id === eliminator.assigned_to_player_id);
-              if (eliminatorOwner) {
-                addScoreEventRef.current(5, eliminatorOwner.display_name);
+            const { data: eliminatorData } = await supabase
+              .from("rumble_numbers")
+              .select("assigned_to_player_id")
+              .eq("party_code", code)
+              .eq("rumble_type", updated.rumble_type)
+              .eq("number", updated.eliminated_by_number)
+              .maybeSingle();
+            
+            if (eliminatorData?.assigned_to_player_id) {
+              const { data: playerData } = await supabase
+                .from("players_public")
+                .select("display_name")
+                .eq("id", eliminatorData.assigned_to_player_id)
+                .maybeSingle();
+              
+              if (playerData?.display_name) {
+                addScoreEventRef.current(5, playerData.display_name);
               }
             }
           }
