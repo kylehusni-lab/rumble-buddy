@@ -4,7 +4,7 @@ import { ArrowLeft, Mail, Lock, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RingIcon, TypographyLockup } from "@/components/logo";
+import { OttLogoImage } from "@/components/logo";
 import { FooterSection } from "@/components/home/FooterSection";
 import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,8 +64,7 @@ export default function SignIn() {
         </button>
 
         <div className="flex flex-col items-center gap-4">
-          <RingIcon size={80} />
-          <TypographyLockup size="sm" showTagline={true} />
+          <OttLogoImage size="md" showTagline />
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 space-y-6">

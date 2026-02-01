@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { OttLogoSmall } from "@/components/OttLogo";
+import { OttLogoImage } from "@/components/logo";
 
 export default function Legal() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto space-y-8">
-        <OttLogoSmall />
+        <OttLogoImage size="xs" />
         
         <h1 className="text-2xl font-bold text-foreground text-center">
           Legal Disclaimer

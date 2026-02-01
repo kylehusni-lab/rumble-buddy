@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { OttLogoMark } from "@/components/OttLogo";
+import { OttLogoImage } from "@/components/logo";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
 import { seedDemoParty } from "@/lib/demo-seeder";
@@ -111,7 +111,7 @@ export default function DemoMode() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="text-center space-y-6">
-        <OttLogoMark size={64} className="mx-auto animate-pulse" />
+        <OttLogoImage size="sm" className="mx-auto animate-pulse" />
         <div className="space-y-2">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-ott-accent" />
           <p className="text-muted-foreground">{status}</p>

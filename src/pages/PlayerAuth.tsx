@@ -5,7 +5,7 @@ import { ArrowLeft, Mail, Lock, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RingIcon, TypographyLockup } from "@/components/logo";
+import { OttLogoImage } from "@/components/logo";
 import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId, setPlayerSession } from "@/lib/session";
@@ -331,8 +331,7 @@ export default function PlayerAuth() {
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          <RingIcon size={64} />
-          <TypographyLockup size="sm" showTagline={true} />
+          <OttLogoImage size="sm" showTagline />
         </div>
 
         <motion.form

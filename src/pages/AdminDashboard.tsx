@@ -5,7 +5,7 @@ import { Loader2, Mail, Check, X, Clock, LogOut, RefreshCw, Users, UserCheck, XC
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { OttLogoMark } from "@/components/OttLogo";
+import { OttLogoImage } from "@/components/logo";
 import { ActivePartiesTab } from "@/components/admin/ActivePartiesTab";
 import { WrestlerDatabaseTab } from "@/components/admin/WrestlerDatabaseTab";
 import { supabase } from "@/integrations/supabase/client";
@@ -211,7 +211,7 @@ export default function AdminDashboard() {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <OttLogoMark size={32} />
+            <OttLogoImage size="xs" />
             <span className="font-bold text-lg">Commissioner Mode</span>
           </div>
           <Button variant="ghost" size="sm" onClick={handleLogout}>

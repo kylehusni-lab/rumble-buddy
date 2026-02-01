@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { RingIcon, TypographyLockup } from "@/components/logo";
+import { OttLogoImage } from "@/components/logo";
 import { EVENT_CONFIG } from "@/lib/constants";
 
 interface HeroSectionProps {
@@ -77,14 +77,8 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
               >
-                <div className="absolute inset-0 bg-gold/10 rounded-full blur-3xl scale-150" />
-                <RingIcon size={140} className="relative z-10 sm:w-[180px] sm:h-[180px]" />
+                <OttLogoImage size="lg" showTagline />
               </motion.div>
-              
-              {/* Title */}
-              <div className="text-center lg:text-left">
-                <TypographyLockup size="lg" showTagline={true} layout="stacked" />
-              </div>
             </div>
 
             {/* Event Banner with Countdown */}
@@ -167,10 +161,7 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div className="relative">
-              <div className="absolute inset-0 bg-gold/10 rounded-full blur-3xl scale-150" />
-              <RingIcon size={300} className="relative z-10" />
-            </div>
+            <OttLogoImage size="xl" showTagline />
           </motion.div>
         </div>
 

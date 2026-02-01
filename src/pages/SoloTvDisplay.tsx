@@ -17,7 +17,7 @@ import { RumblePropsDisplay } from "@/components/tv/RumblePropsDisplay";
 import { ChaosPropsDisplay } from "@/components/tv/ChaosPropsDisplay";
 import { TvNumberCell } from "@/components/tv/TvNumberCell";
 import { RumbleWinnerPredictions } from "@/components/tv/RumbleWinnerPredictions";
-import { OttLogoHero } from "@/components/OttLogo";
+import { OttLogoImage } from "@/components/logo";
 import { UNDERCARD_MATCHES } from "@/lib/constants";
 import { useTvScale } from "@/hooks/useTvScale";
 import { cn } from "@/lib/utils";
@@ -319,7 +319,7 @@ export default function SoloTvDisplay() {
           // Pre-scoring state
           <div className="flex items-center justify-center flex-1">
             <div className="text-center">
-              <OttLogoHero size={180} className="mx-auto mb-4" />
+              <OttLogoImage size="lg" />
               <h2 className="text-3xl font-bold mb-2">Ready to Score</h2>
               <p className="text-muted-foreground mb-4">
                 Start scoring results to see your picks come to life

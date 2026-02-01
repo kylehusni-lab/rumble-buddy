@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Film, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { OttLogoMark } from "@/components/OttLogo";
+import { OttLogoImage } from "@/components/logo";
 
 interface PlayerNumbers {
   playerName: string;
@@ -83,7 +83,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <OttLogoMark size={64} className="mx-auto mb-6" />
+            <OttLogoImage size="sm" className="mx-auto mb-6" />
             <h1 className="text-4xl md:text-5xl font-black mb-3">
               <span className="text-gradient-gold">NUMBER DRAW</span>
             </h1>
@@ -289,7 +289,7 @@ export function NumberRevealAnimation({ players, onComplete }: NumberRevealAnima
             key="complete"
             className="text-center animate-fade-in"
           >
-            <OttLogoMark size={64} className="mx-auto mb-4" />
+            <OttLogoImage size="sm" className="mx-auto mb-4" />
             <h2 className="text-4xl md:text-5xl font-black text-gradient-gold mb-2">
               LET'S RUMBLE!
             </h2>

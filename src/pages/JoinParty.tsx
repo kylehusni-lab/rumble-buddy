@@ -6,7 +6,7 @@ import { ArrowRight, Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RingIcon } from "@/components/logo";
+import { OttLogoImage } from "@/components/logo";
 import { RequestAccessModal } from "@/components/RequestAccessModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -75,7 +75,7 @@ export default function JoinParty() {
 
         {/* Header */}
         <div className="text-center space-y-2">
-          <RingIcon size={56} className="mx-auto" />
+          <OttLogoImage size="xs" className="mx-auto" />
           <h1 className="text-2xl font-bold">Join a Party</h1>
           <p className="text-sm text-muted-foreground">
             Enter the code from your host
