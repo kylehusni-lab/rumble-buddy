@@ -177,14 +177,7 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
                     >
                       Request Access
                     </Button>
-                    <Button 
-                      onClick={() => navigate("/join")}
-                      size="lg"
-                      variant="outline"
-                      className="w-full sm:w-auto border-border"
-                    >
-                      Join with Code
-                    </Button>
+                    {/* Join with Code hidden until WrestleMania is ready */}
                   </div>
                   
                   {/* Demo CTA - Prominent */}
