@@ -152,7 +152,9 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight text-center lg:text-left leading-tight">
-              Every Pinfall. Every Prediction. Every Point.
+              <span className="block">Every Pinfall.</span>
+              <span className="block">Every Prediction.</span>
+              <span className="block">Every Point.</span>
             </h1>
 
             {/* Tagline */}
