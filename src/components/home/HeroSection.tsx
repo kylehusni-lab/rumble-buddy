@@ -123,7 +123,7 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
             </div>
 
             {/* Event Banner with Countdown */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 bg-ott-surface-elevated border border-border rounded-lg px-4 py-3">
+            <div className="flex flex-col items-center lg:items-start gap-3 bg-ott-surface-elevated border border-border rounded-lg px-4 py-3">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-ott-accent">
                   Next Event
@@ -138,7 +138,7 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
                 </div>
               </div>
               {timeRemaining && (
-                <div className="flex items-center gap-1 sm:gap-2 sm:ml-2 sm:pl-3 sm:border-l border-border">
+                <div className="flex items-center justify-center gap-2">
                   <CountdownUnit value={timeRemaining.days} label="days" />
                   <span className="text-muted-foreground text-sm">:</span>
                   <CountdownUnit value={timeRemaining.hours} label="hrs" />
