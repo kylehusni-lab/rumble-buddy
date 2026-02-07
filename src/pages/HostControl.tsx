@@ -977,6 +977,25 @@ export default function HostControl() {
     return Math.floor((currentTime - new Date(entryTimestamp).getTime()) / 1000);
   }, [currentTime]);
 
+  // Get frozen duration for winner - calculates time from entry to last elimination (match end)
+  const getWinnerDuration = useCallback((entryTimestamp: string | null, type: "mens" | "womens") => {
+    if (!entryTimestamp) return 0;
+    const numbers = type === "mens" ? mensNumbers : womensNumbers;
+    
+    // Find the latest elimination timestamp (which marks when the match effectively ended)
+    const eliminations = numbers
+      .filter(n => n.elimination_timestamp)
+      .map(n => new Date(n.elimination_timestamp!).getTime());
+    
+    if (eliminations.length === 0) {
+      // No eliminations yet, fall back to current time
+      return Math.floor((currentTime - new Date(entryTimestamp).getTime()) / 1000);
+    }
+    
+    const lastEliminationTime = Math.max(...eliminations);
+    return Math.floor((lastEliminationTime - new Date(entryTimestamp).getTime()) / 1000);
+  }, [mensNumbers, womensNumbers, currentTime]);
+
   // Get elimination count for a wrestler by their number
   const getEliminationCount = useCallback((number: number, type: "mens" | "womens") => {
     const numbers = type === "mens" ? mensNumbers : womensNumbers;
@@ -1545,13 +1564,17 @@ export default function HostControl() {
                 mensActiveWrestlers.map((wrestler) => {
                   const mensWinnerName = getMatchResult("mens_rumble_winner");
                   const isWinner = mensWinnerName === wrestler.wrestler_name;
+                  // Use frozen duration for winner, live duration otherwise
+                  const duration = isWinner 
+                    ? getWinnerDuration(wrestler.entry_timestamp!, "mens")
+                    : getDuration(wrestler.entry_timestamp!);
                   return (
                     <ActiveWrestlerCard
                       key={wrestler.id}
                       number={wrestler.number}
                       wrestlerName={wrestler.wrestler_name || "Unknown"}
                       ownerName={getPlayerName(wrestler.assigned_to_player_id)}
-                      duration={getDuration(wrestler.entry_timestamp!)}
+                      duration={duration}
                       eliminationCount={getEliminationCount(wrestler.number, "mens")}
                       onEliminate={() => {
                         setEliminationTarget(wrestler);
@@ -1593,13 +1616,17 @@ export default function HostControl() {
                 womensActiveWrestlers.map((wrestler) => {
                   const womensWinnerName = getMatchResult("womens_rumble_winner");
                   const isWinner = womensWinnerName === wrestler.wrestler_name;
+                  // Use frozen duration for winner, live duration otherwise
+                  const duration = isWinner 
+                    ? getWinnerDuration(wrestler.entry_timestamp!, "womens")
+                    : getDuration(wrestler.entry_timestamp!);
                   return (
                     <ActiveWrestlerCard
                       key={wrestler.id}
                       number={wrestler.number}
                       wrestlerName={wrestler.wrestler_name || "Unknown"}
                       ownerName={getPlayerName(wrestler.assigned_to_player_id)}
-                      duration={getDuration(wrestler.entry_timestamp!)}
+                      duration={duration}
                       eliminationCount={getEliminationCount(wrestler.number, "womens")}
                       onEliminate={() => {
                         setEliminationTarget(wrestler);
