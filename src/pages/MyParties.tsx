@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 import { getPlayerSession, setPlayerSession } from "@/lib/session";
 import { isEventExpired, EVENT_REGISTRY, getActiveEventId } from "@/lib/events";
 import { cn } from "@/lib/utils";
@@ -352,6 +353,8 @@ export default function MyParties() {
   const EventGroupCard = ({ group, isPast }: { group: EventGroup; isPast: boolean }) => {
     const activeEventId = getActiveEventId();
     const isCurrent = group.eventId === activeEventId;
+    const hasParties = group.parties.length > 0;
+    const hasSolo = !!group.solo;
 
     return (
       <div className={cn(
@@ -391,39 +394,63 @@ export default function MyParties() {
         </div>
 
         {/* Modes within event */}
-        <div className="p-3 space-y-2">
-          {/* Solo Mode */}
-          {group.solo && (
-            <button
-              onClick={() => navigate("/solo/dashboard")}
-              className="w-full bg-muted/30 border border-border rounded-lg p-3 hover:bg-muted/50 transition-colors text-left group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Solo Mode</span>
-                      <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground">
-                        {group.solo.picksCount} picks
-                      </Badge>
-                    </div>
-                    {soloPlayer && (
-                      <p className="text-xs text-muted-foreground">{soloPlayer.display_name}</p>
-                    )}
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+        <div className="p-4 space-y-4">
+          {/* Solo Mode Section */}
+          {hasSolo && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Solo Mode</span>
               </div>
-            </button>
+              <button
+                onClick={() => navigate("/solo/dashboard")}
+                className="w-full bg-muted/30 border border-border rounded-lg p-3 hover:bg-muted/50 transition-colors text-left group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{soloPlayer?.display_name || "Solo"}</span>
+                        <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground">
+                          {group.solo!.picksCount} picks
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">View your predictions</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+              </button>
+            </div>
           )}
 
-          {/* Parties */}
-          {group.parties.map((party) => (
-            <PartyCard key={party.player_id} party={party} compact />
-          ))}
+          {/* Separator between sections */}
+          {hasSolo && hasParties && (
+            <Separator className="my-2" />
+          )}
+
+          {/* Parties Section */}
+          {hasParties && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Parties
+                </span>
+                <Badge variant="secondary" className="text-xs h-5 px-1.5">
+                  {group.parties.length}
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                {group.parties.map((party) => (
+                  <PartyCard key={party.player_id} party={party} compact />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
