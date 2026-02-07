@@ -14,11 +14,11 @@ import { UnifiedTabNavigation, UnifiedTabId } from "@/components/dashboard/Unifi
 import { UnifiedMatchesTab } from "@/components/dashboard/UnifiedMatchesTab";
 import { UnifiedRumblePropsTab } from "@/components/dashboard/UnifiedRumblePropsTab";
 import { UnifiedChaosTab } from "@/components/dashboard/UnifiedChaosTab";
+import { PartyScoreboard } from "@/components/dashboard/PartyScoreboard";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { EventProvider, useEventConfig } from "@/contexts/EventContext";
-
 interface Pick {
   match_id: string;
   prediction: string;
@@ -72,7 +72,7 @@ function PlayerDashboardInner() {
   const [showNumberReveal, setShowNumberReveal] = useState(false);
   const [revealPlayers, setRevealPlayers] = useState<PlayerWithNumbers[]>([]);
   const [celebration, setCelebration] = useState<CelebrationData | null>(null);
-  const [players, setPlayers] = useState<Array<{ id: string; display_name: string }>>([]);
+  const [players, setPlayers] = useState<Array<{ id: string; display_name: string; points: number }>>([]);
   
   // Single pick edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -420,11 +420,27 @@ function PlayerDashboardInner() {
     };
   }, [code, session?.playerId, navigate, partyStatus, players, allNumbers, picks]);
 
+  // Get event config for title
+  const { eventConfig } = useEventConfig();
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-primary text-xl">Loading...</div>
       </div>
+    );
+  }
+
+  // Show scoreboard for completed events
+  if (partyStatus === "completed") {
+    return (
+      <PartyScoreboard
+        players={players}
+        partyCode={code || ""}
+        eventTitle={eventConfig?.title || "Event Complete"}
+        currentPlayerId={session?.playerId}
+        isHost={session?.isHost}
+      />
     );
   }
 
