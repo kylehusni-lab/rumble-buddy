@@ -1,134 +1,240 @@
 
-## Plan: Event-Driven Configuration System - IMPLEMENTED
+## Plan: Admin Event Configurator
 
-### Status: Complete
+### Overview
 
-**Changes Made:**
-1. Database migration: Added `event_id` to `parties_public` view
-2. Created `src/contexts/EventContext.tsx` with `EventProvider` and `useEventConfig()` hook
-3. Updated `PlayerDashboard.tsx` to use EventProvider and context
-4. Updated `HostControl.tsx` to use EventProvider and context
-5. Updated `TvDisplay.tsx` to use EventProvider and context
-6. Updated `UnifiedMatchesTab.tsx` to use event context
-7. Updated `UnifiedChaosTab.tsx` to use event context
-8. Updated `UnifiedRumblePropsTab.tsx` to use event context
-9. Updated `UnifiedTabNavigation.tsx` to conditionally show Rumble tabs
-10. Updated `UndercardMatchSelector.tsx` to use event context
+Build an admin interface for dynamically configuring event matches, chaos props, and match types. This will allow you to build out undercard and chaos props per event without code changes, storing configuration in the database.
 
 ---
 
-## Original Plan Summary (for reference)
+### Part 1: Database Schema
 
-### Solution Overview
+Create new tables to store event configuration dynamically:
 
-Create an **event context system** that:
-1. Loads the correct `EventConfig` based on the party's `event_id`
-2. Provides this config to all dashboard components via React Context
-3. Falls back to the global active event for new parties
+**Table: `events`**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | text (PK) | Event ID (e.g., "mania_41") |
+| title | text | Display name |
+| type | text | "rumble", "mania", "standard_ple" |
+| venue | text | Venue name |
+| location | text | City, State |
+| status | text | "draft", "active", "completed" |
+| nights | jsonb | Array of night objects |
+| scoring | jsonb | Scoring configuration |
+| is_active | boolean | Currently active event |
+| created_at | timestamp | |
+| updated_at | timestamp | |
+
+**Table: `event_matches`**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid (PK) | |
+| event_id | text (FK) | References events.id |
+| match_id | text | Unique within event (e.g., "match_1") |
+| title | text | Display title |
+| match_type | text | "singles", "tag", "triple_threat", "fatal_four", "ladder", "rumble", "battle_royal", "other" |
+| options | jsonb | Array of participant options |
+| night | text | Night ID for multi-night events |
+| sort_order | int | Display ordering |
+| is_active | boolean | Include in picks |
+
+**Table: `event_props`**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid (PK) | |
+| event_id | text (FK) | References events.id |
+| prop_id | text | Unique within event |
+| title | text | Short title |
+| question | text | Full question text |
+| category | text | "chaos", "rumble", "general" |
+| prop_type | text | "yesno", "wrestler", "custom" |
+| options | jsonb | Custom options if applicable |
+| gender | text | "mens", "womens", null |
+| night | text | Night ID if night-specific |
+| sort_order | int | Display ordering |
+| is_active | boolean | Include in picks |
 
 ---
 
-### Part 1: Database - Expose event_id in parties_public View
+### Part 2: Admin UI Components
 
-The `parties_public` view needs to include `event_id` so dashboards can access it without querying the private `parties` table.
+**New Tab: "Events" in Admin Dashboard**
 
-**Migration SQL:**
-```sql
--- Drop and recreate parties_public view to include event_id
-CREATE OR REPLACE VIEW parties_public AS
-SELECT 
-  code,
-  created_at,
-  event_started_at,
-  is_demo,
-  status,
-  mens_rumble_entrants,
-  womens_rumble_entrants,
-  event_id
-FROM parties;
-```
-
----
-
-### Part 2: Create Event Context System
-
-Create a React Context that provides event-specific configuration based on the party's `event_id`.
-
-#### New File: `src/contexts/EventContext.tsx`
+Add a fourth tab alongside Requests, Parties, and Wrestlers.
 
 ```text
-+----------------------------------+
-|  EventProvider                   |
-|  - Fetches party event_id        |
-|  - Loads EventConfig from        |
-|    EVENT_REGISTRY                |
-|  - Provides: eventConfig,        |
-|    isRumble, matches, props,     |
-|    cardConfig, scoring           |
-+----------------------------------+
-        |
-        v
-+----------------------------------+
-|  useEventConfig() hook           |
-|  - Returns typed EventConfig     |
-|  - Used by dashboard components  |
-+----------------------------------+
++----------------------------------------+
+|  [Requests] [Parties] [Wrestlers] [Events]
++----------------------------------------+
 ```
 
-**Key exports:**
-- `EventProvider` - Wraps party/solo dashboard routes
-- `useEventConfig()` - Hook to access current event configuration
-- Returns: `eventConfig`, `matches`, `cardConfig`, `chaosProps`, `rumbleProps`, `scoring`, `isRumble`, `isLoading`
+**Events List View**
+
+```text
++------------------------------------------+
+| Events                    [+ Create Event]|
++------------------------------------------+
+| WrestleMania 41     Apr 18-19  [Active]  |
+|   10 matches | 8 props | 2 nights        |
+|                              [Configure] |
++------------------------------------------+
+| Royal Rumble 2026   Jan 31    [Completed]|
+|   2 matches | 7 chaos props              |
+|                              [Configure] |
++------------------------------------------+
+```
+
+**Event Configuration View**
+
+When clicking "Configure", open a modal or full-screen editor:
+
+```text
++------------------------------------------+
+| Configure: WrestleMania 41        [Save] |
++------------------------------------------+
+| [Matches] [Props] [Settings]             |
++------------------------------------------+
+```
 
 ---
 
-### Part 3: Update Dashboard Components
+### Part 3: Match Configuration UI
 
-Update all components that import from `@/lib/constants` to use the new context when inside a party context.
+**Match List with Drag Reorder**
 
-| Component | Current Import | New Approach |
-|-----------|----------------|--------------|
-| `PlayerDashboard.tsx` | `CARD_CONFIG, CHAOS_PROPS` from constants | Use `useEventConfig()` |
-| `UnifiedMatchesTab.tsx` | `CARD_CONFIG, SCORING` from constants | Accept props or use context |
-| `UnifiedRumblePropsTab.tsx` | `RUMBLE_PROPS, FINAL_FOUR_SLOTS` from constants | Accept props or use context |
-| `UnifiedChaosTab.tsx` | `CHAOS_PROPS, SCORING` from constants | Accept props or use context |
-| `HostControl.tsx` | `UNDERCARD_MATCHES, CHAOS_PROPS` from constants | Use `useEventConfig()` |
-| `TvDisplay.tsx` | Various constants | Use `useEventConfig()` |
+```text
++------------------------------------------+
+| Night 1 Matches           [+ Add Match]  |
++------------------------------------------+
+| [=] Match 1: Seth Rollins vs Drew        |
+|     Type: Singles  [Edit] [Delete]       |
++------------------------------------------+
+| [=] Match 2: Tag Title Match             |
+|     Type: Tag Team  [Edit] [Delete]      |
++------------------------------------------+
+
+| Night 2 Matches           [+ Add Match]  |
++------------------------------------------+
+| [=] Match 1: World Title Match           |
+|     Type: Singles  [Edit] [Delete]       |
++------------------------------------------+
+```
+
+**Match Form Modal**
+
+Fields:
+- Title (text input)
+- Match Type (dropdown):
+  - Singles
+  - Tag Team
+  - Triple Threat
+  - Fatal Four Way
+  - Ladder Match
+  - Battle Royal
+  - Royal Rumble
+  - Other
+- Participants/Options (dynamic based on type):
+  - Singles/Ladder: 2+ options
+  - Tag: Team names
+  - Multi-person: 3-4+ options
+- Night (dropdown for multi-night events)
+- Active toggle
+
+Match type controls display features:
+- "rumble" type enables Rumble-specific tabs
+- "ladder" could show special visuals
+- Participant count validated based on type
 
 ---
 
-### Part 4: Update Route Structure
+### Part 4: Props Configuration UI
 
-Wrap party-related routes with `EventProvider`:
+**Props List with Category Tabs**
+
+```text
++------------------------------------------+
+| [Chaos Props] [Rumble Props] [General]   |
++------------------------------------------+
+| Chaos Props (Men's)        [+ Add Prop]  |
++------------------------------------------+
+| The Floor is Lava                        |
+| A wrestler uses a stunt to avoid touch...|
+| Type: Yes/No          [Edit] [Delete]    |
++------------------------------------------+
+| Betrayal!                                |
+| Tag partners eliminate each other        |
+| Type: Yes/No          [Edit] [Delete]    |
++------------------------------------------+
+```
+
+**Prop Form Modal**
+
+Fields:
+- Title (short name)
+- Question (full text)
+- Category: Chaos / Rumble / General
+- Type: Yes/No or Wrestler Pick
+- Gender: Men's / Women's / Both
+- Night (for multi-night)
+- Active toggle
+
+---
+
+### Part 5: Settings Tab
+
+**Event Settings Panel**
+
+```text
++------------------------------------------+
+| Event Settings                           |
++------------------------------------------+
+| Title: [WrestleMania 41              ]   |
+| Type:  [WrestleMania v]                  |
+| Venue: [Allegiant Stadium            ]   |
+| Location: [Las Vegas, Nevada         ]   |
++------------------------------------------+
+| Nights                                   |
+| Night 1: Apr 18, 2026, 7:00 PM ET        |
+| Night 2: Apr 19, 2026, 7:00 PM ET        |
+|                          [+ Add Night]   |
++------------------------------------------+
+| Scoring                                  |
+| Match Winner:  [25] pts                  |
+| Prop Bet:      [10] pts                  |
+| (Rumble-specific shown if type=rumble)   |
++------------------------------------------+
+| Status                                   |
+| [Draft] [Active] [Completed]             |
+|                                          |
+| [ ] Set as current active event          |
++------------------------------------------+
+```
+
+---
+
+### Part 6: Integration with EventContext
+
+Update the `EventContext` to optionally load from database:
 
 ```typescript
-// App.tsx
-<Route path="/party/:code/*" element={
-  <EventProvider>
-    <PartyRoutes />
-  </EventProvider>
-} />
+// In EventContext.tsx
+async function loadEventConfig(eventId: string): Promise<EventConfig> {
+  // First check database for dynamic config
+  const { data: dbEvent } = await supabase
+    .from('events')
+    .select('*, event_matches(*), event_props(*)')
+    .eq('id', eventId)
+    .single();
+  
+  if (dbEvent) {
+    return transformDbEventToConfig(dbEvent);
+  }
+  
+  // Fallback to static registry
+  return EVENT_REGISTRY[eventId];
+}
 ```
-
-The provider will:
-1. Read `code` from URL params
-2. Fetch `event_id` from `parties_public`
-3. Load the correct `EventConfig` from `EVENT_REGISTRY`
-4. Provide it to all child components
-
----
-
-### Part 5: Conditional Rumble Features
-
-Components should conditionally render Rumble-specific features based on `eventConfig.type`:
-
-| Feature | Condition |
-|---------|-----------|
-| Men's/Women's tabs | `isRumble === true` |
-| Numbers section | `isRumble === true` |
-| Rumble Props | `isRumble === true` |
-| Chaos Props | `isRumble === true` (or if event has chaosProps) |
-| Multi-night indicators | `eventConfig.nights.length > 1` |
 
 ---
 
@@ -136,51 +242,39 @@ Components should conditionally render Rumble-specific features based on `eventC
 
 | File | Action |
 |------|--------|
-| Database | Add `event_id` to `parties_public` view |
-| `src/contexts/EventContext.tsx` | **Create** - Event context provider and hook |
-| `src/pages/PlayerDashboard.tsx` | **Update** - Use `useEventConfig()` instead of constants |
-| `src/pages/HostControl.tsx` | **Update** - Use `useEventConfig()` instead of constants |
-| `src/pages/TvDisplay.tsx` | **Update** - Use `useEventConfig()` instead of constants |
-| `src/components/dashboard/UnifiedMatchesTab.tsx` | **Update** - Accept config via props or context |
-| `src/components/dashboard/UnifiedRumblePropsTab.tsx` | **Update** - Accept config via props or context |
-| `src/components/dashboard/UnifiedChaosTab.tsx` | **Update** - Accept config via props or context |
-| `src/components/dashboard/UnifiedTabNavigation.tsx` | **Update** - Conditionally show tabs based on event type |
-| `src/App.tsx` | **Update** - Wrap party routes with EventProvider |
+| **Database** | Create `events`, `event_matches`, `event_props` tables with RLS |
+| `src/components/admin/EventsTab.tsx` | **Create** - Events list and management |
+| `src/components/admin/EventConfigModal.tsx` | **Create** - Full event configuration modal |
+| `src/components/admin/MatchFormModal.tsx` | **Create** - Match editor form |
+| `src/components/admin/PropFormModal.tsx` | **Create** - Prop editor form |
+| `src/hooks/useEventAdmin.ts` | **Create** - Admin CRUD operations for events |
+| `src/pages/AdminDashboard.tsx` | **Update** - Add Events tab |
+| `src/contexts/EventContext.tsx` | **Update** - Support database-loaded config |
+| `src/lib/events/index.ts` | **Update** - Add database fallback logic |
 
 ---
 
-### Technical Details
+### Match Type Display Mapping
 
-**EventContext Interface:**
-```typescript
-interface EventContextValue {
-  eventConfig: EventConfig | null;
-  eventId: string;
-  isRumble: boolean;
-  isMultiNight: boolean;
-  matches: MatchConfig[];
-  cardConfig: CardConfig[];
-  chaosProps: PropConfig[];
-  rumbleProps: RumblePropConfig[];
-  scoring: ScoringConfig;
-  isLoading: boolean;
-}
-```
+| Match Type | UI Behavior |
+|------------|-------------|
+| singles | Standard 2-option picker |
+| tag | Shows team names, optional member display |
+| triple_threat | 3 options |
+| fatal_four | 4 options |
+| ladder | Multi-option, "Money in the Bank" style |
+| rumble | Enables Men's/Women's tabs, entry tracking |
+| battle_royal | Multi-option without Rumble features |
 
-**Usage Example:**
-```typescript
-// In PlayerDashboard.tsx
-const { 
-  cardConfig, 
-  chaosProps, 
-  rumbleProps, 
-  isRumble, 
-  scoring 
-} = useEventConfig();
+---
 
-// Only show Rumble tabs if it's a Rumble event
-{isRumble && <UnifiedRumblePropsTab ... />}
-```
+### Migration Path
+
+1. Create database tables
+2. Seed with existing WrestleMania 41 config
+3. Build admin UI
+4. Update EventContext to check database first
+5. Existing static configs remain as fallback
 
 ---
 
@@ -188,8 +282,8 @@ const {
 
 | Area | Description |
 |------|-------------|
-| **Root Cause** | Dashboards use global active event config instead of party-specific config |
-| **Database** | Expose `event_id` in `parties_public` view |
-| **Context** | New `EventProvider` loads correct config based on party's event_id |
-| **Components** | Update 10+ components to use context instead of static constants |
-| **Conditional UI** | Rumble-specific tabs/features only shown for Rumble events |
+| **Database** | 3 new tables for dynamic event configuration |
+| **Admin UI** | New Events tab with full CRUD for matches and props |
+| **Match Types** | Dropdown selection controls display behavior |
+| **Props Categories** | Chaos, Rumble, and General categories with gender support |
+| **Integration** | EventContext loads from DB with static fallback |
