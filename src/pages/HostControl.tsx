@@ -19,7 +19,7 @@ import { WinnerDeclarationModal } from "@/components/host/WinnerDeclarationModal
 import { FinalFourConfirmationModal } from "@/components/host/FinalFourConfirmationModal";
 import { CollapsibleSection } from "@/components/host/CollapsibleSection";
 import { FixedTabNavigation } from "@/components/host/FixedTabNavigation";
-import { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING, MATCH_IDS } from "@/lib/constants";
+import { EventProvider, useEventConfig } from "@/contexts/EventContext";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { Sparkles } from "lucide-react";
 
@@ -50,10 +50,16 @@ interface PartyData {
 
 const TAB_ORDER = ["matches", "props", "mens", "womens"];
 
-export default function HostControl() {
+function HostControlInner() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
+  
+  // Get event config from context
+  const { UNDERCARD_MATCHES, CHAOS_PROPS, SCORING, isRumble, eventConfig } = useEventConfig();
+  
+  // Match IDs from event config or fallback
+  const MATCH_IDS = eventConfig?.matchIds || {};
 
   const [party, setParty] = useState<PartyData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -1696,5 +1702,14 @@ export default function HostControl() {
         />
       )}
     </div>
+  );
+}
+
+// Wrap with EventProvider for event-specific configuration
+export default function HostControl() {
+  return (
+    <EventProvider>
+      <HostControlInner />
+    </EventProvider>
   );
 }

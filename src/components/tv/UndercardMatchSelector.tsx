@@ -1,25 +1,33 @@
 import { Check, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UNDERCARD_MATCHES } from "@/lib/constants";
+import { useEventConfig } from "@/contexts/EventContext";
+import type { MatchConfig } from "@/lib/events/types";
 
 interface UndercardMatchSelectorProps {
   selectedIndex: number;
   onSelect: (index: number) => void;
   matchResults: { match_id: string; result: string }[];
+  // Optional override for when not using context
+  matches?: MatchConfig[];
 }
 
 export function UndercardMatchSelector({
   selectedIndex,
   onSelect,
   matchResults,
+  matches: propMatches,
 }: UndercardMatchSelectorProps) {
+  // Use context if available, otherwise use props
+  const eventContext = useEventConfig();
+  const matches = propMatches || eventContext.UNDERCARD_MATCHES;
+
   const isMatchComplete = (matchId: string) => {
     return matchResults.some(r => r.match_id === matchId);
   };
 
   return (
     <div className="undercard-selector">
-      {UNDERCARD_MATCHES.map((match, index) => {
+      {matches.map((match, index) => {
         const isSelected = index === selectedIndex;
         const isComplete = isMatchComplete(match.id);
 

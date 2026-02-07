@@ -1,7 +1,8 @@
 import { memo } from "react";
 import { Check, X, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CHAOS_PROPS } from "@/lib/constants";
+import { useEventConfig } from "@/contexts/EventContext";
+import type { PropConfig } from "@/lib/events/types";
 
 interface Pick {
   match_id: string;
@@ -19,6 +20,8 @@ interface UnifiedChaosTabProps {
   results: Result[] | Record<string, string>;
   onEditPick?: (matchId: string, currentPick: string) => void;
   canEdit?: boolean;
+  // Optional override for when not using context
+  chaosProps?: readonly PropConfig[];
 }
 
 // Normalize picks to Record format
@@ -42,7 +45,12 @@ export const UnifiedChaosTab = memo(function UnifiedChaosTab({
   results,
   onEditPick,
   canEdit = false,
+  chaosProps: propChaosProps,
 }: UnifiedChaosTabProps) {
+  // Use context if available, otherwise use props
+  const eventContext = useEventConfig();
+  const chaosProps = propChaosProps || eventContext.CHAOS_PROPS;
+
   const normalizedPicks = normalizePicks(picks);
   const normalizedResults = normalizeResults(results);
 
@@ -104,7 +112,7 @@ export const UnifiedChaosTab = memo(function UnifiedChaosTab({
           </tr>
         </thead>
         <tbody>
-          {CHAOS_PROPS.map((prop, index) => {
+          {chaosProps.map((prop, index) => {
             const mensMatchId = `mens_chaos_prop_${index + 1}`;
             const womensMatchId = `womens_chaos_prop_${index + 1}`;
             

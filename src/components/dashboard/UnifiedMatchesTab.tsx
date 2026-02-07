@@ -3,8 +3,8 @@ import { Check, X, Plus, Pencil, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { getEntrantDisplayName } from "@/lib/entrant-utils";
-import { CARD_CONFIG, SCORING } from "@/lib/constants";
-
+import { useEventConfig } from "@/contexts/EventContext";
+import type { CardConfig, ScoringConfig } from "@/lib/events/types";
 interface Pick {
   match_id: string;
   prediction: string;
@@ -21,6 +21,10 @@ interface UnifiedMatchesTabProps {
   results: Result[] | Record<string, string>;
   onEditPick?: (matchId: string, currentPick: string) => void;
   canEdit?: boolean;
+  // Optional overrides for when not using context
+  cardConfig?: CardConfig[];
+  scoring?: ScoringConfig;
+  isRumble?: boolean;
 }
 
 // Normalize picks to Record format
@@ -151,11 +155,20 @@ export const UnifiedMatchesTab = memo(function UnifiedMatchesTab({
   results,
   onEditPick,
   canEdit = false,
+  cardConfig: propCardConfig,
+  scoring: propScoring,
+  isRumble: propIsRumble,
 }: UnifiedMatchesTabProps) {
+  // Use context if available, otherwise use props
+  const eventContext = useEventConfig();
+  const cardConfig = propCardConfig || eventContext.CARD_CONFIG;
+  const scoring = propScoring || eventContext.SCORING;
+  const isRumble = propIsRumble ?? eventContext.isRumble;
+
   const normalizedPicks = normalizePicks(picks);
   const normalizedResults = normalizeResults(results);
   
-  const matchCards = CARD_CONFIG.filter(c => c.type === "match");
+  const matchCards = cardConfig.filter(c => c.type === "match");
 
   return (
     <div className="space-y-3">
@@ -166,19 +179,20 @@ export const UnifiedMatchesTab = memo(function UnifiedMatchesTab({
           label={card.title}
           pick={normalizedPicks[card.id]}
           result={normalizedResults[card.id]}
-          points={SCORING.UNDERCARD_WINNER}
+          points={scoring.UNDERCARD_WINNER}
           canEdit={canEdit}
           onEdit={() => onEditPick?.(card.id, normalizedPicks[card.id] || "")}
         />
       ))}
-      {["mens_rumble_winner", "womens_rumble_winner"].map((id) => (
+      {/* Only show Rumble winners for Rumble events */}
+      {isRumble && ["mens_rumble_winner", "womens_rumble_winner"].map((id) => (
         <MatchRow
           key={id}
           id={id}
           label={id === "mens_rumble_winner" ? "Men's Rumble Winner" : "Women's Rumble Winner"}
           pick={normalizedPicks[id]}
           result={normalizedResults[id]}
-          points={SCORING.RUMBLE_WINNER_PICK}
+          points={scoring.RUMBLE_WINNER_PICK || 25}
           canEdit={canEdit}
           onEdit={() => onEditPick?.(id, normalizedPicks[id] || "")}
         />

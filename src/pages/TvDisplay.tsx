@@ -9,7 +9,7 @@ import { TvActivityTicker, ActivityEvent } from "@/components/tv/TvActivityTicke
 import { TvScorePopup } from "@/components/tv/TvScorePopup";
 import { TvTabId } from "@/components/tv/TvTabBar";
 import { OttLogoImage } from "@/components/logo";
-import { UNDERCARD_MATCHES } from "@/lib/constants";
+import { EventProvider, useEventConfig } from "@/contexts/EventContext";
 import { useTvScale } from "@/hooks/useTvScale";
 import { useAutoHideHeader } from "@/hooks/useAutoHideHeader";
 import { useTvScoreQueue } from "@/hooks/useTvScoreQueue";
@@ -56,8 +56,11 @@ interface TvSnapshot {
   picks?: Pick[];
 }
 
-export default function TvDisplay() {
+function TvDisplayInner() {
   const { code } = useParams<{ code: string }>();
+  
+  // Get event config from context
+  const { UNDERCARD_MATCHES, isRumble } = useEventConfig();
   
   // Responsive scaling hook
   const { mainColSpan, sideColSpan } = useTvScale();
@@ -585,5 +588,14 @@ export default function TvDisplay() {
         )}
       </div>
     </>
+  );
+}
+
+// Wrap with EventProvider for event-specific configuration
+export default function TvDisplay() {
+  return (
+    <EventProvider>
+      <TvDisplayInner />
+    </EventProvider>
   );
 }
