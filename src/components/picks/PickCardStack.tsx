@@ -12,6 +12,7 @@ import { ProgressBar } from "./ProgressBar";
 import { CARD_CONFIG, TOTAL_CARDS, CHAOS_PROPS, RUMBLE_PROPS, FINAL_FOUR_SLOTS } from "@/lib/constants";
 import { countCompletedPicks } from "@/lib/pick-validation";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveEventId } from "@/lib/events";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -195,8 +196,9 @@ export function PickCardStack({
         return;
       }
 
-      // Convert picks to database format
-      const pickRecords: { player_id: string; match_id: string; prediction: string }[] = [];
+      // Convert picks to database format with event_id
+      const eventId = getActiveEventId();
+      const pickRecords: { player_id: string; match_id: string; prediction: string; event_id: string }[] = [];
 
       // Add match winners and rumble winners
       CARD_CONFIG.forEach((card) => {
@@ -206,6 +208,7 @@ export function PickCardStack({
               player_id: playerId,
               match_id: card.id,
               prediction: picks[card.id],
+              event_id: eventId,
             });
           }
         } else if (card.type === "chaos-props") {
@@ -217,6 +220,7 @@ export function PickCardStack({
                 player_id: playerId,
                 match_id: matchId,
                 prediction: picks[matchId],
+                event_id: eventId,
               });
             }
           });
@@ -229,6 +233,7 @@ export function PickCardStack({
                 player_id: playerId,
                 match_id: matchId,
                 prediction: picks[matchId],
+                event_id: eventId,
               });
             }
           });
@@ -241,6 +246,7 @@ export function PickCardStack({
                 player_id: playerId,
                 match_id: matchId,
                 prediction: picks[matchId],
+                event_id: eventId,
               });
             }
           }
@@ -249,7 +255,7 @@ export function PickCardStack({
 
       const { error } = await supabase
         .from("picks")
-        .upsert(pickRecords, { onConflict: "player_id,match_id" });
+        .upsert(pickRecords, { onConflict: "player_id,match_id,event_id" });
 
       if (error) throw error;
 

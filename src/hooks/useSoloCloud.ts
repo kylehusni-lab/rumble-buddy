@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { setSoloSession, clearSoloSession, saveSoloPicks, saveSoloResults } from "@/lib/solo-storage";
+import { getActiveEventId } from "@/lib/events";
 
 export interface SoloPlayer {
   id: string;
@@ -95,13 +96,14 @@ export function useSoloCloud() {
     });
   };
 
-  // Sync picks from cloud to local
+  // Sync picks from cloud to local (filtered by current event)
   const syncPicksFromCloud = async (playerId: string) => {
     try {
       const { data, error } = await supabase
         .from("solo_picks")
         .select("match_id, prediction")
-        .eq("solo_player_id", playerId);
+        .eq("solo_player_id", playerId)
+        .eq("event_id", getActiveEventId());
 
       if (error) throw error;
 
@@ -117,7 +119,7 @@ export function useSoloCloud() {
     }
   };
 
-  // Sync results from cloud to local
+  // Sync results from cloud to local (filtered by current event)
   const syncResultsFromCloud = async (playerId: string) => {
     try {
       const { data, error } = await supabase
@@ -144,6 +146,7 @@ export function useSoloCloud() {
     if (!state.player?.id) return;
 
     try {
+      const eventId = getActiveEventId();
       // Use secure RPC function for each pick (validates ownership and prevents post-scoring changes)
       const results = await Promise.all(
         Object.entries(picks).map(async ([match_id, prediction]) => {
@@ -151,6 +154,7 @@ export function useSoloCloud() {
             p_player_id: state.player!.id,
             p_match_id: match_id,
             p_prediction: prediction,
+            p_event_id: eventId,
           });
           
           if (error) throw error;

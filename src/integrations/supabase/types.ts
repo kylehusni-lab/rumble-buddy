@@ -103,6 +103,7 @@ export type Database = {
           code: string
           created_at: string
           email_sent: boolean | null
+          event_id: string
           event_started_at: string | null
           host_session_id: string
           host_user_id: string | null
@@ -115,6 +116,7 @@ export type Database = {
           code: string
           created_at?: string
           email_sent?: boolean | null
+          event_id?: string
           event_started_at?: string | null
           host_session_id: string
           host_user_id?: string | null
@@ -127,6 +129,7 @@ export type Database = {
           code?: string
           created_at?: string
           email_sent?: boolean | null
+          event_id?: string
           event_started_at?: string | null
           host_session_id?: string
           host_user_id?: string | null
@@ -140,6 +143,7 @@ export type Database = {
       picks: {
         Row: {
           created_at: string
+          event_id: string
           id: string
           match_id: string
           player_id: string
@@ -148,6 +152,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          event_id?: string
           id?: string
           match_id: string
           player_id: string
@@ -156,6 +161,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          event_id?: string
           id?: string
           match_id?: string
           player_id?: string
@@ -319,6 +325,7 @@ export type Database = {
       solo_picks: {
         Row: {
           created_at: string
+          event_id: string
           id: string
           match_id: string
           prediction: string
@@ -327,6 +334,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          event_id?: string
           id?: string
           match_id: string
           prediction: string
@@ -335,6 +343,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          event_id?: string
           id?: string
           match_id?: string
           prediction?: string
