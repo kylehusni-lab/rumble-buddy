@@ -649,13 +649,30 @@ export type Database = {
           id: string
         }[]
       }
-      save_solo_pick: {
-        Args: { p_match_id: string; p_player_id: string; p_prediction: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
-      }
+      save_solo_pick:
+        | {
+            Args: {
+              p_match_id: string
+              p_player_id: string
+              p_prediction: string
+            }
+            Returns: {
+              error_message: string
+              success: boolean
+            }[]
+          }
+        | {
+            Args: {
+              p_event_id?: string
+              p_match_id: string
+              p_player_id: string
+              p_prediction: string
+            }
+            Returns: {
+              error_message: string
+              success: boolean
+            }[]
+          }
       seed_demo_picks: { Args: { p_picks: Json }; Returns: boolean }
       seed_demo_player: {
         Args: {
