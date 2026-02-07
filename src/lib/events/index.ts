@@ -18,6 +18,14 @@ export const EVENT_REGISTRY: Record<string, EventConfig> = {
 const ACTIVE_EVENT_ID = 'mania_41';
 
 /**
+ * Get the currently active event ID
+ * This should be used when storing/fetching event-specific data
+ */
+export function getActiveEventId(): string {
+  return ACTIVE_EVENT_ID;
+}
+
+/**
  * Get the currently active event configuration
  * This is what the main app uses for live parties
  */

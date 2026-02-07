@@ -5,6 +5,7 @@ import { getPlayerSession } from "@/lib/session";
 import { PickCardStack } from "@/components/picks/PickCardStack";
 import { toast } from "sonner";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
+import { getActiveEventId } from "@/lib/events";
 
 interface PartyData {
   status: string;
@@ -45,7 +46,8 @@ export default function PlayerPicks() {
         const { data: picksData } = await supabase
           .from("picks")
           .select("match_id, prediction")
-          .eq("player_id", session.playerId);
+          .eq("player_id", session.playerId)
+          .eq("event_id", getActiveEventId());
 
         if (picksData && picksData.length > 0) {
           const picksMap = picksData.reduce((acc, pick) => {
