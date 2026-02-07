@@ -1,116 +1,177 @@
 
+## Plan: Event-Driven Configuration System
 
-## Plan: Fix Event Grouping and Improve Visual Hierarchy
+### Problem Summary
 
-### Overview
-This plan addresses two issues:
-1. **Data Migration**: Solo picks with Rumble-specific match IDs are incorrectly tagged with `event_id: mania_41` and need to be migrated to `event_id: rumble_2026`
-2. **Visual Hierarchy**: The dashboard needs clearer separation between Event, Solo Mode, and Party sections
+The Royal Rumble party (code `X629M5`) is displaying WrestleMania 41 matches ("Match 1 TBD", "Match 2 TBD", etc.) because:
+
+1. All dashboard components import match/prop configurations from `@/lib/constants`
+2. `constants.ts` uses `getActiveEvent()` which returns the globally active event (`mania_41`)
+3. Parties store their own `event_id` in the database, but this is never used to load event-specific config
+4. The `parties_public` view does not expose `event_id`, so dashboards cannot access it
+
+### Solution Overview
+
+Create an **event context system** that:
+1. Loads the correct `EventConfig` based on the party's `event_id`
+2. Provides this config to all dashboard components via React Context
+3. Falls back to the global active event for new parties
 
 ---
 
-### Part 1: Data Migration
+### Part 1: Database - Expose event_id in parties_public View
 
-#### Problem
-Solo picks in the database contain Rumble-specific match IDs (like `mens_rumble_winner`, `mens_chaos_prop_*`, `mens_entrant_*`, etc.) but are incorrectly stored with `event_id: mania_41`.
+The `parties_public` view needs to include `event_id` so dashboards can access it without querying the private `parties` table.
 
-**Current data shows:**
-- 147 solo picks with `event_id: mania_41`
-- Match IDs include: `mens_rumble_winner`, `womens_rumble_winner`, `mens_chaos_prop_1-7`, `womens_chaos_prop_1-7`, `mens_entrant_1`, `mens_entrant_30`, etc.
-
-These Rumble-type match IDs should belong to `event_id: rumble_2026`.
-
-#### Solution: Database Migration
-Run a SQL migration to update picks with Rumble-specific match IDs to the correct event:
-
+**Migration SQL:**
 ```sql
-UPDATE solo_picks 
-SET event_id = 'rumble_2026' 
-WHERE event_id = 'mania_41' 
-AND (
-  match_id LIKE 'mens_rumble_%' 
-  OR match_id LIKE 'womens_rumble_%'
-  OR match_id LIKE 'mens_chaos_prop_%'
-  OR match_id LIKE 'womens_chaos_prop_%'
-  OR match_id LIKE 'mens_entrant_%'
-  OR match_id LIKE 'womens_entrant_%'
-  OR match_id LIKE 'mens_final_four_%'
-  OR match_id LIKE 'womens_final_four_%'
-  OR match_id LIKE 'mens_first_elimination%'
-  OR match_id LIKE 'womens_first_elimination%'
-  OR match_id LIKE 'mens_most_eliminations%'
-  OR match_id LIKE 'womens_most_eliminations%'
-  OR match_id LIKE 'mens_longest_time%'
-  OR match_id LIKE 'womens_longest_time%'
-  OR match_id IN ('undercard_1', 'undercard_3')
-);
+-- Drop and recreate parties_public view to include event_id
+CREATE OR REPLACE VIEW parties_public AS
+SELECT 
+  code,
+  created_at,
+  event_started_at,
+  is_demo,
+  status,
+  mens_rumble_entrants,
+  womens_rumble_entrants,
+  event_id
+FROM parties;
 ```
 
 ---
 
-### Part 2: Improved Visual Hierarchy
+### Part 2: Create Event Context System
 
-#### Current UI Issue
-All modes (Solo + Parties) are displayed in a flat list within each event card, making it hard to distinguish between them.
+Create a React Context that provides event-specific configuration based on the party's `event_id`.
 
-#### Proposed Design
+#### New File: `src/contexts/EventContext.tsx`
 
 ```text
-+---------------------------------------------+
-| [Zap] Active                           [v]  |
-+---------------------------------------------+
-|                                             |
-| +=========================================+ |
-| | [Calendar] WrestleMania 41   [Upcoming] | |
-| | Apr 18, 2026                            | |
-| +=========================================+ |
-| |                                         | |
-| |  -- Solo Mode ---------------------------| |
-| |  +-------------------------------------+ | |
-| |  | [User] Solo Mode        37 picks  > | | |
-| |  | Kyle                                | | |
-| |  +-------------------------------------+ | |
-| |                                         | |
-| |  -- Parties (8) ------------------------| |
-| |  +-------------------------------------+ | |
-| |  | [Crown] JVYN3T [Host]  Demo Pre > | | |
-| |  +-------------------------------------+ | |
-| |  +-------------------------------------+ | |
-| |  | [Crown] 5KAUDN [Host]  Demo Live> | | |
-| |  +-------------------------------------+ | |
-| |  ... more parties ...                   | |
-| |                                         | |
-| +=========================================+ |
-|                                             |
-+---------------------------------------------+
++----------------------------------+
+|  EventProvider                   |
+|  - Fetches party event_id        |
+|  - Loads EventConfig from        |
+|    EVENT_REGISTRY                |
+|  - Provides: eventConfig,        |
+|    isRumble, matches, props,     |
+|    cardConfig, scoring           |
++----------------------------------+
+        |
+        v
++----------------------------------+
+|  useEventConfig() hook           |
+|  - Returns typed EventConfig     |
+|  - Used by dashboard components  |
++----------------------------------+
 ```
 
-#### Key Visual Changes
-
-| Element | Change |
-|---------|--------|
-| **Solo Mode Section** | Add a section header label "Solo Mode" with a subtle divider line |
-| **Parties Section** | Add a section header "Parties (count)" with party count badge |
-| **Section Dividers** | Add horizontal separator lines between Solo and Parties sections |
-| **Indentation** | Keep cards slightly indented within sections for visual grouping |
-| **Header Styling** | Use smaller, muted text for section labels to not compete with event title |
+**Key exports:**
+- `EventProvider` - Wraps party/solo dashboard routes
+- `useEventConfig()` - Hook to access current event configuration
+- Returns: `eventConfig`, `matches`, `cardConfig`, `chaosProps`, `rumbleProps`, `scoring`, `isRumble`, `isLoading`
 
 ---
 
-### Part 3: Code Changes
+### Part 3: Update Dashboard Components
 
-| File | Change |
+Update all components that import from `@/lib/constants` to use the new context when inside a party context.
+
+| Component | Current Import | New Approach |
+|-----------|----------------|--------------|
+| `PlayerDashboard.tsx` | `CARD_CONFIG, CHAOS_PROPS` from constants | Use `useEventConfig()` |
+| `UnifiedMatchesTab.tsx` | `CARD_CONFIG, SCORING` from constants | Accept props or use context |
+| `UnifiedRumblePropsTab.tsx` | `RUMBLE_PROPS, FINAL_FOUR_SLOTS` from constants | Accept props or use context |
+| `UnifiedChaosTab.tsx` | `CHAOS_PROPS, SCORING` from constants | Accept props or use context |
+| `HostControl.tsx` | `UNDERCARD_MATCHES, CHAOS_PROPS` from constants | Use `useEventConfig()` |
+| `TvDisplay.tsx` | Various constants | Use `useEventConfig()` |
+
+---
+
+### Part 4: Update Route Structure
+
+Wrap party-related routes with `EventProvider`:
+
+```typescript
+// App.tsx
+<Route path="/party/:code/*" element={
+  <EventProvider>
+    <PartyRoutes />
+  </EventProvider>
+} />
+```
+
+The provider will:
+1. Read `code` from URL params
+2. Fetch `event_id` from `parties_public`
+3. Load the correct `EventConfig` from `EVENT_REGISTRY`
+4. Provide it to all child components
+
+---
+
+### Part 5: Conditional Rumble Features
+
+Components should conditionally render Rumble-specific features based on `eventConfig.type`:
+
+| Feature | Condition |
+|---------|-----------|
+| Men's/Women's tabs | `isRumble === true` |
+| Numbers section | `isRumble === true` |
+| Rumble Props | `isRumble === true` |
+| Chaos Props | `isRumble === true` (or if event has chaosProps) |
+| Multi-night indicators | `eventConfig.nights.length > 1` |
+
+---
+
+### Implementation Files
+
+| File | Action |
 |------|--------|
-| **Database** | Run migration to fix `event_id` for Rumble-type picks |
-| `src/pages/MyParties.tsx` | Update `EventGroupCard` component to add section headers and visual dividers |
+| Database | Add `event_id` to `parties_public` view |
+| `src/contexts/EventContext.tsx` | **Create** - Event context provider and hook |
+| `src/pages/PlayerDashboard.tsx` | **Update** - Use `useEventConfig()` instead of constants |
+| `src/pages/HostControl.tsx` | **Update** - Use `useEventConfig()` instead of constants |
+| `src/pages/TvDisplay.tsx` | **Update** - Use `useEventConfig()` instead of constants |
+| `src/components/dashboard/UnifiedMatchesTab.tsx` | **Update** - Accept config via props or context |
+| `src/components/dashboard/UnifiedRumblePropsTab.tsx` | **Update** - Accept config via props or context |
+| `src/components/dashboard/UnifiedChaosTab.tsx` | **Update** - Accept config via props or context |
+| `src/components/dashboard/UnifiedTabNavigation.tsx` | **Update** - Conditionally show tabs based on event type |
+| `src/App.tsx` | **Update** - Wrap party routes with EventProvider |
 
-#### Updated EventGroupCard Component
+---
 
-Inside the event card body:
-1. If `group.solo` exists, render a "Solo Mode" section header + solo card
-2. Add a visual separator
-3. If `group.parties.length > 0`, render a "Parties (N)" section header + party cards
-4. Use consistent styling for section labels
+### Technical Details
+
+**EventContext Interface:**
+```typescript
+interface EventContextValue {
+  eventConfig: EventConfig | null;
+  eventId: string;
+  isRumble: boolean;
+  isMultiNight: boolean;
+  matches: MatchConfig[];
+  cardConfig: CardConfig[];
+  chaosProps: PropConfig[];
+  rumbleProps: RumblePropConfig[];
+  scoring: ScoringConfig;
+  isLoading: boolean;
+}
+```
+
+**Usage Example:**
+```typescript
+// In PlayerDashboard.tsx
+const { 
+  cardConfig, 
+  chaosProps, 
+  rumbleProps, 
+  isRumble, 
+  scoring 
+} = useEventConfig();
+
+// Only show Rumble tabs if it's a Rumble event
+{isRumble && <UnifiedRumblePropsTab ... />}
+```
 
 ---
 
@@ -118,8 +179,8 @@ Inside the event card body:
 
 | Area | Description |
 |------|-------------|
-| **Data Fix** | Migrate Rumble picks from `mania_41` to `rumble_2026` based on match_id patterns |
-| **Visual Hierarchy** | Add section headers ("Solo Mode" / "Parties") within each event card |
-| **Separators** | Add horizontal dividers between Solo and Party sections |
-| **Badges** | Show party count in the "Parties" section header |
-
+| **Root Cause** | Dashboards use global active event config instead of party-specific config |
+| **Database** | Expose `event_id` in `parties_public` view |
+| **Context** | New `EventProvider` loads correct config based on party's event_id |
+| **Components** | Update 10+ components to use context instead of static constants |
+| **Conditional UI** | Rumble-specific tabs/features only shown for Rumble events |
