@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Plus, LogOut, Crown, ChevronRight, Loader2, ChevronDown, User, Sparkles } from "lucide-react";
+import { Users, Plus, LogOut, Crown, ChevronRight, Loader2, ChevronDown, User, Sparkles, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OttLogoImage } from "@/components/logo";
@@ -387,14 +387,24 @@ export default function MyParties() {
               </Collapsible>
             )}
 
-            <Button 
-              variant="outline" 
-              className="w-full mt-4"
-              onClick={() => navigate("/join")}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Join Another Party
-            </Button>
+            <div className="flex gap-2 mt-4">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => navigate("/join")}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Join Party
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => navigate("/pick-history")}
+              >
+                <History className="h-4 w-4 mr-2" />
+                Pick History
+              </Button>
+            </div>
           </div>
         )}
       </div>

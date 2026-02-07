@@ -32,6 +32,7 @@ const SoloSetup = lazy(() => import("./pages/SoloSetup"));
 const SoloPicks = lazy(() => import("./pages/SoloPicks"));
 const SoloDashboard = lazy(() => import("./pages/SoloDashboard"));
 const SoloTvDisplay = lazy(() => import("./pages/SoloTvDisplay"));
+const PickHistory = lazy(() => import("./pages/PickHistory"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const SignIn = lazy(() => import("./pages/SignIn"));
 const MyParties = lazy(() => import("./pages/MyParties"));
@@ -101,6 +102,7 @@ const App = () => (
                   <Route path="/solo/picks" element={<SoloPicks />} />
                   <Route path="/solo/dashboard" element={<SoloDashboard />} />
                   <Route path="/solo/tv" element={<SoloTvDisplay />} />
+                  <Route path="/pick-history" element={<PickHistory />} />
 
                   <Route path="*" element={<NotFound />} />
                 </Routes>
