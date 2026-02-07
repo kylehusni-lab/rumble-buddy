@@ -3,7 +3,8 @@ import { Check, X, Plus, Pencil, ChevronRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
 import { getEntrantDisplayName } from "@/lib/entrant-utils";
-import { RUMBLE_PROPS, FINAL_FOUR_SLOTS, SCORING } from "@/lib/constants";
+import { useEventConfig } from "@/contexts/EventContext";
+import type { RumblePropConfig, ScoringConfig } from "@/lib/events/types";
 
 interface Pick {
   match_id: string;
@@ -22,6 +23,10 @@ interface UnifiedRumblePropsTabProps {
   results: Result[] | Record<string, string>;
   onEditPick?: (matchId: string, currentPick: string) => void;
   canEdit?: boolean;
+  // Optional overrides for when not using context
+  rumbleProps?: readonly RumblePropConfig[];
+  scoring?: ScoringConfig;
+  finalFourSlots?: number;
 }
 
 // Normalize picks to Record format
@@ -40,14 +45,14 @@ function normalizeResults(results: Result[] | Record<string, string>): Record<st
   return results;
 }
 
-// Map prop IDs to display info
-const propPoints: Record<string, number> = {
-  entrant_1: SCORING.ENTRANT_GUESS,
-  entrant_30: SCORING.ENTRANT_GUESS,
-  first_elimination: SCORING.FIRST_ELIMINATION,
-  most_eliminations: SCORING.MOST_ELIMINATIONS,
-  longest_time: SCORING.LONGEST_TIME,
-};
+// Map prop IDs to point values - will be used with scoring config
+function getPropPoints(propId: string, scoring: ScoringConfig): number {
+  if (propId === "entrant_1" || propId === "entrant_30") return scoring.ENTRANT_GUESS || 20;
+  if (propId === "first_elimination") return scoring.FIRST_ELIMINATION || 10;
+  if (propId === "most_eliminations") return scoring.MOST_ELIMINATIONS || 10;
+  if (propId === "longest_time") return scoring.LONGEST_TIME || 10;
+  return scoring.PROP_BET || 5;
+}
 
 export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
   gender,
@@ -55,7 +60,16 @@ export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
   results,
   onEditPick,
   canEdit = false,
+  rumbleProps: propRumbleProps,
+  scoring: propScoring,
+  finalFourSlots: propFinalFourSlots,
 }: UnifiedRumblePropsTabProps) {
+  // Use context if available, otherwise use props
+  const eventContext = useEventConfig();
+  const rumbleProps = propRumbleProps || eventContext.RUMBLE_PROPS;
+  const scoring = propScoring || eventContext.SCORING;
+  const finalFourSlots = propFinalFourSlots ?? eventContext.FINAL_FOUR_SLOTS;
+
   const normalizedPicks = normalizePicks(picks);
   const normalizedResults = normalizeResults(results);
 
@@ -63,13 +77,13 @@ export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
     <div className="space-y-3">
       {/* Universal list layout - consistent across all viewports */}
       <div className="space-y-2">
-          {RUMBLE_PROPS.map((prop) => {
+          {rumbleProps.map((prop) => {
             const matchId = `${gender}_${prop.id}`;
             const pick = normalizedPicks[matchId];
             const result = normalizedResults[matchId];
             const isCorrect = pick && result && pick === result;
             const isWrong = pick && result && pick !== result;
-            const points = propPoints[prop.id] || SCORING.PROP_BET;
+            const points = getPropPoints(prop.id, scoring);
 
             return (
               <button
@@ -162,17 +176,17 @@ export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
             <Users className="w-5 h-5 text-primary" />
             <span className="font-bold text-foreground">Final Four</span>
           </div>
-          <span className="text-xs text-primary">+{SCORING.FINAL_FOUR_PICK} pts each</span>
+          <span className="text-xs text-primary">+{scoring.FINAL_FOUR_PICK || 15} pts each</span>
         </div>
         
         {/* 4-column grid for photos */}
         <div className="grid grid-cols-4 gap-3 justify-items-center">
-          {Array.from({ length: FINAL_FOUR_SLOTS }).map((_, i) => {
+          {Array.from({ length: finalFourSlots }).map((_, i) => {
             const matchId = `${gender}_final_four_${i + 1}`;
             const pick = normalizedPicks[matchId];
             
             // Check if this pick is correct (any of the Final Four results)
-            const finalFourResults = Array.from({ length: 4 }).map((_, j) => 
+            const finalFourResults = Array.from({ length: finalFourSlots }).map((_, j) => 
               normalizedResults[`${gender}_final_four_${j + 1}`]
             ).filter(Boolean);
             const isCorrect = pick && finalFourResults.includes(pick);
@@ -234,7 +248,7 @@ export const UnifiedRumblePropsTab = memo(function UnifiedRumblePropsTab({
         
         <div className="text-center mt-3">
           <span className="text-xs text-muted-foreground">
-            {Array.from({ length: FINAL_FOUR_SLOTS }).filter((_, i) => normalizedPicks[`${gender}_final_four_${i + 1}`]).length}/4 picked
+            {Array.from({ length: finalFourSlots }).filter((_, i) => normalizedPicks[`${gender}_final_four_${i + 1}`]).length}/{finalFourSlots} picked
           </span>
         </div>
       </div>

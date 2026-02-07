@@ -502,6 +502,7 @@ export type Database = {
         Row: {
           code: string | null
           created_at: string | null
+          event_id: string | null
           event_started_at: string | null
           is_demo: boolean | null
           mens_rumble_entrants: Json | null
@@ -511,6 +512,7 @@ export type Database = {
         Insert: {
           code?: string | null
           created_at?: string | null
+          event_id?: string | null
           event_started_at?: string | null
           is_demo?: boolean | null
           mens_rumble_entrants?: Json | null
@@ -520,6 +522,7 @@ export type Database = {
         Update: {
           code?: string | null
           created_at?: string | null
+          event_id?: string | null
           event_started_at?: string | null
           is_demo?: boolean | null
           mens_rumble_entrants?: Json | null

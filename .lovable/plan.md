@@ -1,14 +1,23 @@
 
-## Plan: Event-Driven Configuration System
+## Plan: Event-Driven Configuration System - IMPLEMENTED
 
-### Problem Summary
+### Status: Complete
 
-The Royal Rumble party (code `X629M5`) is displaying WrestleMania 41 matches ("Match 1 TBD", "Match 2 TBD", etc.) because:
+**Changes Made:**
+1. Database migration: Added `event_id` to `parties_public` view
+2. Created `src/contexts/EventContext.tsx` with `EventProvider` and `useEventConfig()` hook
+3. Updated `PlayerDashboard.tsx` to use EventProvider and context
+4. Updated `HostControl.tsx` to use EventProvider and context
+5. Updated `TvDisplay.tsx` to use EventProvider and context
+6. Updated `UnifiedMatchesTab.tsx` to use event context
+7. Updated `UnifiedChaosTab.tsx` to use event context
+8. Updated `UnifiedRumblePropsTab.tsx` to use event context
+9. Updated `UnifiedTabNavigation.tsx` to conditionally show Rumble tabs
+10. Updated `UndercardMatchSelector.tsx` to use event context
 
-1. All dashboard components import match/prop configurations from `@/lib/constants`
-2. `constants.ts` uses `getActiveEvent()` which returns the globally active event (`mania_41`)
-3. Parties store their own `event_id` in the database, but this is never used to load event-specific config
-4. The `parties_public` view does not expose `event_id`, so dashboards cannot access it
+---
+
+## Original Plan Summary (for reference)
 
 ### Solution Overview
 

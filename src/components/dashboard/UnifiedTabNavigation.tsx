@@ -15,13 +15,16 @@ interface UnifiedTabNavigationProps {
   tabCompletion: Record<Exclude<UnifiedTabId, "numbers">, TabCompletion>;
   showNumbers?: boolean;
   numbersCompletion?: TabCompletion;
+  // New: conditionally show Rumble-specific tabs
+  isRumble?: boolean;
 }
 
-const BASE_TABS: Array<{ id: Exclude<UnifiedTabId, "numbers">; icon: typeof Swords; label: string }> = [
+// All tabs including Rumble-specific ones
+const ALL_TABS: Array<{ id: Exclude<UnifiedTabId, "numbers">; icon: typeof Swords; label: string; rumbleOnly?: boolean }> = [
   { id: "matches", icon: Swords, label: "Matches" },
-  { id: "mens", icon: Hash, label: "Men's" },
-  { id: "womens", icon: Hash, label: "Women's" },
-  { id: "chaos", icon: Zap, label: "Chaos" },
+  { id: "mens", icon: Hash, label: "Men's", rumbleOnly: true },
+  { id: "womens", icon: Hash, label: "Women's", rumbleOnly: true },
+  { id: "chaos", icon: Zap, label: "Chaos", rumbleOnly: true },
 ];
 
 export const UnifiedTabNavigation = memo(function UnifiedTabNavigation({
@@ -30,10 +33,14 @@ export const UnifiedTabNavigation = memo(function UnifiedTabNavigation({
   tabCompletion,
   showNumbers = false,
   numbersCompletion,
+  isRumble = true,
 }: UnifiedTabNavigationProps) {
-  const tabs = showNumbers 
-    ? [{ id: "numbers" as const, icon: Hash, label: "Numbers" }, ...BASE_TABS]
-    : BASE_TABS;
+  // Filter tabs based on event type
+  const baseTabs = ALL_TABS.filter(tab => !tab.rumbleOnly || isRumble);
+  
+  const tabs = showNumbers && isRumble
+    ? [{ id: "numbers" as const, icon: Hash, label: "Numbers" }, ...baseTabs]
+    : baseTabs;
 
   return (
     <div className="border-b border-border">

@@ -17,12 +17,7 @@ import { UnifiedChaosTab } from "@/components/dashboard/UnifiedChaosTab";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
-import { 
-  CARD_CONFIG, 
-  CHAOS_PROPS, 
-  RUMBLE_PROPS, 
-  FINAL_FOUR_SLOTS,
-} from "@/lib/constants";
+import { EventProvider, useEventConfig } from "@/contexts/EventContext";
 
 interface Pick {
   match_id: string;
@@ -55,11 +50,14 @@ interface CelebrationData {
   data: any;
 }
 
-export default function PlayerDashboard() {
+function PlayerDashboardInner() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const session = getPlayerSession();
   const { mensEntrants, womensEntrants } = usePlatformConfig();
+  
+  // Get event config from context
+  const { CARD_CONFIG, CHAOS_PROPS, RUMBLE_PROPS, FINAL_FOUR_SLOTS, isRumble } = useEventConfig();
 
   const [activeTab, setActiveTab] = useState<UnifiedTabId>("matches");
   const [partyStatus, setPartyStatus] = useState<string>("pre_event");
@@ -106,43 +104,50 @@ export default function PlayerDashboard() {
   const tabCompletion = useMemo(() => {
     const matchCards = CARD_CONFIG.filter(c => c.type === "match");
     const matchesComplete = matchCards.filter(c => picksRecord[c.id]).length;
-    const winnersComplete = (picksRecord["mens_rumble_winner"] ? 1 : 0) + 
-                            (picksRecord["womens_rumble_winner"] ? 1 : 0);
     
-    // Men's: 5 props + 4 final four
+    // Only calculate Rumble-specific completions for Rumble events
+    let winnersComplete = 0;
     let mensComplete = 0;
-    RUMBLE_PROPS.forEach(prop => {
-      if (picksRecord[`mens_${prop.id}`]) mensComplete++;
-    });
-    for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
-      if (picksRecord[`mens_final_four_${i}`]) mensComplete++;
-    }
-    
-    // Women's: same structure
     let womensComplete = 0;
-    RUMBLE_PROPS.forEach(prop => {
-      if (picksRecord[`womens_${prop.id}`]) womensComplete++;
-    });
-    for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
-      if (picksRecord[`womens_final_four_${i}`]) womensComplete++;
-    }
-    
-    // Chaos: dynamic props count x 2 genders
     let chaosComplete = 0;
-    const chaosTotal = CHAOS_PROPS.length * 2;
-    ["mens", "womens"].forEach(gender => {
-      CHAOS_PROPS.forEach((_, i) => {
-        if (picksRecord[`${gender}_chaos_prop_${i + 1}`]) chaosComplete++;
+    let chaosTotal = 0;
+    
+    if (isRumble) {
+      winnersComplete = (picksRecord["mens_rumble_winner"] ? 1 : 0) + 
+                        (picksRecord["womens_rumble_winner"] ? 1 : 0);
+      
+      // Men's: 5 props + 4 final four
+      RUMBLE_PROPS.forEach(prop => {
+        if (picksRecord[`mens_${prop.id}`]) mensComplete++;
       });
-    });
+      for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+        if (picksRecord[`mens_final_four_${i}`]) mensComplete++;
+      }
+      
+      // Women's: same structure
+      RUMBLE_PROPS.forEach(prop => {
+        if (picksRecord[`womens_${prop.id}`]) womensComplete++;
+      });
+      for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+        if (picksRecord[`womens_final_four_${i}`]) womensComplete++;
+      }
+      
+      // Chaos: dynamic props count x 2 genders
+      chaosTotal = CHAOS_PROPS.length * 2;
+      ["mens", "womens"].forEach(gender => {
+        CHAOS_PROPS.forEach((_, i) => {
+          if (picksRecord[`${gender}_chaos_prop_${i + 1}`]) chaosComplete++;
+        });
+      });
+    }
     
     return {
-      matches: { complete: matchesComplete + winnersComplete, total: 4 },
-      mens: { complete: mensComplete, total: RUMBLE_PROPS.length + FINAL_FOUR_SLOTS },
-      womens: { complete: womensComplete, total: RUMBLE_PROPS.length + FINAL_FOUR_SLOTS },
+      matches: { complete: matchesComplete + winnersComplete, total: matchCards.length + (isRumble ? 2 : 0) },
+      mens: { complete: mensComplete, total: isRumble ? RUMBLE_PROPS.length + FINAL_FOUR_SLOTS : 0 },
+      womens: { complete: womensComplete, total: isRumble ? RUMBLE_PROPS.length + FINAL_FOUR_SLOTS : 0 },
       chaos: { complete: chaosComplete, total: chaosTotal },
     };
-  }, [picksRecord]);
+  }, [picksRecord, CARD_CONFIG, RUMBLE_PROPS, CHAOS_PROPS, FINAL_FOUR_SLOTS, isRumble]);
 
   // Switch to numbers tab when event goes live
   useEffect(() => {
@@ -533,6 +538,7 @@ export default function PlayerDashboard() {
           tabCompletion={tabCompletion}
           showNumbers={showNumbers}
           numbersCompletion={numbersCompletion}
+          isRumble={isRumble}
         />
 
         {/* Content */}
@@ -560,7 +566,7 @@ export default function PlayerDashboard() {
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.15 }}
             >
-              {activeTab === "numbers" && (
+              {activeTab === "numbers" && isRumble && (
                 <NumbersSection mensNumbers={mensNumbers} womensNumbers={womensNumbers} />
               )}
               {activeTab === "matches" && (
@@ -571,7 +577,7 @@ export default function PlayerDashboard() {
                   canEdit={canEditPicks}
                 />
               )}
-              {activeTab === "mens" && (
+              {activeTab === "mens" && isRumble && (
                 <UnifiedRumblePropsTab 
                   gender="mens" 
                   picks={picksRecord} 
@@ -580,7 +586,7 @@ export default function PlayerDashboard() {
                   canEdit={canEditPicks}
                 />
               )}
-              {activeTab === "womens" && (
+              {activeTab === "womens" && isRumble && (
                 <UnifiedRumblePropsTab 
                   gender="womens" 
                   picks={picksRecord} 
@@ -589,7 +595,7 @@ export default function PlayerDashboard() {
                   canEdit={canEditPicks}
                 />
               )}
-              {activeTab === "chaos" && (
+              {activeTab === "chaos" && isRumble && (
                 <UnifiedChaosTab 
                   picks={picksRecord} 
                   results={resultsRecord} 
@@ -628,5 +634,14 @@ export default function PlayerDashboard() {
         womensEntrants={womensEntrants}
       />
     </>
+  );
+}
+
+// Wrap with EventProvider for event-specific configuration
+export default function PlayerDashboard() {
+  return (
+    <EventProvider>
+      <PlayerDashboardInner />
+    </EventProvider>
   );
 }
