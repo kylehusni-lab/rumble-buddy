@@ -64,6 +64,37 @@ export function isMultiNightEvent(event?: EventConfig): boolean {
   return e.nights.length > 1;
 }
 
+/**
+ * Get the estimated end time of an event
+ * Assumes 4 hours after the last night's start time
+ */
+export function getEventEndTime(eventId: string): Date | null {
+  const event = EVENT_REGISTRY[eventId];
+  if (!event || event.nights.length === 0) return null;
+  
+  // Get the last night
+  const lastNight = event.nights[event.nights.length - 1];
+  // Assume 4-hour event duration after start time
+  const endTime = new Date(lastNight.date);
+  endTime.setHours(endTime.getHours() + 4);
+  return endTime;
+}
+
+/**
+ * Check if an event has expired (ended + buffer hours passed)
+ * @param eventId The event ID to check
+ * @param hoursBuffer Hours after event end before it's considered expired (default: 5)
+ */
+export function isEventExpired(eventId: string, hoursBuffer: number = 5): boolean {
+  const endTime = getEventEndTime(eventId);
+  if (!endTime) return false;
+  
+  const expiryTime = new Date(endTime);
+  expiryTime.setHours(expiryTime.getHours() + hoursBuffer);
+  
+  return new Date() > expiryTime;
+}
+
 // Export individual event configs
 export { RUMBLE_2026_CONFIG } from './rumble-2026';
 export { MANIA_41_CONFIG } from './mania-41';
