@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Plus, LogOut, Crown, ChevronRight, Loader2, ChevronDown, User, Sparkles } from "lucide-react";
+import { Users, Plus, LogOut, Crown, ChevronRight, Loader2, ChevronDown, User, Sparkles, Zap, History, Calendar, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OttLogoImage } from "@/components/logo";
@@ -10,8 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getPlayerSession, setPlayerSession } from "@/lib/session";
-import { PickHistorySection } from "@/components/dashboard/PickHistorySection";
-import { isEventExpired } from "@/lib/events";
+import { isEventExpired, EVENT_REGISTRY, getActiveEventId } from "@/lib/events";
+import { cn } from "@/lib/utils";
 
 interface PartyMembership {
   player_id: string;
@@ -30,15 +30,26 @@ interface SoloPlayerInfo {
   created_at: string;
 }
 
+interface PastEvent {
+  eventId: string;
+  eventTitle: string;
+  eventDate: Date;
+  picksCount: number;
+  totalScore: number | null;
+  type: "solo" | "party";
+  partyCode?: string;
+  isHost?: boolean;
+}
+
 export default function MyParties() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const [parties, setParties] = useState<PartyMembership[]>([]);
   const [soloPlayer, setSoloPlayer] = useState<SoloPlayerInfo | null>(null);
+  const [pastEvents, setPastEvents] = useState<PastEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [hostedOpen, setHostedOpen] = useState(true);
-  const [joinedOpen, setJoinedOpen] = useState(true);
-  const [soloOpen, setSoloOpen] = useState(true);
+  const [activeOpen, setActiveOpen] = useState(true);
+  const [pastOpen, setPastOpen] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -53,10 +64,10 @@ export default function MyParties() {
 
   const fetchData = async () => {
     try {
-      // Fetch in parallel: player records AND solo player record
-      const [partiesResult, soloResult] = await Promise.all([
+      await Promise.all([
         fetchParties(),
         fetchSoloPlayer(),
+        fetchPastEvents(),
       ]);
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -67,7 +78,6 @@ export default function MyParties() {
   };
 
   const fetchParties = async () => {
-    // Fetch player records for current user
     const { data: playerData, error: playerError } = await supabase
       .from("players")
       .select("id, party_code, display_name, points")
@@ -80,7 +90,6 @@ export default function MyParties() {
       return;
     }
 
-    // Fetch party statuses including is_demo and event_id
     const partyCodes = playerData.map(p => p.party_code);
     const { data: partyData, error: partyError } = await supabase
       .from("parties")
@@ -89,7 +98,6 @@ export default function MyParties() {
 
     if (partyError) throw partyError;
 
-    // Check which parties user is host of
     const { data: hostData } = await supabase
       .from("parties")
       .select("code")
@@ -97,7 +105,6 @@ export default function MyParties() {
 
     const hostCodes = new Set(hostData?.map(p => p.code) || []);
 
-    // Combine data
     const combined: PartyMembership[] = playerData.map(player => {
       const partyInfo = partyData?.find(p => p.code === player.party_code);
       return {
@@ -140,7 +147,6 @@ export default function MyParties() {
   };
 
   const fetchSoloPlayer = async () => {
-    // Check for solo player record
     const { data, error } = await supabase
       .from("solo_players")
       .select("id, display_name, created_at")
@@ -148,10 +154,92 @@ export default function MyParties() {
       .maybeSingle();
 
     if (error) throw error;
+    if (data) setSoloPlayer(data);
+  };
 
-    if (data) {
-      setSoloPlayer(data);
+  const fetchPastEvents = async () => {
+    const events: PastEvent[] = [];
+
+    // Get solo picks grouped by event
+    const { data: soloPlayer } = await supabase
+      .from("solo_players")
+      .select("id")
+      .eq("user_id", user!.id)
+      .maybeSingle();
+
+    if (soloPlayer) {
+      const { data: soloPicks } = await supabase
+        .from("solo_picks")
+        .select("event_id, match_id")
+        .eq("solo_player_id", soloPlayer.id);
+
+      if (soloPicks && soloPicks.length > 0) {
+        const byEvent = soloPicks.reduce((acc, pick) => {
+          const eventId = pick.event_id || 'unknown';
+          if (!acc[eventId]) acc[eventId] = [];
+          acc[eventId].push(pick);
+          return acc;
+        }, {} as Record<string, typeof soloPicks>);
+
+        Object.entries(byEvent).forEach(([eventId, picks]) => {
+          const eventConfig = EVENT_REGISTRY[eventId];
+          if (eventConfig) {
+            events.push({
+              eventId,
+              eventTitle: eventConfig.title,
+              eventDate: eventConfig.nights[0]?.date || new Date(),
+              picksCount: picks.length,
+              totalScore: null,
+              type: "solo",
+            });
+          }
+        });
+      }
     }
+
+    // Get ended party picks
+    const { data: partyPlayers } = await supabase
+      .from("players")
+      .select("id, party_code, points")
+      .eq("user_id", user!.id);
+
+    if (partyPlayers && partyPlayers.length > 0) {
+      const partyCodes = partyPlayers.map(p => p.party_code);
+      
+      // Get ended parties
+      const { data: endedParties } = await supabase
+        .from("parties")
+        .select("code, event_id, host_user_id")
+        .in("code", partyCodes)
+        .eq("status", "ended");
+
+      if (endedParties) {
+        for (const party of endedParties) {
+          const player = partyPlayers.find(p => p.party_code === party.code);
+          const eventConfig = EVENT_REGISTRY[party.event_id];
+          
+          // Avoid duplicates if same event already exists from solo
+          const existingSolo = events.find(e => e.eventId === party.event_id && e.type === "solo");
+          
+          if (eventConfig && player) {
+            events.push({
+              eventId: party.event_id,
+              eventTitle: eventConfig.title,
+              eventDate: eventConfig.nights[0]?.date || new Date(),
+              picksCount: 0, // We could fetch this but it's not critical
+              totalScore: player.points,
+              type: "party",
+              partyCode: party.code,
+              isHost: party.host_user_id === user!.id,
+            });
+          }
+        }
+      }
+    }
+
+    // Sort by date descending
+    events.sort((a, b) => b.eventDate.getTime() - a.eventDate.getTime());
+    setPastEvents(events);
   };
 
   const handleSignOut = async () => {
@@ -162,41 +250,20 @@ export default function MyParties() {
 
   const handlePartyClick = (party: PartyMembership) => {
     if (party.is_host) {
-      // Authenticated hosts are verified via Supabase Auth (auth.uid() matches host_user_id)
       navigate(`/host/setup/${party.party_code}`);
     } else {
       navigate(`/player/dashboard/${party.party_code}`);
     }
   };
 
-  const getStatusBadge = (status: string | null, isDemo: boolean | null) => {
-    const badges = [];
-    
-    if (isDemo) {
-      badges.push(
-        <Badge key="demo" variant="outline" className="bg-muted/50 text-muted-foreground">
-          Demo
-        </Badge>
-      );
-    }
-    
-    switch (status) {
-      case "live":
-        badges.push(<Badge key="status" className="bg-primary/20 text-primary border-primary/30">Live</Badge>);
-        break;
-      case "ended":
-        badges.push(<Badge key="status" variant="secondary">Ended</Badge>);
-        break;
-      default:
-        badges.push(<Badge key="status" variant="outline">Pre-Event</Badge>);
-    }
-    
-    return <div className="flex items-center gap-2">{badges}</div>;
-  };
-
-  // Split parties into hosted and joined
-  const hostedParties = parties.filter(p => p.is_host);
-  const joinedParties = parties.filter(p => !p.is_host);
+  // Filter parties into active (pre_event, live) and ended
+  const activeParties = parties.filter(p => p.status !== "ended");
+  const activeHostedParties = activeParties.filter(p => p.is_host);
+  const activeJoinedParties = activeParties.filter(p => !p.is_host);
+  
+  const hasActiveContent = soloPlayer || activeParties.length > 0;
+  const hasPastContent = pastEvents.length > 0;
+  const hasNoAccess = !hasActiveContent && !hasPastContent;
 
   if (authLoading || isLoading) {
     return (
@@ -205,6 +272,28 @@ export default function MyParties() {
       </div>
     );
   }
+
+  const getStatusBadge = (status: string | null, isDemo: boolean | null) => {
+    const badges = [];
+    
+    if (isDemo) {
+      badges.push(
+        <Badge key="demo" variant="outline" className="bg-muted/50 text-muted-foreground text-xs">
+          Demo
+        </Badge>
+      );
+    }
+    
+    switch (status) {
+      case "live":
+        badges.push(<Badge key="status" className="bg-primary/20 text-primary border-primary/30 text-xs">Live</Badge>);
+        break;
+      default:
+        badges.push(<Badge key="status" variant="outline" className="text-xs">Pre-Event</Badge>);
+    }
+    
+    return <div className="flex items-center gap-1.5">{badges}</div>;
+  };
 
   const PartyCard = ({ party }: { party: PartyMembership }) => (
     <button
@@ -223,13 +312,16 @@ export default function MyParties() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono font-bold">{party.party_code}</span>
+              {party.is_host && (
+                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">Host</Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground">
               {party.display_name} - {party.points} pts
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {getStatusBadge(party.status, party.is_demo)}
           <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
         </div>
@@ -237,34 +329,73 @@ export default function MyParties() {
     </button>
   );
 
-  const SectionHeader = ({ 
-    title, 
-    count, 
-    icon: Icon, 
-    isOpen, 
-    onToggle 
-  }: { 
-    title: string; 
-    count: number; 
-    icon: React.ElementType;
-    isOpen: boolean;
-    onToggle: () => void;
-  }) => (
-    <CollapsibleTrigger asChild onClick={onToggle}>
-      <button className="w-full flex items-center justify-between py-3 px-1 group">
-        <div className="flex items-center gap-2">
-          <Icon className="h-5 w-5 text-primary" />
-          <span className="font-semibold">{title}</span>
-          <Badge variant="secondary" className="text-xs">{count}</Badge>
-        </div>
-        <ChevronDown 
-          className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "" : "-rotate-90"}`} 
-        />
-      </button>
-    </CollapsibleTrigger>
-  );
+  const PastEventCard = ({ event }: { event: PastEvent }) => {
+    const activeEventId = getActiveEventId();
+    const isCurrent = event.eventId === activeEventId;
 
-  const hasNoAccess = parties.length === 0 && !soloPlayer;
+    return (
+      <button
+        onClick={() => {
+          if (event.type === "party" && event.partyCode) {
+            if (event.isHost) {
+              navigate(`/host/setup/${event.partyCode}`);
+            } else {
+              navigate(`/player/dashboard/${event.partyCode}`);
+            }
+          } else {
+            navigate("/solo/dashboard");
+          }
+        }}
+        className={cn(
+          "w-full bg-card border rounded-xl p-4 hover:bg-muted/50 transition-colors text-left group",
+          isCurrent ? "border-primary/30" : "border-border"
+        )}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+              <Calendar className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">{event.eventTitle}</span>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    event.type === "solo" 
+                      ? "bg-muted/50 text-muted-foreground" 
+                      : "bg-primary/10 text-primary border-primary/30"
+                  )}
+                >
+                  {event.type === "solo" ? "Solo" : "Party"}
+                </Badge>
+                {isCurrent && (
+                  <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">Current</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span>
+                  {event.eventDate.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+                {event.totalScore !== null && (
+                  <span className="flex items-center gap-1 text-primary">
+                    <Trophy className="w-3 h-3" />
+                    {event.totalScore} pts
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center p-6 relative overflow-hidden">
@@ -313,98 +444,115 @@ export default function MyParties() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Solo Mode Section */}
-            {soloPlayer ? (
-              <Collapsible open={soloOpen} onOpenChange={setSoloOpen}>
-                <SectionHeader 
-                  title="Solo Mode" 
-                  count={1} 
-                  icon={User}
-                  isOpen={soloOpen}
-                  onToggle={() => setSoloOpen(!soloOpen)}
-                />
-                <CollapsibleContent className="space-y-2">
+            {/* ACTIVE Section */}
+            <Collapsible open={activeOpen} onOpenChange={setActiveOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between py-3 px-1 group">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">Active</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {(soloPlayer ? 1 : 0) + activeParties.length}
+                    </Badge>
+                  </div>
+                  <ChevronDown 
+                    className={cn("h-4 w-4 text-muted-foreground transition-transform", !activeOpen && "-rotate-90")} 
+                  />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4">
+                {/* Solo Mode Subsection */}
+                {soloPlayer ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-1">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-muted-foreground">Solo Mode</span>
+                    </div>
+                    <button
+                      onClick={() => navigate("/solo/dashboard")}
+                      className="w-full bg-card border border-border rounded-xl p-4 hover:bg-muted/50 transition-colors text-left group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-semibold">{soloPlayer.display_name}</div>
+                            <p className="text-sm text-muted-foreground">
+                              Track your own picks and results
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      </div>
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => navigate("/solo/dashboard")}
-                    className="w-full bg-card border border-border rounded-xl p-4 hover:bg-muted/50 transition-colors text-left group"
+                    onClick={() => navigate("/solo/setup")}
+                    className="w-full bg-card border border-dashed border-primary/30 rounded-xl p-4 hover:bg-primary/5 transition-colors text-left group"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <User className="h-5 w-5 text-primary" />
+                          <Sparkles className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <div className="font-semibold">{soloPlayer.display_name}</div>
+                          <div className="font-semibold text-primary">Start Solo Mode</div>
                           <p className="text-sm text-muted-foreground">
-                            Track your own picks and results
+                            Make picks on your own
                           </p>
                         </div>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <ChevronRight className="h-5 w-5 text-primary" />
                     </div>
                   </button>
-                </CollapsibleContent>
-              </Collapsible>
-            ) : (
-              <button
-                onClick={() => navigate("/solo/setup")}
-                className="w-full bg-card border border-dashed border-primary/30 rounded-xl p-4 hover:bg-primary/5 transition-colors text-left group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Sparkles className="h-5 w-5 text-primary" />
+                )}
+
+                {/* Party Mode Subsection */}
+                {activeParties.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-1">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-muted-foreground">Party Mode</span>
+                      <Badge variant="outline" className="text-xs">{activeParties.length}</Badge>
                     </div>
-                    <div>
-                      <div className="font-semibold text-primary">Start Solo Mode</div>
-                      <p className="text-sm text-muted-foreground">
-                        Make picks on your own
-                      </p>
+                    <div className="space-y-2">
+                      {activeHostedParties.map((party) => (
+                        <PartyCard key={party.player_id} party={party} />
+                      ))}
+                      {activeJoinedParties.map((party) => (
+                        <PartyCard key={party.player_id} party={party} />
+                      ))}
                     </div>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-primary" />
-                </div>
-              </button>
-            )}
+                )}
+              </CollapsibleContent>
+            </Collapsible>
 
-            {/* Hosted Parties Section */}
-            {hostedParties.length > 0 && (
-              <Collapsible open={hostedOpen} onOpenChange={setHostedOpen}>
-                <SectionHeader 
-                  title="My Hosted Parties" 
-                  count={hostedParties.length} 
-                  icon={Crown}
-                  isOpen={hostedOpen}
-                  onToggle={() => setHostedOpen(!hostedOpen)}
-                />
+            {/* PAST Section */}
+            {hasPastContent && (
+              <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center justify-between py-3 px-1 group">
+                    <div className="flex items-center gap-2">
+                      <History className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-semibold">Past</span>
+                      <Badge variant="secondary" className="text-xs">{pastEvents.length}</Badge>
+                    </div>
+                    <ChevronDown 
+                      className={cn("h-4 w-4 text-muted-foreground transition-transform", !pastOpen && "-rotate-90")} 
+                    />
+                  </button>
+                </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-2">
-                  {hostedParties.map((party) => (
-                    <PartyCard key={party.player_id} party={party} />
+                  {pastEvents.map((event, idx) => (
+                    <PastEventCard key={`${event.eventId}-${event.type}-${idx}`} event={event} />
                   ))}
                 </CollapsibleContent>
               </Collapsible>
             )}
-
-            {/* Joined Parties Section */}
-            {joinedParties.length > 0 && (
-              <Collapsible open={joinedOpen} onOpenChange={setJoinedOpen}>
-                <SectionHeader 
-                  title="Parties I've Joined" 
-                  count={joinedParties.length} 
-                  icon={Users}
-                  isOpen={joinedOpen}
-                  onToggle={() => setJoinedOpen(!joinedOpen)}
-                />
-                <CollapsibleContent className="space-y-2">
-                  {joinedParties.map((party) => (
-                    <PartyCard key={party.player_id} party={party} />
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-
-            {/* Pick History Section */}
-            <PickHistorySection userId={user!.id} />
 
             <Button 
               variant="outline" 
