@@ -159,8 +159,9 @@ export default function MyParties() {
 
   const fetchPastEvents = async () => {
     const events: PastEvent[] = [];
+    const now = new Date();
 
-    // Get solo picks grouped by event
+    // Get solo picks grouped by event - only include events that have ended
     const { data: soloPlayer } = await supabase
       .from("solo_players")
       .select("id")
@@ -183,7 +184,8 @@ export default function MyParties() {
 
         Object.entries(byEvent).forEach(([eventId, picks]) => {
           const eventConfig = EVENT_REGISTRY[eventId];
-          if (eventConfig) {
+          // Only include if event has actually ended (passed + buffer)
+          if (eventConfig && isEventExpired(eventId)) {
             events.push({
               eventId,
               eventTitle: eventConfig.title,
@@ -218,15 +220,12 @@ export default function MyParties() {
           const player = partyPlayers.find(p => p.party_code === party.code);
           const eventConfig = EVENT_REGISTRY[party.event_id];
           
-          // Avoid duplicates if same event already exists from solo
-          const existingSolo = events.find(e => e.eventId === party.event_id && e.type === "solo");
-          
           if (eventConfig && player) {
             events.push({
               eventId: party.event_id,
               eventTitle: eventConfig.title,
               eventDate: eventConfig.nights[0]?.date || new Date(),
-              picksCount: 0, // We could fetch this but it's not critical
+              picksCount: 0,
               totalScore: player.points,
               type: "party",
               partyCode: party.code,
