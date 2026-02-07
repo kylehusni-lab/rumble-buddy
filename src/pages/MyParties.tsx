@@ -206,8 +206,7 @@ export default function MyParties() {
     for (const party of parties) {
       const eventConfig = EVENT_REGISTRY[party.event_id];
       if (!eventConfig) continue;
-
-      const isPast = party.status === "ended";
+      const isPast = party.status === "ended" || party.status === "completed";
 
       if (!groupMap.has(party.event_id)) {
         groupMap.set(party.event_id, {
@@ -302,6 +301,10 @@ export default function MyParties() {
     switch (status) {
       case "live":
         badges.push(<Badge key="status" className="bg-primary/20 text-primary border-primary/30 text-xs">Live</Badge>);
+        break;
+      case "completed":
+      case "ended":
+        badges.push(<Badge key="status" variant="outline" className="text-xs bg-muted/50">Completed</Badge>);
         break;
       default:
         badges.push(<Badge key="status" variant="outline" className="text-xs">Pre-Event</Badge>);
