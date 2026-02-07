@@ -649,6 +649,7 @@ export type Database = {
           id: string
         }[]
       }
+      mark_party_ended: { Args: { p_party_code: string }; Returns: boolean }
       save_solo_pick:
         | {
             Args: {

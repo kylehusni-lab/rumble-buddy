@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Plus, LogOut, Crown, ChevronRight, Loader2, ChevronDown, User, Sparkles, History } from "lucide-react";
+import { Users, Plus, LogOut, Crown, ChevronRight, Loader2, ChevronDown, User, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OttLogoImage } from "@/components/logo";
@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getPlayerSession, setPlayerSession } from "@/lib/session";
+import { PickHistorySection } from "@/components/dashboard/PickHistorySection";
+import { isEventExpired } from "@/lib/events";
 
 interface PartyMembership {
   player_id: string;
@@ -19,6 +21,7 @@ interface PartyMembership {
   status: string | null;
   is_host: boolean;
   is_demo: boolean | null;
+  event_id: string;
 }
 
 interface SoloPlayerInfo {
@@ -77,11 +80,11 @@ export default function MyParties() {
       return;
     }
 
-    // Fetch party statuses including is_demo
+    // Fetch party statuses including is_demo and event_id
     const partyCodes = playerData.map(p => p.party_code);
     const { data: partyData, error: partyError } = await supabase
-      .from("parties_public")
-      .select("code, status, is_demo")
+      .from("parties")
+      .select("code, status, is_demo, event_id")
       .in("code", partyCodes);
 
     if (partyError) throw partyError;
@@ -105,8 +108,21 @@ export default function MyParties() {
         status: partyInfo?.status || "pre_event",
         is_host: hostCodes.has(player.party_code),
         is_demo: partyInfo?.is_demo || false,
+        event_id: partyInfo?.event_id || "unknown",
       };
     });
+
+    // Auto-expire parties that are live but the event has ended
+    for (const party of combined) {
+      if (party.status === "live" && party.is_host && isEventExpired(party.event_id)) {
+        try {
+          await supabase.rpc("mark_party_ended", { p_party_code: party.party_code });
+          party.status = "ended";
+        } catch (err) {
+          console.error("Failed to auto-expire party:", party.party_code, err);
+        }
+      }
+    }
 
     // Sync localStorage session if user is host of any party
     const session = getPlayerSession();
@@ -387,24 +403,17 @@ export default function MyParties() {
               </Collapsible>
             )}
 
-            <div className="flex gap-2 mt-4">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => navigate("/join")}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Join Party
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => navigate("/pick-history")}
-              >
-                <History className="h-4 w-4 mr-2" />
-                Pick History
-              </Button>
-            </div>
+            {/* Pick History Section */}
+            <PickHistorySection userId={user!.id} />
+
+            <Button 
+              variant="outline" 
+              className="w-full mt-4"
+              onClick={() => navigate("/join")}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Join a Party
+            </Button>
           </div>
         )}
       </div>
