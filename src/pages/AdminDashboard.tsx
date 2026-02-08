@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, Mail, Check, X, Clock, LogOut, RefreshCw, Users, UserCheck, XCircle, Database } from "lucide-react";
+import { Loader2, Mail, Check, X, Clock, LogOut, RefreshCw, Users, UserCheck, XCircle, Database, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OttLogoImage } from "@/components/logo";
 import { ActivePartiesTab } from "@/components/admin/ActivePartiesTab";
 import { WrestlerDatabaseTab } from "@/components/admin/WrestlerDatabaseTab";
+import { EventsTab } from "@/components/admin/EventsTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -278,12 +279,16 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 max-w-lg">
+          <TabsList className="grid w-full grid-cols-4 max-w-xl">
             <TabsTrigger value="requests">Requests</TabsTrigger>
             <TabsTrigger value="parties">Parties</TabsTrigger>
             <TabsTrigger value="wrestlers" className="flex items-center gap-1">
               <Database className="w-3 h-3" />
               Wrestlers
+            </TabsTrigger>
+            <TabsTrigger value="events" className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              Events
             </TabsTrigger>
           </TabsList>
 
@@ -402,6 +407,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="wrestlers" className="mt-6">
             <WrestlerDatabaseTab />
+          </TabsContent>
+
+          <TabsContent value="events" className="mt-6">
+            <EventsTab />
           </TabsContent>
         </Tabs>
       </main>
