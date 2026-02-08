@@ -59,6 +59,157 @@ export type Database = {
         }
         Relationships: []
       }
+      event_matches: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          is_active: boolean
+          match_id: string
+          match_type: string
+          night: string | null
+          options: Json
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          is_active?: boolean
+          match_id: string
+          match_type?: string
+          night?: string | null
+          options?: Json
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          is_active?: boolean
+          match_id?: string
+          match_type?: string
+          night?: string | null
+          options?: Json
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_matches_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_props: {
+        Row: {
+          category: string
+          created_at: string
+          event_id: string
+          gender: string | null
+          id: string
+          is_active: boolean
+          night: string | null
+          options: Json | null
+          prop_id: string
+          prop_type: string
+          question: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          event_id: string
+          gender?: string | null
+          id?: string
+          is_active?: boolean
+          night?: string | null
+          options?: Json | null
+          prop_id: string
+          prop_type?: string
+          question: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          event_id?: string
+          gender?: string | null
+          id?: string
+          is_active?: boolean
+          night?: string | null
+          options?: Json | null
+          prop_id?: string
+          prop_type?: string
+          question?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_props_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          location: string | null
+          nights: Json
+          scoring: Json
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          venue: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          is_active?: boolean
+          location?: string | null
+          nights?: Json
+          scoring?: Json
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          nights?: Json
+          scoring?: Json
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
       match_results: {
         Row: {
           id: string
