@@ -82,6 +82,7 @@ export default function DemoMode() {
         host_user_id: currentUser.id,
         status: "pre_event",
         is_demo: true,
+        event_id: "rumble_2026",
       });
 
       if (partyError) throw partyError;
