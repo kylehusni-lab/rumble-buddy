@@ -78,6 +78,34 @@ export function MatchFormModal({ event, match, defaultNight, onClose }: MatchFor
   // Track divisions of selected wrestlers
   const [wrestlerDivisions, setWrestlerDivisions] = useState<Record<string, string>>({});
 
+  // Seed wrestler divisions from cache for existing names
+  useEffect(() => {
+    const allNames = isTag
+      ? [...team1, ...team2].filter(n => n.trim())
+      : formData.options.filter(n => n.trim());
+    if (allNames.length === 0) return;
+    // Import cached wrestlers from WrestlerSelect module
+    import("./WrestlerSelect").then(() => {
+      // cachedWrestlers is module-level; fetch fresh if needed
+      supabase
+        .from("wrestlers")
+        .select("name, division")
+        .eq("is_active", true)
+        .then(({ data }) => {
+          if (!data) return;
+          const divMap: Record<string, string> = {};
+          data.forEach(w => {
+            if (allNames.some(n => n.toLowerCase() === w.name.toLowerCase())) {
+              divMap[w.name] = w.division;
+            }
+          });
+          if (Object.keys(divMap).length > 0) {
+            setWrestlerDivisions(prev => ({ ...prev, ...divMap }));
+          }
+        });
+    });
+  }, [formData.options, team1, team2, isTag]);
+
   useEffect(() => {
     if (match) {
       const isTag = match.match_type === "tag";
