@@ -239,24 +239,32 @@ export function MatchFormModal({ event, match, defaultNight, onClose }: MatchFor
       ? match.sort_order
       : (event.event_matches?.filter(m => m.night === (formData.night || null)).length || 0);
 
-    const payload = {
-      event_id: event.id,
-      match_id: formData.match_id,
-      title: formData.title,
-      match_type: formData.match_type,
-      options: finalOptions,
-      night: formData.night || null,
-      sort_order: nextSortOrder,
-      is_active: formData.is_active,
-      is_title_match: formData.is_title_match,
-      championship_name: formData.is_title_match ? formData.championship_name || null : null,
-    };
-
     let success = false;
     if (match) {
-      success = await updateMatch(match.id, payload);
+      // Only send editable fields on update
+      success = await updateMatch(match.id, {
+        title: formData.title,
+        match_type: formData.match_type,
+        options: finalOptions,
+        night: formData.night || null,
+        sort_order: nextSortOrder,
+        is_active: formData.is_active,
+        is_title_match: formData.is_title_match,
+        championship_name: formData.is_title_match ? formData.championship_name || null : null,
+      });
     } else {
-      success = await createMatch(payload);
+      success = await createMatch({
+        event_id: event.id,
+        match_id: formData.match_id,
+        title: formData.title,
+        match_type: formData.match_type,
+        options: finalOptions,
+        night: formData.night || null,
+        sort_order: nextSortOrder,
+        is_active: formData.is_active,
+        is_title_match: formData.is_title_match,
+        championship_name: formData.is_title_match ? formData.championship_name || null : null,
+      });
     }
 
     setIsSubmitting(false);
