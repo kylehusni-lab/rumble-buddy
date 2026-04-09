@@ -26,6 +26,8 @@ export interface DbEventMatch {
   night: string | null;
   sort_order: number;
   is_active: boolean;
+  is_title_match: boolean;
+  championship_name: string | null;
 }
 
 export interface DbEventProp {
