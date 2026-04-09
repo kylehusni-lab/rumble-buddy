@@ -159,32 +159,56 @@ export const UnifiedMatchesTab = memo(function UnifiedMatchesTab({
   scoring: propScoring,
   isRumble: propIsRumble,
 }: UnifiedMatchesTabProps) {
-  // Use context if available, otherwise use props
   const eventContext = useEventConfig();
   const cardConfig = propCardConfig || eventContext.CARD_CONFIG;
   const scoring = propScoring || eventContext.SCORING;
   const isRumble = propIsRumble ?? eventContext.isRumble;
+  const nights = eventContext.nights;
 
   const normalizedPicks = normalizePicks(picks);
   const normalizedResults = normalizeResults(results);
   
   const matchCards = cardConfig.filter(c => c.type === "match");
 
+  // Check if multi-night by seeing if any cards have a night property
+  const hasNights = matchCards.some(c => c.night);
+
+  const renderMatchRow = (card: CardConfig) => (
+    <MatchRow
+      key={card.id}
+      id={card.id}
+      label={card.title}
+      pick={normalizedPicks[card.id]}
+      result={normalizedResults[card.id]}
+      points={scoring.UNDERCARD_WINNER}
+      canEdit={canEdit}
+      onEdit={() => onEditPick?.(card.id, normalizedPicks[card.id] || "")}
+    />
+  );
+
+  // Group by night for multi-night events
+  const nightGroups = hasNights
+    ? Array.from(new Set(matchCards.map(c => c.night).filter(Boolean))).map(nightId => ({
+        nightId,
+        label: nights?.find(n => n.id === nightId)?.label || nightId || '',
+        cards: matchCards.filter(c => c.night === nightId),
+      }))
+    : null;
+
   return (
     <div className="space-y-3">
-      {matchCards.map((card) => (
-        <MatchRow
-          key={card.id}
-          id={card.id}
-          label={card.title}
-          pick={normalizedPicks[card.id]}
-          result={normalizedResults[card.id]}
-          points={scoring.UNDERCARD_WINNER}
-          canEdit={canEdit}
-          onEdit={() => onEditPick?.(card.id, normalizedPicks[card.id] || "")}
-        />
-      ))}
-      {/* Only show Rumble winners for Rumble events */}
+      {nightGroups ? (
+        nightGroups.map(group => (
+          <div key={group.nightId} className="space-y-3">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground pt-2">
+              {group.label}
+            </h3>
+            {group.cards.map(renderMatchRow)}
+          </div>
+        ))
+      ) : (
+        matchCards.map(renderMatchRow)
+      )}
       {isRumble && ["mens_rumble_winner", "womens_rumble_winner"].map((id) => (
         <MatchRow
           key={id}
