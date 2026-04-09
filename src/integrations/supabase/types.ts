@@ -61,10 +61,12 @@ export type Database = {
       }
       event_matches: {
         Row: {
+          championship_name: string | null
           created_at: string
           event_id: string
           id: string
           is_active: boolean
+          is_title_match: boolean
           match_id: string
           match_type: string
           night: string | null
@@ -74,10 +76,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          championship_name?: string | null
           created_at?: string
           event_id: string
           id?: string
           is_active?: boolean
+          is_title_match?: boolean
           match_id: string
           match_type?: string
           night?: string | null
@@ -87,10 +91,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          championship_name?: string | null
           created_at?: string
           event_id?: string
           id?: string
           is_active?: boolean
+          is_title_match?: boolean
           match_id?: string
           match_type?: string
           night?: string | null
