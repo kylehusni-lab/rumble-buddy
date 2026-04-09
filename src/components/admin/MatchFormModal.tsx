@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { X, Plus, Trash2, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,21 +79,46 @@ export function MatchFormModal({ event, match, defaultNight, onClose }: MatchFor
   // Track divisions of selected wrestlers
   const [wrestlerDivisions, setWrestlerDivisions] = useState<Record<string, string>>({});
 
+  // Seed wrestler divisions from cache for existing names
+  useEffect(() => {
+    const isTagType = formData.match_type === "tag";
+    const allNames = isTagType
+      ? [...team1, ...team2].filter(n => n.trim())
+      : formData.options.filter(n => n.trim());
+    if (allNames.length === 0) return;
+    supabase
+      .from("wrestlers")
+      .select("name, division")
+      .eq("is_active", true)
+      .then(({ data }) => {
+        if (!data) return;
+        const divMap: Record<string, string> = {};
+        data.forEach(w => {
+          if (allNames.some(n => n.toLowerCase() === w.name.toLowerCase())) {
+            divMap[w.name] = w.division;
+          }
+        });
+        if (Object.keys(divMap).length > 0) {
+          setWrestlerDivisions(prev => ({ ...prev, ...divMap }));
+        }
+      });
+  }, [formData.options, team1, team2, formData.match_type]);
+
   useEffect(() => {
     if (match) {
-      const isTag = match.match_type === "tag";
+      const isTagMatch = match.match_type === "tag";
       const opts = match.options?.length > 0 ? match.options : ["", ""];
       setFormData({
         match_id: match.match_id,
         title: match.title,
         match_type: match.match_type,
-        options: isTag ? ["", ""] : opts,
+        options: isTagMatch ? ["", ""] : opts,
         night: match.night || "",
         is_active: match.is_active,
         is_title_match: match.is_title_match || false,
         championship_name: match.championship_name || "",
       });
-      if (isTag) {
+      if (isTagMatch) {
         const [t1, t2] = parseTagTeams(opts);
         setTeam1(t1);
         setTeam2(t2);
