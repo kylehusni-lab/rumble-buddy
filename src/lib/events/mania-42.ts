@@ -9,14 +9,14 @@ export const MANIA_42_NIGHT1_MATCHES: MatchConfig[] = [
   {
     id: 'wm42_n1_undisputed',
     title: 'Undisputed WWE Championship',
-    options: ['Cody Rhodes (c)', 'Randy Orton'],
+    options: ['Cody Rhodes', 'Randy Orton'],
     matchType: 'singles',
     night: 'night_1',
   },
   {
     id: 'wm42_n1_womens_world',
     title: "Women's World Championship",
-    options: ['Stephanie Vaquer (c)', 'Liv Morgan'],
+    options: ['Stephanie Vaquer', 'Liv Morgan'],
     matchType: 'singles',
     night: 'night_1',
   },
@@ -30,7 +30,7 @@ export const MANIA_42_NIGHT1_MATCHES: MatchConfig[] = [
   {
     id: 'wm42_n1_womens_ic',
     title: "Women's Intercontinental Championship",
-    options: ['AJ Lee (c)', 'Becky Lynch'],
+    options: ['AJ Lee', 'Becky Lynch'],
     matchType: 'singles',
     night: 'night_1',
   },
@@ -38,7 +38,7 @@ export const MANIA_42_NIGHT1_MATCHES: MatchConfig[] = [
     id: 'wm42_n1_womens_tag',
     title: "WWE Women's Tag Team Championship",
     options: [
-      'Nia Jax & Lash Legend (c)',
+      'Nia Jax & Lash Legend',
       'Charlotte Flair & Alexa Bliss',
       'Bayley & Lyra Valkyria',
       'The Bella Twins',
@@ -71,14 +71,14 @@ export const MANIA_42_NIGHT2_MATCHES: MatchConfig[] = [
   {
     id: 'wm42_n2_whc',
     title: 'World Heavyweight Championship',
-    options: ['CM Punk (c)', 'Roman Reigns'],
+    options: ['CM Punk', 'Roman Reigns'],
     matchType: 'singles',
     night: 'night_2',
   },
   {
     id: 'wm42_n2_womens_wwe',
     title: "WWE Women's Championship",
-    options: ['Jade Cargill (c)', 'Rhea Ripley'],
+    options: ['Jade Cargill', 'Rhea Ripley'],
     matchType: 'singles',
     night: 'night_2',
   },
@@ -92,7 +92,7 @@ export const MANIA_42_NIGHT2_MATCHES: MatchConfig[] = [
   {
     id: 'wm42_n2_us',
     title: 'United States Championship',
-    options: ['Sami Zayn (c)', 'Trick Williams'],
+    options: ['Sami Zayn', 'Trick Williams'],
     matchType: 'singles',
     night: 'night_2',
   },
@@ -107,7 +107,7 @@ export const MANIA_42_NIGHT2_MATCHES: MatchConfig[] = [
     id: 'wm42_n2_ic_ladder',
     title: 'Intercontinental Championship Ladder Match',
     options: [
-      'Penta (c)',
+      'Penta',
       "Je'Von Evans",
       'Dragon Lee',
       'JD McDonagh',
