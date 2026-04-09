@@ -3,6 +3,7 @@
 import type { EventConfig } from './types';
 import { RUMBLE_2026_CONFIG } from './rumble-2026';
 import { MANIA_41_CONFIG } from './mania-41';
+import { MANIA_42_CONFIG } from './mania-42';
 
 // Re-export types for convenience
 export * from './types';
@@ -11,11 +12,12 @@ export * from './types';
 export const EVENT_REGISTRY: Record<string, EventConfig> = {
   'rumble_2026': RUMBLE_2026_CONFIG,
   'mania_41': MANIA_41_CONFIG,
+  'mania_42': MANIA_42_CONFIG,
 };
 
 // Current active event ID - change this to switch events
 // In the future, this could be database-driven via platform_config
-const ACTIVE_EVENT_ID = 'mania_41';
+const ACTIVE_EVENT_ID = 'mania_42';
 
 /**
  * Get the currently active event ID
@@ -98,6 +100,7 @@ export function isEventExpired(eventId: string, hoursBuffer: number = 5): boolea
 // Export individual event configs
 export { RUMBLE_2026_CONFIG } from './rumble-2026';
 export { MANIA_41_CONFIG } from './mania-41';
+export { MANIA_42_CONFIG } from './mania-42';
 
 // Export Rumble-specific items for Demo Mode and backward compatibility
 export {
