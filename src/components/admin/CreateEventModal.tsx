@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { useEventAdmin } from "@/hooks/useEventAdmin";
 
 interface CreateEventModalProps {
@@ -11,10 +15,16 @@ interface CreateEventModalProps {
   onCreated: () => void;
 }
 
+const TYPE_DESCRIPTIONS: Record<string, string> = {
+  standard_ple: "Standard single-night premium live event",
+  mania: "Multi-night event like WrestleMania",
+  rumble: "Enables entry tracking and elimination mechanics",
+};
+
 export function CreateEventModal({ onClose, onCreated }: CreateEventModalProps) {
   const { createEvent } = useEventAdmin();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     id: "",
     title: "",
@@ -22,6 +32,11 @@ export function CreateEventModal({ onClose, onCreated }: CreateEventModalProps) 
     venue: "",
     location: "",
   });
+
+  const [date1, setDate1] = useState<Date>();
+  const [date2, setDate2] = useState<Date>();
+
+  const isTwoNight = formData.type === "mania";
 
   const generateId = (title: string) => {
     return title
@@ -38,6 +53,19 @@ export function CreateEventModal({ onClose, onCreated }: CreateEventModalProps) 
     }));
   };
 
+  const buildNights = () => {
+    if (isTwoNight) {
+      const nights = [];
+      if (date1) nights.push({ id: "night_1", label: "Night 1 - Saturday", date: date1.toISOString() });
+      if (date2) nights.push({ id: "night_2", label: "Night 2 - Sunday", date: date2.toISOString() });
+      return nights;
+    }
+    if (date1) {
+      return [{ id: "night_1", label: "Night 1", date: date1.toISOString() }];
+    }
+    return [];
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.id || !formData.title) return;
@@ -50,8 +78,8 @@ export function CreateEventModal({ onClose, onCreated }: CreateEventModalProps) 
       venue: formData.venue || null,
       location: formData.location || null,
       status: "draft",
-      nights: [],
-      scoring: formData.type === "rumble" 
+      nights: buildNights(),
+      scoring: formData.type === "rumble"
         ? { UNDERCARD_WINNER: 10, PROP_BET: 5, RUMBLE_WINNER_PICK: 25, ELIMINATION: 5 }
         : { UNDERCARD_WINNER: 25, PROP_BET: 10 },
       is_active: false,
@@ -65,7 +93,7 @@ export function CreateEventModal({ onClose, onCreated }: CreateEventModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-      <div className="bg-background border border-border rounded-xl w-full max-w-md">
+      <div className="bg-background border border-border rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold">Create New Event</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -78,7 +106,7 @@ export function CreateEventModal({ onClose, onCreated }: CreateEventModalProps) 
             <Label htmlFor="title">Event Title</Label>
             <Input
               id="title"
-              placeholder="e.g., WrestleMania 41"
+              placeholder="e.g., WrestleMania 42"
               value={formData.title}
               onChange={(e) => handleTitleChange(e.target.value)}
               required
@@ -89,7 +117,7 @@ export function CreateEventModal({ onClose, onCreated }: CreateEventModalProps) 
             <Label htmlFor="id">Event ID</Label>
             <Input
               id="id"
-              placeholder="e.g., mania_41"
+              placeholder="e.g., mania_42"
               value={formData.id}
               onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
               required
@@ -104,20 +132,82 @@ export function CreateEventModal({ onClose, onCreated }: CreateEventModalProps) 
             <Label>Event Type</Label>
             <Select
               value={formData.type}
-              onValueChange={(v) => setFormData(prev => ({ ...prev, type: v as any }))}
+              onValueChange={(v) => {
+                setFormData(prev => ({ ...prev, type: v as any }));
+                if (v !== "mania") setDate2(undefined);
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="standard_ple">Standard PLE</SelectItem>
+                <SelectItem value="standard_ple">1 Night PLE</SelectItem>
+                <SelectItem value="mania">2 Night PLE</SelectItem>
                 <SelectItem value="rumble">Royal Rumble</SelectItem>
-                <SelectItem value="mania">WrestleMania</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Rumble type enables entry tracking and elimination mechanics
+              {TYPE_DESCRIPTIONS[formData.type]}
             </p>
+          </div>
+
+          {/* Date picker(s) */}
+          <div className={cn("grid gap-3", isTwoNight ? "grid-cols-2" : "grid-cols-1")}>
+            <div className="space-y-2">
+              <Label>{isTwoNight ? "Night 1" : "Event Date"}</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date1 && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date1 ? format(date1, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date1}
+                    onSelect={setDate1}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {isTwoNight && (
+              <div className="space-y-2">
+                <Label>Night 2</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !date2 && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date2 ? format(date2, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date2}
+                      onSelect={setDate2}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
