@@ -69,11 +69,16 @@ export function MatchesConfigTab({ event }: MatchesConfigTabProps) {
           <GripVertical className="w-4 h-4 text-muted-foreground shrink-0 cursor-grab" />
           
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium truncate">{match.title}</span>
               <Badge variant="outline" className="text-xs shrink-0">
                 {MATCH_TYPE_LABELS[match.match_type] || match.match_type}
               </Badge>
+              {match.is_title_match && match.championship_name && (
+                <Badge className="text-xs shrink-0 bg-amber-500/20 text-amber-400 border-amber-500/30">
+                  {match.championship_name}
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground truncate">
               {match.options?.join(" vs ") || "No participants set"}
