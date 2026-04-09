@@ -29,7 +29,10 @@ export function isUnconfirmedEntrant(name: string): boolean {
  * Get the display name for an entrant (removes * prefix if present)
  */
 export function getEntrantDisplayName(name: string): string {
-  return name.startsWith('*') ? name.slice(1) : name;
+  let display = name.startsWith('*') ? name.slice(1) : name;
+  // Strip champion indicator for clean lookups
+  display = display.replace(/\s*\(c\)$/i, '');
+  return display;
 }
 
 /**
