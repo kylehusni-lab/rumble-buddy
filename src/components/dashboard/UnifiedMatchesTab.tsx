@@ -163,7 +163,7 @@ export const UnifiedMatchesTab = memo(function UnifiedMatchesTab({
   const cardConfig = propCardConfig || eventContext.CARD_CONFIG;
   const scoring = propScoring || eventContext.SCORING;
   const isRumble = propIsRumble ?? eventContext.isRumble;
-  const nights = eventContext.nights;
+  const nights = eventContext.eventConfig?.nights;
 
   const normalizedPicks = normalizePicks(picks);
   const normalizedResults = normalizeResults(results);
