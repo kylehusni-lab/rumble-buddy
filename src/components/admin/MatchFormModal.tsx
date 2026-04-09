@@ -121,7 +121,7 @@ export function MatchFormModal({ event, match, defaultNight, onClose }: MatchFor
         is_title_match: match.is_title_match || false,
         championship_name: match.championship_name || "",
       });
-      if (isTag) {
+      if (isTagMatch) {
         const [t1, t2] = parseTagTeams(opts);
         setTeam1(t1);
         setTeam2(t2);
