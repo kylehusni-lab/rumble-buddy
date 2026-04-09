@@ -115,7 +115,7 @@ export function MatchFormModal({ event, match, defaultNight, onClose }: MatchFor
         match_id: match.match_id,
         title: match.title,
         match_type: match.match_type,
-        options: isTag ? ["", ""] : opts,
+        options: isTagMatch ? ["", ""] : opts,
         night: match.night || "",
         is_active: match.is_active,
         is_title_match: match.is_title_match || false,
