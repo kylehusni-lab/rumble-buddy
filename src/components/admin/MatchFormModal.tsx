@@ -109,7 +109,7 @@ export function MatchFormModal({ event, match, defaultNight, onClose }: MatchFor
 
   useEffect(() => {
     if (match) {
-      const isTag = match.match_type === "tag";
+      const isTagMatch = match.match_type === "tag";
       const opts = match.options?.length > 0 ? match.options : ["", ""];
       setFormData({
         match_id: match.match_id,
