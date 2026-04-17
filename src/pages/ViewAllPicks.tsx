@@ -314,14 +314,22 @@ export default function ViewAllPicks() {
                                       {pick ? (
                                         isWrestlerPick ? (
                                           <div className="flex flex-col items-center">
-                                            <img
-                                              src={getWrestlerImageUrl(pick)}
-                                              alt={pick}
-                                              className="w-8 h-8 rounded-full object-cover border border-border"
-                                              onError={(e) => {
-                                                (e.target as HTMLImageElement).src = getPlaceholderImageUrl(pick);
-                                              }}
-                                            />
+                                            {splitTeamMembers(pick).length > 1 ? (
+                                              <TeamAvatars
+                                                name={pick}
+                                                sizePx={32}
+                                                borderClassName="border border-border"
+                                              />
+                                            ) : (
+                                              <img
+                                                src={getWrestlerImageUrl(pick)}
+                                                alt={pick}
+                                                className="w-8 h-8 rounded-full object-cover border border-border"
+                                                onError={(e) => {
+                                                  (e.target as HTMLImageElement).src = getPlaceholderImageUrl(pick);
+                                                }}
+                                              />
+                                            )}
                                             <span className="text-[10px] truncate max-w-[80px] mt-0.5">
                                               {pick.replace(/^\*/, '')}
                                             </span>
