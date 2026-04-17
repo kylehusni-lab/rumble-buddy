@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { WrestlerImage } from "./WrestlerImage";
+import { TeamAvatars } from "@/components/picks/TeamAvatars";
+import { splitTeamMembers } from "@/lib/wrestler-data";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { Check } from "lucide-react";
 
@@ -125,17 +127,31 @@ export function ActiveMatchDisplay({ match, matchResults, players, picks }: Acti
             transition={{ delay: 0.2 }}
           >
             <div className="relative">
-              <WrestlerImage
-                name={wrestler1}
-                size="tv"
-                className={`border-4 shadow-lg ${
-                  result === wrestler1
-                    ? "border-success shadow-success/30"
-                    : result
-                      ? "border-muted opacity-50"
-                      : "border-primary/50 shadow-primary/20"
-                }`}
-              />
+              {splitTeamMembers(wrestler1).length > 1 ? (
+                <TeamAvatars
+                  name={wrestler1}
+                  sizePx={180}
+                  borderClassName={`border-4 shadow-lg ${
+                    result === wrestler1
+                      ? "border-success shadow-success/30"
+                      : result
+                        ? "border-muted opacity-50"
+                        : "border-primary/50 shadow-primary/20"
+                  }`}
+                />
+              ) : (
+                <WrestlerImage
+                  name={wrestler1}
+                  size="tv"
+                  className={`border-4 shadow-lg ${
+                    result === wrestler1
+                      ? "border-success shadow-success/30"
+                      : result
+                        ? "border-muted opacity-50"
+                        : "border-primary/50 shadow-primary/20"
+                  }`}
+                />
+              )}
               {result === wrestler1 && (
                 <div className="absolute -top-2 -right-2 bg-success rounded-full p-1.5">
                   <Check className="w-6 h-6 text-success-foreground" />
@@ -170,17 +186,31 @@ export function ActiveMatchDisplay({ match, matchResults, players, picks }: Acti
             transition={{ delay: 0.2 }}
           >
             <div className="relative">
-              <WrestlerImage
-                name={wrestler2}
-                size="tv"
-                className={`border-4 shadow-lg ${
-                  result === wrestler2
-                    ? "border-success shadow-success/30"
-                    : result
-                      ? "border-muted opacity-50"
-                      : "border-primary/50 shadow-primary/20"
-                }`}
-              />
+              {splitTeamMembers(wrestler2).length > 1 ? (
+                <TeamAvatars
+                  name={wrestler2}
+                  sizePx={180}
+                  borderClassName={`border-4 shadow-lg ${
+                    result === wrestler2
+                      ? "border-success shadow-success/30"
+                      : result
+                        ? "border-muted opacity-50"
+                        : "border-primary/50 shadow-primary/20"
+                  }`}
+                />
+              ) : (
+                <WrestlerImage
+                  name={wrestler2}
+                  size="tv"
+                  className={`border-4 shadow-lg ${
+                    result === wrestler2
+                      ? "border-success shadow-success/30"
+                      : result
+                        ? "border-muted opacity-50"
+                        : "border-primary/50 shadow-primary/20"
+                  }`}
+                />
+              )}
               {result === wrestler2 && (
                 <div className="absolute -top-2 -right-2 bg-success rounded-full p-1.5">
                   <Check className="w-6 h-6 text-success-foreground" />

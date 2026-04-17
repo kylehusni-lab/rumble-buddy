@@ -2,7 +2,8 @@ import React, { forwardRef, memo } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import { getWrestlerImageUrl, getPlaceholderImageUrl, splitTeamMembers } from "@/lib/wrestler-data";
+import { TeamAvatars } from "../TeamAvatars";
 import { SCORING } from "@/lib/constants";
 import { PickCardHeader } from "./PickCardHeader";
 
@@ -44,35 +45,60 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
             )}
             whileTap={!disabled ? { scale: 0.98 } : undefined}
           >
-            {/* Wrestler Photo */}
-            <div className={cn(
-              "relative rounded-full overflow-hidden border-4 transition-all duration-300",
-              "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28",
-              value === wrestler1 
-                ? "gold-selection-glow scale-105" 
-                : "border-primary/30"
-            )}>
-              <img
-                src={getWrestlerImageUrl(wrestler1)}
-                alt={wrestler1}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = getPlaceholderImageUrl(wrestler1);
-                }}
-              />
-              {/* Selection Checkmark */}
-              {value === wrestler1 && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute inset-0 bg-primary/20 flex items-center justify-center"
-                >
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+            {/* Wrestler Photo(s) */}
+            {splitTeamMembers(wrestler1).length > 1 ? (
+              <div className={cn(
+                "relative transition-all duration-300",
+                value === wrestler1 ? "scale-105" : ""
+              )}>
+                <TeamAvatars
+                  name={wrestler1}
+                  sizePx={88}
+                  borderClassName={cn(
+                    "border-4",
+                    value === wrestler1 ? "gold-selection-glow" : "border-primary/30"
+                  )}
+                />
+                {value === wrestler1 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center border-2 border-background"
+                  >
                     <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
-                  </div>
-                </motion.div>
-              )}
-            </div>
+                  </motion.div>
+                )}
+              </div>
+            ) : (
+              <div className={cn(
+                "relative rounded-full overflow-hidden border-4 transition-all duration-300",
+                "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28",
+                value === wrestler1 
+                  ? "gold-selection-glow scale-105" 
+                  : "border-primary/30"
+              )}>
+                <img
+                  src={getWrestlerImageUrl(wrestler1)}
+                  alt={wrestler1}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = getPlaceholderImageUrl(wrestler1);
+                  }}
+                />
+                {/* Selection Checkmark */}
+                {value === wrestler1 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute inset-0 bg-primary/20 flex items-center justify-center"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            )}
             
             {/* Wrestler Name */}
             <div className={cn(
@@ -115,35 +141,60 @@ export const FaceOffMatchCard = memo(forwardRef<HTMLDivElement, FaceOffMatchCard
             )}
             whileTap={!disabled ? { scale: 0.98 } : undefined}
           >
-            {/* Wrestler Photo */}
-            <div className={cn(
-              "relative rounded-full overflow-hidden border-4 transition-all duration-300",
-              "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28",
-              value === wrestler2 
-                ? "gold-selection-glow scale-105" 
-                : "border-secondary/30"
-            )}>
-              <img
-                src={getWrestlerImageUrl(wrestler2)}
-                alt={wrestler2}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = getPlaceholderImageUrl(wrestler2);
-                }}
-              />
-              {/* Selection Checkmark */}
-              {value === wrestler2 && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute inset-0 bg-primary/20 flex items-center justify-center"
-                >
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+            {/* Wrestler Photo(s) */}
+            {splitTeamMembers(wrestler2).length > 1 ? (
+              <div className={cn(
+                "relative transition-all duration-300",
+                value === wrestler2 ? "scale-105" : ""
+              )}>
+                <TeamAvatars
+                  name={wrestler2}
+                  sizePx={88}
+                  borderClassName={cn(
+                    "border-4",
+                    value === wrestler2 ? "gold-selection-glow" : "border-secondary/30"
+                  )}
+                />
+                {value === wrestler2 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center border-2 border-background"
+                  >
                     <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
-                  </div>
-                </motion.div>
-              )}
-            </div>
+                  </motion.div>
+                )}
+              </div>
+            ) : (
+              <div className={cn(
+                "relative rounded-full overflow-hidden border-4 transition-all duration-300",
+                "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28",
+                value === wrestler2 
+                  ? "gold-selection-glow scale-105" 
+                  : "border-secondary/30"
+              )}>
+                <img
+                  src={getWrestlerImageUrl(wrestler2)}
+                  alt={wrestler2}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = getPlaceholderImageUrl(wrestler2);
+                  }}
+                />
+                {/* Selection Checkmark */}
+                {value === wrestler2 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute inset-0 bg-primary/20 flex items-center justify-center"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-5 h-5 text-primary-foreground" strokeWidth={3} />
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            )}
             
             {/* Wrestler Name */}
             <div className={cn(

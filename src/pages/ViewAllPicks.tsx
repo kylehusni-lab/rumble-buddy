@@ -10,7 +10,8 @@ import {
   RUMBLE_PROPS, 
   FINAL_FOUR_SLOTS 
 } from "@/lib/constants";
-import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import { getWrestlerImageUrl, getPlaceholderImageUrl, splitTeamMembers } from "@/lib/wrestler-data";
+import { TeamAvatars } from "@/components/picks/TeamAvatars";
 import { cn } from "@/lib/utils";
 
 interface Player {
@@ -313,14 +314,22 @@ export default function ViewAllPicks() {
                                       {pick ? (
                                         isWrestlerPick ? (
                                           <div className="flex flex-col items-center">
-                                            <img
-                                              src={getWrestlerImageUrl(pick)}
-                                              alt={pick}
-                                              className="w-8 h-8 rounded-full object-cover border border-border"
-                                              onError={(e) => {
-                                                (e.target as HTMLImageElement).src = getPlaceholderImageUrl(pick);
-                                              }}
-                                            />
+                                            {splitTeamMembers(pick).length > 1 ? (
+                                              <TeamAvatars
+                                                name={pick}
+                                                sizePx={32}
+                                                borderClassName="border border-border"
+                                              />
+                                            ) : (
+                                              <img
+                                                src={getWrestlerImageUrl(pick)}
+                                                alt={pick}
+                                                className="w-8 h-8 rounded-full object-cover border border-border"
+                                                onError={(e) => {
+                                                  (e.target as HTMLImageElement).src = getPlaceholderImageUrl(pick);
+                                                }}
+                                              />
+                                            )}
                                             <span className="text-[10px] truncate max-w-[80px] mt-0.5">
                                               {pick.replace(/^\*/, '')}
                                             </span>
@@ -400,14 +409,22 @@ export default function ViewAllPicks() {
                                       )}
                                     >
                                       {pick && isWrestlerPick ? (
-                                        <img
-                                          src={getWrestlerImageUrl(pick)}
-                                          alt={pick}
-                                          className="w-10 h-10 rounded-full object-cover border-2 border-border"
-                                          onError={(e) => {
-                                            (e.target as HTMLImageElement).src = getPlaceholderImageUrl(pick);
-                                          }}
-                                        />
+                                        splitTeamMembers(pick).length > 1 ? (
+                                          <TeamAvatars
+                                            name={pick}
+                                            sizePx={40}
+                                            borderClassName="border-2 border-border"
+                                          />
+                                        ) : (
+                                          <img
+                                            src={getWrestlerImageUrl(pick)}
+                                            alt={pick}
+                                            className="w-10 h-10 rounded-full object-cover border-2 border-border"
+                                            onError={(e) => {
+                                              (e.target as HTMLImageElement).src = getPlaceholderImageUrl(pick);
+                                            }}
+                                          />
+                                        )
                                       ) : pick ? (
                                         <div className={cn(
                                           "w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold",

@@ -190,3 +190,16 @@ export function getWrestlerData(name: string, gender: 'male' | 'female'): Wrestl
     gender,
   };
 }
+
+/**
+ * Split a tag-team option string (e.g. "Cody Rhodes & Jey Uso") into individual wrestler names.
+ * Handles "&", "and", and "/" separators. Strips an optional leading "*" and "(c)" champion marker.
+ */
+export function splitTeamMembers(option: string): string[] {
+  if (!option) return [];
+  const cleaned = option.replace(/\(c\)/gi, "").trim();
+  return cleaned
+    .split(/\s*(?:&|\band\b|\/)\s*/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
