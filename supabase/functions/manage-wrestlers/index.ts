@@ -27,6 +27,7 @@ interface WrestlerData {
   short_name?: string;
   division?: "mens" | "womens";
   image_url?: string;
+  image_position?: string;
   is_rumble_participant?: boolean;
   is_confirmed?: boolean;
   names?: string[];
@@ -175,6 +176,7 @@ Deno.serve(async (req) => {
             short_name: data.short_name?.trim() || null,
             division: data.division,
             image_url: data.image_url || null,
+            image_position: data.image_position || 'center center',
             is_rumble_participant: data.is_rumble_participant ?? false,
             is_confirmed: data.is_confirmed ?? true,
           })
@@ -238,6 +240,10 @@ Deno.serve(async (req) => {
 
         if (data.image_url !== undefined) {
           updates.image_url = data.image_url;
+        }
+
+        if (data.image_position !== undefined) {
+          updates.image_position = data.image_position || 'center center';
         }
 
         if (data.is_rumble_participant !== undefined) {

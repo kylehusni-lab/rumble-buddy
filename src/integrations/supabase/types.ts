@@ -619,6 +619,7 @@ export type Database = {
           created_at: string | null
           division: string
           id: string
+          image_position: string
           image_url: string | null
           is_active: boolean | null
           is_confirmed: boolean | null
@@ -631,6 +632,7 @@ export type Database = {
           created_at?: string | null
           division: string
           id?: string
+          image_position?: string
           image_url?: string | null
           is_active?: boolean | null
           is_confirmed?: boolean | null
@@ -643,6 +645,7 @@ export type Database = {
           created_at?: string | null
           division?: string
           id?: string
+          image_position?: string
           image_url?: string | null
           is_active?: boolean | null
           is_confirmed?: boolean | null
