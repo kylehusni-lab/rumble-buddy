@@ -10,7 +10,8 @@ import {
   RUMBLE_PROPS, 
   FINAL_FOUR_SLOTS 
 } from "@/lib/constants";
-import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import { getWrestlerImageUrl, getPlaceholderImageUrl, splitTeamMembers } from "@/lib/wrestler-data";
+import { TeamAvatars } from "@/components/picks/TeamAvatars";
 import { cn } from "@/lib/utils";
 
 interface Player {
