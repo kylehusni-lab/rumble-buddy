@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { WrestlerImage } from "./WrestlerImage";
+import { TeamAvatars } from "@/components/picks/TeamAvatars";
+import { splitTeamMembers } from "@/lib/wrestler-data";
 import { UNDERCARD_MATCHES, SCORING } from "@/lib/constants";
 import { Check } from "lucide-react";
 
