@@ -12,6 +12,7 @@ import { UnifiedChaosTab } from "@/components/dashboard/UnifiedChaosTab";
 import { useSoloCloud } from "@/hooks/useSoloCloud";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useAuth } from "@/hooks/useAuth";
+import { useEventConfig } from "@/contexts/EventContext";
 import { 
   getSoloPicks, 
   getSoloResults, 
@@ -19,7 +20,6 @@ import {
   saveSoloPicks,
 } from "@/lib/solo-storage";
 import { 
-  CARD_CONFIG, 
   CHAOS_PROPS, 
   RUMBLE_PROPS, 
   FINAL_FOUR_SLOTS,
@@ -31,6 +31,7 @@ export default function SoloDashboard() {
   const { user, isLoading: authLoading, signOut } = useAuth();
   const { isLoading: soloLoading, isAuthenticated, player, logout, savePicksToCloud, saveResultsToCloud } = useSoloCloud();
   const { mensEntrants, womensEntrants, isLoading: configLoading } = usePlatformConfig();
+  const { CARD_CONFIG, isRumble } = useEventConfig();
   
   const [activeTab, setActiveTab] = useState<Exclude<UnifiedTabId, "numbers">>("matches");
   const [isScoringOpen, setIsScoringOpen] = useState(false);
@@ -65,43 +66,46 @@ export default function SoloDashboard() {
   const tabCompletion = useMemo(() => {
     const matchCards = CARD_CONFIG.filter(c => c.type === "match");
     const matchesComplete = matchCards.filter(c => picks[c.id]).length;
-    const winnersComplete = (picks["mens_rumble_winner"] ? 1 : 0) + 
-                            (picks["womens_rumble_winner"] ? 1 : 0);
-    
-    // Men's: 5 props + 4 final four
+
+    let winnersComplete = 0;
     let mensComplete = 0;
-    RUMBLE_PROPS.forEach(prop => {
-      if (picks[`mens_${prop.id}`]) mensComplete++;
-    });
-    for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
-      if (picks[`mens_final_four_${i}`]) mensComplete++;
-    }
-    
-    // Women's: same structure
     let womensComplete = 0;
-    RUMBLE_PROPS.forEach(prop => {
-      if (picks[`womens_${prop.id}`]) womensComplete++;
-    });
-    for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
-      if (picks[`womens_final_four_${i}`]) womensComplete++;
-    }
-    
-    // Chaos: dynamic props count x 2 genders
     let chaosComplete = 0;
-    const chaosTotal = CHAOS_PROPS.length * 2;
-    ["mens", "womens"].forEach(gender => {
-      CHAOS_PROPS.forEach((_, i) => {
-        if (picks[`${gender}_chaos_prop_${i + 1}`]) chaosComplete++;
+    let chaosTotal = 0;
+
+    if (isRumble) {
+      winnersComplete = (picks["mens_rumble_winner"] ? 1 : 0) +
+                        (picks["womens_rumble_winner"] ? 1 : 0);
+
+      RUMBLE_PROPS.forEach(prop => {
+        if (picks[`mens_${prop.id}`]) mensComplete++;
       });
-    });
-    
+      for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+        if (picks[`mens_final_four_${i}`]) mensComplete++;
+      }
+
+      RUMBLE_PROPS.forEach(prop => {
+        if (picks[`womens_${prop.id}`]) womensComplete++;
+      });
+      for (let i = 1; i <= FINAL_FOUR_SLOTS; i++) {
+        if (picks[`womens_final_four_${i}`]) womensComplete++;
+      }
+
+      chaosTotal = CHAOS_PROPS.length * 2;
+      ["mens", "womens"].forEach(gender => {
+        CHAOS_PROPS.forEach((_, i) => {
+          if (picks[`${gender}_chaos_prop_${i + 1}`]) chaosComplete++;
+        });
+      });
+    }
+
     return {
-      matches: { complete: matchesComplete + winnersComplete, total: 4 },
-      mens: { complete: mensComplete, total: RUMBLE_PROPS.length + FINAL_FOUR_SLOTS },
-      womens: { complete: womensComplete, total: RUMBLE_PROPS.length + FINAL_FOUR_SLOTS },
+      matches: { complete: matchesComplete + winnersComplete, total: matchCards.length + (isRumble ? 2 : 0) },
+      mens: { complete: mensComplete, total: isRumble ? RUMBLE_PROPS.length + FINAL_FOUR_SLOTS : 0 },
+      womens: { complete: womensComplete, total: isRumble ? RUMBLE_PROPS.length + FINAL_FOUR_SLOTS : 0 },
       chaos: { complete: chaosComplete, total: chaosTotal },
     };
-  }, [picks]);
+  }, [picks, CARD_CONFIG, isRumble]);
 
   // Determine if editing is allowed (before scoring starts)
   const hasResults = Object.keys(results).length > 0;
@@ -171,6 +175,7 @@ export default function SoloDashboard() {
         onTabChange={(tab) => setActiveTab(tab as Exclude<UnifiedTabId, "numbers">)}
         tabCompletion={tabCompletion}
         showNumbers={false}
+        isRumble={isRumble}
       />
 
       {/* Content */}
