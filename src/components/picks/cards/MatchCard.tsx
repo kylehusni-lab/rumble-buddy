@@ -2,7 +2,8 @@ import React, { forwardRef, memo } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import { getWrestlerImageUrl, getPlaceholderImageUrl, splitTeamMembers } from "@/lib/wrestler-data";
+import { TeamAvatars } from "../TeamAvatars";
 import { SCORING } from "@/lib/constants";
 import { PickCardHeader } from "./PickCardHeader";
 
