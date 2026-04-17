@@ -9,6 +9,7 @@ export interface Wrestler {
   short_name: string | null;
   division: 'mens' | 'womens';
   image_url: string | null;
+  image_position: string | null;
   is_active: boolean;
   is_rumble_participant: boolean;
   is_confirmed: boolean;
@@ -21,6 +22,7 @@ export interface CreateWrestlerData {
   short_name?: string;
   division: 'mens' | 'womens';
   image_url?: string;
+  image_position?: string;
   is_rumble_participant?: boolean;
   is_confirmed?: boolean;
 }
@@ -30,6 +32,7 @@ export interface UpdateWrestlerData {
   short_name?: string;
   division?: 'mens' | 'womens';
   image_url?: string;
+  image_position?: string;
   is_rumble_participant?: boolean;
   is_confirmed?: boolean;
 }
