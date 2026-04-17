@@ -783,6 +783,17 @@ export type Database = {
         Args: { p_email_sent: boolean; p_party_code: string }
         Returns: boolean
       }
+      create_party_as_host: { Args: { p_code: string }; Returns: boolean }
+      get_global_leaderboard: {
+        Args: { p_event_id?: string; p_limit?: number }
+        Returns: {
+          display_name: string
+          picks_made: number
+          rank: number
+          solo_player_id: string
+          total_points: number
+        }[]
+      }
       get_or_create_solo_player: {
         Args: { p_display_name?: string }
         Returns: {
