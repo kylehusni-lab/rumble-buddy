@@ -44,22 +44,34 @@ export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
               )}
               whileTap={!disabled ? { scale: 0.98 } : undefined}
             >
-              {/* Wrestler Photo */}
-              <div className={cn(
-                "rounded-full bg-muted overflow-hidden flex-shrink-0 border-2",
-                "w-14 h-14 sm:w-16 sm:h-16",
-                value === wrestler ? "border-primary" : "border-border"
-              )}>
-                <img
-                  src={getWrestlerImageUrl(wrestler)}
-                  alt={wrestler}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    img.src = getPlaceholderImageUrl(wrestler);
-                  }}
+              {/* Wrestler Photo(s) */}
+              {splitTeamMembers(wrestler).length > 1 ? (
+                <TeamAvatars
+                  name={wrestler}
+                  sizePx={56}
+                  borderClassName={cn(
+                    "border-2",
+                    value === wrestler ? "border-primary" : "border-border"
+                  )}
+                  className="flex-shrink-0"
                 />
-              </div>
+              ) : (
+                <div className={cn(
+                  "rounded-full bg-muted overflow-hidden flex-shrink-0 border-2",
+                  "w-14 h-14 sm:w-16 sm:h-16",
+                  value === wrestler ? "border-primary" : "border-border"
+                )}>
+                  <img
+                    src={getWrestlerImageUrl(wrestler)}
+                    alt={wrestler}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      img.src = getPlaceholderImageUrl(wrestler);
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Wrestler Name */}
               <div className="flex-1 text-left min-w-0">
