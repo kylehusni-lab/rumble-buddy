@@ -39,7 +39,7 @@ export default function SignIn() {
       }
 
       toast.success("Welcome back!");
-      navigate("/my-parties");
+      navigate(redirectTo);
     } catch (err) {
       console.error("Sign in error:", err);
       toast.error("Failed to sign in. Please try again.");
