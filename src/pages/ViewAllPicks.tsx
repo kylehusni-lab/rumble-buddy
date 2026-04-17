@@ -409,14 +409,22 @@ export default function ViewAllPicks() {
                                       )}
                                     >
                                       {pick && isWrestlerPick ? (
-                                        <img
-                                          src={getWrestlerImageUrl(pick)}
-                                          alt={pick}
-                                          className="w-10 h-10 rounded-full object-cover border-2 border-border"
-                                          onError={(e) => {
-                                            (e.target as HTMLImageElement).src = getPlaceholderImageUrl(pick);
-                                          }}
-                                        />
+                                        splitTeamMembers(pick).length > 1 ? (
+                                          <TeamAvatars
+                                            name={pick}
+                                            sizePx={40}
+                                            borderClassName="border-2 border-border"
+                                          />
+                                        ) : (
+                                          <img
+                                            src={getWrestlerImageUrl(pick)}
+                                            alt={pick}
+                                            className="w-10 h-10 rounded-full object-cover border-2 border-border"
+                                            onError={(e) => {
+                                              (e.target as HTMLImageElement).src = getPlaceholderImageUrl(pick);
+                                            }}
+                                          />
+                                        )
                                       ) : pick ? (
                                         <div className={cn(
                                           "w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold",
