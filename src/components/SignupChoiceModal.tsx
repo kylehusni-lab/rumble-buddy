@@ -140,7 +140,10 @@ export function SignupChoiceModal({ isOpen, onClose }: SignupChoiceModalProps) {
             </DialogHeader>
             <div className="space-y-3 mt-4">
               <button
-                onClick={() => setMode("solo")}
+                onClick={() => {
+                  handleClose();
+                  navigate("/sign-in?redirect=/solo/picks&mode=solo");
+                }}
                 className="w-full text-left p-4 rounded-lg border border-border bg-ott-surface-elevated hover:border-ott-accent transition-colors group"
               >
                 <div className="flex items-start gap-3">
