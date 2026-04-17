@@ -84,19 +84,32 @@ const MatchRow = memo(function MatchRow({
       <div className="relative flex-shrink-0">
         {pick ? (
           <>
-            <img
-              src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
-              alt={getEntrantDisplayName(pick)}
-              className={cn(
-                "w-[72px] h-[72px] rounded-full object-cover border-2 image-crisp",
-                isCorrect ? "border-success" :
-                isWrong ? "border-destructive" : 
-                "border-primary"
-              )}
-              onError={(e) => {
-                e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(pick));
-              }}
-            />
+            {splitTeamMembers(getEntrantDisplayName(pick)).length > 1 ? (
+              <TeamAvatars
+                name={getEntrantDisplayName(pick)}
+                sizePx={56}
+                borderClassName={cn(
+                  "border-2",
+                  isCorrect ? "border-success" :
+                  isWrong ? "border-destructive" :
+                  "border-primary"
+                )}
+              />
+            ) : (
+              <img
+                src={getWrestlerImageUrl(getEntrantDisplayName(pick))}
+                alt={getEntrantDisplayName(pick)}
+                className={cn(
+                  "w-[72px] h-[72px] rounded-full object-cover border-2 image-crisp",
+                  isCorrect ? "border-success" :
+                  isWrong ? "border-destructive" : 
+                  "border-primary"
+                )}
+                onError={(e) => {
+                  e.currentTarget.src = getPlaceholderImageUrl(getEntrantDisplayName(pick));
+                }}
+              />
+            )}
             {isCorrect && (
               <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-success flex items-center justify-center">
                 <Check className="w-3 h-3 text-success-foreground" />
