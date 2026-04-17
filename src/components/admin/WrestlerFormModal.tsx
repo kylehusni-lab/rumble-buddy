@@ -214,6 +214,21 @@ export function WrestlerFormModal({
             </div>
           </div>
 
+          {/* Image Focal Point Picker - only shown when there's an image */}
+          {imagePreview && (
+            <div className="space-y-2 p-4 rounded-lg bg-muted/30 border border-border">
+              <Label className="text-sm">Image Focal Point</Label>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Fix cut-off photos by tapping where the face should stay visible.
+              </p>
+              <ImageFocalPointPicker
+                imageUrl={imagePreview}
+                value={imagePosition}
+                onChange={setImagePosition}
+              />
+            </div>
+          )}
+
           {/* Short Name Field */}
           <div className="space-y-2">
             <Label htmlFor="shortName">Short Name (optional)</Label>
