@@ -157,7 +157,10 @@ export function SignupChoiceModal({ isOpen, onClose }: SignupChoiceModalProps) {
                 </div>
               </button>
               <button
-                onClick={() => setMode("group")}
+                onClick={() => {
+                  handleClose();
+                  navigate("/sign-in?redirect=/my-parties&mode=group");
+                }}
                 className="w-full text-left p-4 rounded-lg border border-border bg-ott-surface-elevated hover:border-ott-accent transition-colors group"
               >
                 <div className="flex items-start gap-3">
