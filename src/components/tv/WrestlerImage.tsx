@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { User } from "lucide-react";
 import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import {
+  ensureWrestlerPositionsLoaded,
+  getWrestlerImagePosition,
+  subscribeToWrestlerPositions,
+} from "@/lib/wrestler-image-position";
 import { cn } from "@/lib/utils";
 
 interface WrestlerImageProps {
@@ -20,22 +25,35 @@ const sizeClasses = {
   xl: "w-[400px] h-[400px]", // 400px
 };
 
-export function WrestlerImage({ 
-  name, 
-  size = "md", 
+export function WrestlerImage({
+  name,
+  size = "md",
   className,
   showFallbackIcon = false,
   eliminated = false,
 }: WrestlerImageProps) {
   const [imageError, setImageError] = useState(false);
+  const [, forceTick] = useState(0);
+
   const imageUrl = getWrestlerImageUrl(name);
   const fallbackUrl = getPlaceholderImageUrl(name);
+
+  // Hydrate per-wrestler focal-point cache once and re-render when it loads/updates
+  useEffect(() => {
+    void ensureWrestlerPositionsLoaded();
+    const unsub = subscribeToWrestlerPositions(() => forceTick((t) => t + 1));
+    return () => {
+      unsub();
+    };
+  }, []);
+
+  const objectPosition = getWrestlerImagePosition(name);
 
   // If image fails or name is empty, show fallback
   if (imageError || !name) {
     if (showFallbackIcon) {
       return (
-        <div 
+        <div
           className={cn(
             sizeClasses[size],
             "rounded-full bg-gradient-to-br from-muted to-background flex items-center justify-center border-2 border-muted",
@@ -47,7 +65,7 @@ export function WrestlerImage({
         </div>
       );
     }
-    
+
     return (
       <img
         src={fallbackUrl}
@@ -58,6 +76,7 @@ export function WrestlerImage({
           eliminated && "grayscale opacity-50",
           className
         )}
+        style={{ objectPosition }}
       />
     );
   }
@@ -72,6 +91,7 @@ export function WrestlerImage({
         eliminated && "grayscale opacity-50",
         className
       )}
+      style={{ objectPosition }}
       onError={() => setImageError(true)}
       loading="lazy"
     />
