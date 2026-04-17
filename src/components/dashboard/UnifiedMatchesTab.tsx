@@ -1,7 +1,8 @@
 import { memo } from "react";
 import { Check, X, Plus, Pencil, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getWrestlerImageUrl, getPlaceholderImageUrl } from "@/lib/wrestler-data";
+import { getWrestlerImageUrl, getPlaceholderImageUrl, splitTeamMembers } from "@/lib/wrestler-data";
+import { TeamAvatars } from "@/components/picks/TeamAvatars";
 import { getEntrantDisplayName } from "@/lib/entrant-utils";
 import { useEventConfig } from "@/contexts/EventContext";
 import type { CardConfig, ScoringConfig } from "@/lib/events/types";
