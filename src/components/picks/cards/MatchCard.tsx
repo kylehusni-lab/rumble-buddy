@@ -95,15 +95,13 @@ export const MatchCard = memo(forwardRef<HTMLDivElement, MatchCardProps>(
               )}
             </motion.button>
             
-            {/* VS Divider */}
-            {index === 0 && (
+            {/* VS Divider — between each pair */}
+            {index < options.length - 1 && (
               <div className="flex items-center justify-center flex-shrink-0 py-1">
                 <div className="relative">
-                  {/* Glowing background */}
                   <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-150" />
-                  {/* VS badge */}
-                  <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 border-2 border-primary/50 flex items-center justify-center">
-                    <span className="text-sm sm:text-base font-black text-primary drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
+                  <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 border-2 border-primary/50 flex items-center justify-center">
+                    <span className="text-xs sm:text-sm font-black text-primary drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
                       VS
                     </span>
                   </div>

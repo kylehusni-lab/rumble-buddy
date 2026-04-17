@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Loader2, Save, ArrowLeft } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FaceOffMatchCard } from "./cards/FaceOffMatchCard";
+import { MatchCard } from "./cards/MatchCard";
 import { RumbleWinnerCard } from "./cards/RumbleWinnerCard";
 import { ChaosPropsCard } from "./cards/ChaosPropsCard";
 import { RumblePropsCard } from "./cards/RumblePropsCard";
@@ -359,13 +360,23 @@ export function PickCardStack({
               className="w-full max-w-md h-full"
             >
               {currentCard.type === "match" && (
-                <FaceOffMatchCard
-                  title={currentCard.title}
-                  options={currentCard.options as readonly [string, string]}
-                  value={picks[currentCard.id] || null}
-                  onChange={(value) => handlePickUpdate(currentCard.id, value)}
-                  disabled={isLocked}
-                />
+                (currentCard.options?.length ?? 0) === 2 ? (
+                  <FaceOffMatchCard
+                    title={currentCard.title}
+                    options={currentCard.options as readonly [string, string]}
+                    value={picks[currentCard.id] || null}
+                    onChange={(value) => handlePickUpdate(currentCard.id, value)}
+                    disabled={isLocked}
+                  />
+                ) : (
+                  <MatchCard
+                    title={currentCard.title}
+                    options={currentCard.options as string[]}
+                    value={picks[currentCard.id] || null}
+                    onChange={(value) => handlePickUpdate(currentCard.id, value)}
+                    disabled={isLocked}
+                  />
+                )
               )}
               
               {currentCard.type === "rumble-winner" && (

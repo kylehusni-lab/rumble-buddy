@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Save, Loader2, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FaceOffMatchCard } from "@/components/picks/cards/FaceOffMatchCard";
+import { MatchCard } from "@/components/picks/cards/MatchCard";
 import { RumbleWinnerCard } from "@/components/picks/cards/RumbleWinnerCard";
 import { ChaosPropsCard } from "@/components/picks/cards/ChaosPropsCard";
 import { RumblePropsCard } from "@/components/picks/cards/RumblePropsCard";
@@ -331,13 +332,23 @@ export default function SoloPicks() {
               className="w-full max-w-md h-full"
             >
               {currentCard.type === "match" && (
-                <FaceOffMatchCard
-                  title={currentCard.title}
-                  options={currentCard.options as readonly [string, string]}
-                  value={picks[currentCard.id] || null}
-                  onChange={(value) => handlePickUpdate(currentCard.id, value)}
-                  disabled={false}
-                />
+                (currentCard.options?.length ?? 0) === 2 ? (
+                  <FaceOffMatchCard
+                    title={currentCard.title}
+                    options={currentCard.options as readonly [string, string]}
+                    value={picks[currentCard.id] || null}
+                    onChange={(value) => handlePickUpdate(currentCard.id, value)}
+                    disabled={false}
+                  />
+                ) : (
+                  <MatchCard
+                    title={currentCard.title}
+                    options={currentCard.options as string[]}
+                    value={picks[currentCard.id] || null}
+                    onChange={(value) => handlePickUpdate(currentCard.id, value)}
+                    disabled={false}
+                  />
+                )
               )}
               
               {currentCard.type === "rumble-winner" && (
