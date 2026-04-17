@@ -212,12 +212,20 @@ export function HeroSection({ onRequestAccess, onLearnMore }: HeroSectionProps) 
                       size="lg"
                       className="w-full sm:w-auto bg-ott-accent text-background hover:bg-ott-accent/90 font-bold"
                     >
-                      Request Access
+                      Get Started
+                      <ArrowRight className="ml-2 w-5 h-5" />
                     </Button>
-                    {/* Join with Code hidden until WrestleMania is ready */}
+                    <Button 
+                      onClick={() => navigate("/leaderboard")}
+                      size="lg"
+                      variant="outline"
+                      className="w-full sm:w-auto border-border font-semibold"
+                    >
+                      View Leaderboard
+                    </Button>
                   </div>
                   
-                  {/* Demo CTA - Prominent */}
+                  {/* Demo CTA */}
                   <Button 
                     onClick={() => navigate("/demo")}
                     size="lg"

@@ -4,7 +4,7 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { StorySection } from "@/components/home/StorySection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
 import { FooterSection } from "@/components/home/FooterSection";
-import { RequestAccessModal } from "@/components/RequestAccessModal";
+import { SignupChoiceModal } from "@/components/SignupChoiceModal";
 
 export default function HomePage() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -51,7 +51,7 @@ export default function HomePage() {
         <FooterSection />
       </main>
 
-      <RequestAccessModal 
+      <SignupChoiceModal 
         isOpen={isRequestModalOpen} 
         onClose={() => setIsRequestModalOpen(false)} 
       />

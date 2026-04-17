@@ -36,6 +36,7 @@ const SoloTvDisplay = lazy(() => import("./pages/SoloTvDisplay"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const SignIn = lazy(() => import("./pages/SignIn"));
 const MyParties = lazy(() => import("./pages/MyParties"));
+const GlobalLeaderboard = lazy(() => import("./pages/GlobalLeaderboard"));
 
 const queryClient = new QueryClient();
 
@@ -97,6 +98,7 @@ const App = () => (
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/sign-in" element={<SignIn />} />
                   <Route path="/my-parties" element={<MyParties />} />
+                  <Route path="/leaderboard" element={<GlobalLeaderboard />} />
 
                   <Route path="/solo/setup" element={<SoloSetup />} />
                   <Route path="/solo/picks" element={<SoloPicks />} />
