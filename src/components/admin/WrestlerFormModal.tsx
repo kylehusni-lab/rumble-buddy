@@ -18,6 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getPlaceholderImageUrl } from '@/lib/wrestler-data';
+import { setWrestlerImagePositionLocal } from '@/lib/wrestler-image-position';
+import { ImageFocalPointPicker } from './ImageFocalPointPicker';
 import type { Wrestler, CreateWrestlerData, UpdateWrestlerData } from '@/hooks/useWrestlerAdmin';
 
 interface WrestlerFormModalProps {
@@ -46,6 +48,7 @@ export function WrestlerFormModal({
   const [isConfirmed, setIsConfirmed] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [imagePosition, setImagePosition] = useState<string>('center center');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +64,7 @@ export function WrestlerFormModal({
         setIsRumbleParticipant(wrestler.is_rumble_participant);
         setIsConfirmed(wrestler.is_confirmed);
         setImagePreview(wrestler.image_url);
+        setImagePosition(wrestler.image_position || 'center center');
       } else {
         setName('');
         setShortName('');
@@ -68,6 +72,7 @@ export function WrestlerFormModal({
         setIsRumbleParticipant(false);
         setIsConfirmed(true);
         setImagePreview(null);
+        setImagePosition('center center');
       }
       setPendingFile(null);
     }
@@ -110,6 +115,7 @@ export function WrestlerFormModal({
       division,
       is_rumble_participant: isRumbleParticipant,
       is_confirmed: isConfirmed,
+      image_position: imagePosition,
     };
 
     const result = await onSubmit(data);
@@ -122,6 +128,8 @@ export function WrestlerFormModal({
     }
 
     if (result) {
+      // Update local cache so other surfaces immediately reflect the new focal point
+      setWrestlerImagePositionLocal(result.name, imagePosition);
       onOpenChange(false);
     }
   };
